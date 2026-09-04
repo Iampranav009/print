@@ -58,7 +58,22 @@ export default function VendorOverviewPage() {
   const [vendorData, setVendorData] = useState<VendorMeResponse | null>(null);
   const [liveJobs, setLiveJobs] = useState<number>(0);
   const [loading, setLoading] = useState(true);
+  const [releasingJobId, setReleasingJobId] = useState<string | null>(null);
   const qrRef = useRef<SVGSVGElement>(null);
+
+  const handleReleaseJob = async (jobId: string) => {
+    setReleasingJobId(jobId);
+    try {
+      const res = await fetch(`/api/jobs/${jobId}/release`, { method: "POST" });
+      if (res.ok) {
+        await fetchData();
+      }
+    } catch {
+      // ignore
+    } finally {
+      setReleasingJobId(null);
+    }
+  };
 
   const fetchData = useCallback(async () => {
     try {
@@ -267,6 +282,7 @@ export default function VendorOverviewPage() {
                   <th className="px-4 py-3 text-xs font-medium text-zinc-500 uppercase tracking-wide">Type</th>
                   <th className="px-4 py-3 text-xs font-medium text-zinc-500 uppercase tracking-wide">Amount</th>
                   <th className="px-4 py-3 text-xs font-medium text-zinc-500 uppercase tracking-wide">Status</th>
+                  <th className="px-4 py-3 text-xs font-medium text-zinc-500 uppercase tracking-wide">Action</th>
                   <th className="px-6 py-3 text-xs font-medium text-zinc-500 uppercase tracking-wide">Time</th>
                 </tr>
               </thead>
@@ -290,6 +306,18 @@ export default function VendorOverviewPage() {
                     </td>
                     <td className="px-4 py-3 text-zinc-900 tabular-nums">{formatPaise(job.price_paise)}</td>
                     <td className="px-4 py-3"><StatusPill status={job.status as JobStatus} /></td>
+                    <td className="px-4 py-3">
+                      {job.status === "awaiting_release" && (
+                        <button
+                          onClick={() => handleReleaseJob(job.id)}
+                          disabled={releasingJobId === job.id}
+                          className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold shadow-sm transition-colors disabled:opacity-50"
+                        >
+                          <Printer className="w-3.5 h-3.5" />
+                          <span>{releasingJobId === job.id ? "Releasing..." : "Release"}</span>
+                        </button>
+                      )}
+                    </td>
                     <td className="px-6 py-3 text-zinc-400 text-xs">
                       {new Date(job.created_at).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" })}
                     </td>

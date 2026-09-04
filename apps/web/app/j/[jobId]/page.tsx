@@ -227,6 +227,8 @@ export default function JobPage({
     };
   }, [fetchJob, jobId]);
 
+  const [releasing, setReleasing] = useState(false);
+
   const handleCopyCode = useCallback(async (code: string) => {
     try {
       await navigator.clipboard.writeText(code);
@@ -236,6 +238,23 @@ export default function JobPage({
       // clipboard unavailable — code is already visible and selectable
     }
   }, []);
+
+  const handleRelease = useCallback(async () => {
+    if (!job?.id || releasing) return;
+    setReleasing(true);
+    try {
+      const res = await fetch(`/api/jobs/${job.id}/release`, {
+        method: "POST",
+      });
+      if (res.ok) {
+        await fetchJob();
+      }
+    } catch {
+      // ignore
+    } finally {
+      setReleasing(false);
+    }
+  }, [job?.id, releasing, fetchJob]);
 
   // ── Loading ─────────────────────────────────────────────────────────────────
   if (!jobId || (!job && !fetchError)) {
@@ -331,6 +350,21 @@ export default function JobPage({
                   )}
                 </div>
               </button>
+
+              <div className="mt-6 pt-5 border-t border-zinc-100 dark:border-zinc-800/80">
+                <button
+                  type="button"
+                  onClick={handleRelease}
+                  disabled={releasing}
+                  className="w-full py-3.5 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white font-medium text-sm transition-colors flex items-center justify-center gap-2 shadow-sm disabled:opacity-50"
+                >
+                  <Printer className="w-4 h-4" />
+                  <span>{releasing ? "Releasing print…" : "I'm at the printer — Print Now"}</span>
+                </button>
+                <p className="text-[11px] text-zinc-400 dark:text-zinc-500 mt-2 text-center">
+                  Tap when you are ready to collect your document from the printer tray
+                </p>
+              </div>
             </div>
           )}
 

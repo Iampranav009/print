@@ -15,6 +15,7 @@ import requests
 
 from config import (
     API_BASE,
+    SHOP_ID,
     AGENT_TOKEN,
     PRINTER_NAME,
     POLL_INTERVAL,
@@ -42,12 +43,14 @@ _last_known_caps: dict | None = None
 
 def heartbeat(printer_status: str = "online") -> None:
     try:
-        requests.post(
+        resp = requests.post(
             f"{API_BASE}/api/agent/heartbeat",
             json={"printerStatus": printer_status},
             headers=HEADERS,
             timeout=10,
         )
+        resp.raise_for_status()
+        log.info("Heartbeat sent to server (printer_status=%s)", printer_status)
     except Exception as e:
         log.warning("Heartbeat failed: %s", e)
 
@@ -214,6 +217,9 @@ def poll_and_print() -> None:
         )
         resp.raise_for_status()
         data = resp.json()
+    except requests.exceptions.RequestException as e:
+        log.warning("Poll failed (server/network): %s", e)
+        return
     except Exception as e:
         log.warning("Poll failed: %s", e)
         return
@@ -224,16 +230,18 @@ def poll_and_print() -> None:
 
     job_id = job["id"]
     status = job["status"]
-    log.info("[%s] Picked up job (status=%s)", job_id[:8], status)
 
     if status == "dispatched":
+        log.info("[%s] Job dispatched — setting to awaiting_release", job_id[:8])
         update_status(job_id, "awaiting_release")
         return
 
     if status == "awaiting_release":
+        # Waiting for customer tap or counter release; avoid spamming logs
         return
 
     if status == "released":
+        log.info("[%s] Job released! Starting print process...", job_id[:8])
         download_url = job.get("downloadUrl")
         if not download_url:
             update_status(job_id, "print_failed", "No download URL")
@@ -264,39 +272,41 @@ def main() -> None:
     global _last_known_caps
 
     log.info(
-        "PrintBuddy Agent starting — mode=%s printer=%s poll=%ds fail=%s cap_refresh=%dm",
+        "PrintBuddy Agent starting — mode=%s printer=%s shop_id=%s poll=%ds",
         PRINT_MODE,
         PRINTER_NAME,
+        SHOP_ID[:8] + "...",
         POLL_INTERVAL,
-        SIMULATE_FAIL,
-        CAPABILITY_REFRESH_MINUTES,
     )
 
-    caps, make_and_model = detect_capabilities()
-    _last_known_caps = caps
-    post_capabilities(caps, make_and_model)
-    heartbeat()
+    try:
+        caps, make_and_model = detect_capabilities()
+        _last_known_caps = caps
+        post_capabilities(caps, make_and_model)
+        heartbeat()
 
-    heartbeat_counter = 0
-    last_cap_time = time.monotonic()
-    cap_refresh_secs = CAPABILITY_REFRESH_MINUTES * 60
+        heartbeat_counter = 0
+        last_cap_time = time.monotonic()
+        cap_refresh_secs = CAPABILITY_REFRESH_MINUTES * 60
 
-    while True:
-        poll_and_print()
+        while True:
+            poll_and_print()
 
-        heartbeat_counter += 1
-        if heartbeat_counter >= 10:
-            heartbeat()
-            heartbeat_counter = 0
+            heartbeat_counter += 1
+            if heartbeat_counter >= 10:
+                heartbeat()
+                heartbeat_counter = 0
 
-        now = time.monotonic()
-        if now - last_cap_time >= cap_refresh_secs:
-            caps, make_and_model = detect_capabilities()
-            _last_known_caps = caps
-            post_capabilities(caps, make_and_model)
-            last_cap_time = now
+            now = time.monotonic()
+            if now - last_cap_time >= cap_refresh_secs:
+                caps, make_and_model = detect_capabilities()
+                _last_known_caps = caps
+                post_capabilities(caps, make_and_model)
+                last_cap_time = now
 
-        time.sleep(POLL_INTERVAL)
+            time.sleep(POLL_INTERVAL)
+    except KeyboardInterrupt:
+        log.info("PrintBuddy Agent stopped cleanly by user.")
 
 
 if __name__ == "__main__":

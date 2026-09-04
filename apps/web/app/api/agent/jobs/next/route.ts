@@ -16,10 +16,10 @@ export async function GET(req: NextRequest) {
       "id, file_path, file_mime, pages, copies, color, orientation, paper, duplex, duplex_edge, page_range, number_up, collate, quality, media_type, reverse, scaling, finishings, sides_billed, status, release_code, debug_fail_reason"
     )
     .eq("shop_id", agent.shopId)
-    .in("status", ["dispatched", "awaiting_release", "released"])
+    .in("status", ["dispatched", "released"])
     .order("created_at", { ascending: true })
     .limit(1)
-    .single();
+    .maybeSingle();
 
   if (!job) {
     return Response.json({ job: null });

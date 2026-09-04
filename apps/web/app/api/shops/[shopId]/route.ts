@@ -41,7 +41,7 @@ export async function GET(
       "capabilities, capabilities_source, make_and_model, capabilities_updated_at, mode, online, last_seen_at, connection_type"
     )
     .eq("shop_id", shopId)
-    .order("created_at", { ascending: true });
+    .order("id", { ascending: true });
 
   const printerList = (printers ?? []).map((p) => ({
     capabilities: p.capabilities ?? null,

@@ -32,6 +32,13 @@ export interface PrinterClientProps {
       last_seen_at: string | null;
       online: boolean;
     } | null;
+    agent?: {
+      id: string;
+      agent_token?: string;
+      status: string;
+      last_heartbeat: string | null;
+      platform: string | null;
+    } | null;
     status: {
       mode: "test" | "real";
       online: boolean;
@@ -394,6 +401,8 @@ export function PrinterClient({ initialData }: PrinterClientProps) {
           wifi_ssid: printer?.wifi_ssid,
           os_printer_name: printer?.os_printer_name,
         }}
+        agentToken={data.agent?.agent_token}
+        shopId={data.shop?.id}
         onSaved={handleModalSaved}
       />
     </div>

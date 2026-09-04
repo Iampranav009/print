@@ -52,22 +52,38 @@ export async function GET(_req: NextRequest) {
         "id, os_printer_name, status, capabilities_source, make_and_model, capabilities_updated_at, mode, connection_type, host, port, wifi_ssid, setup_notes, last_seen_at, online"
       )
       .eq("shop_id", shopId)
-      .order("created_at", { ascending: true })
+      .order("id", { ascending: true })
       .limit(1)
       .maybeSingle(),
     supabase
       .from("agents")
-      .select("id, status, last_heartbeat, platform")
+      .select("id, status, last_heartbeat, platform, agent_token")
       .eq("shop_id", shopId)
       .order("last_heartbeat", { ascending: false })
       .limit(1),
   ]);
 
+  let agent = agents?.[0] ?? null;
+  if (!agent) {
+    const token = crypto.randomUUID().replace(/-/g, "") + crypto.randomUUID().replace(/-/g, "");
+    const { data: newAgent } = await supabase
+      .from("agents")
+      .insert({
+        shop_id: shopId,
+        agent_token: token,
+        platform: "windows",
+        status: "offline",
+      })
+      .select("id, status, last_heartbeat, platform, agent_token")
+      .maybeSingle();
+    agent = newAgent;
+  }
+
   const nowMs = Date.now();
   const lastSeenMs = printer?.last_seen_at
     ? new Date(printer.last_seen_at).getTime()
-    : agents?.[0]?.last_heartbeat
-    ? new Date(agents[0].last_heartbeat).getTime()
+    : agent?.last_heartbeat
+    ? new Date(agent.last_heartbeat).getTime()
     : 0;
 
   const isTestMode = printer?.mode === "test" || shop?.virtual_mode === true;
@@ -81,7 +97,7 @@ export async function GET(_req: NextRequest) {
       virtual_mode: shop?.virtual_mode ?? false,
     },
     printer: printer ?? null,
-    agent: agents?.[0] ?? null,
+    agent: agent ?? null,
     status: {
       mode: printer?.mode ?? (shop?.virtual_mode ? "test" : "real"),
       online,
@@ -131,7 +147,7 @@ export async function PUT(req: NextRequest) {
     .limit(1)
     .maybeSingle();
 
-  const patch: Record<string, unknown> = { updated_at: new Date().toISOString() };
+  const patch: Record<string, unknown> = {};
   if (body.mode !== undefined) patch.mode = body.mode;
   if (body.connection_type !== undefined) patch.connection_type = body.connection_type;
   if (body.host !== undefined) patch.host = body.host?.trim() || null;
@@ -148,6 +164,9 @@ export async function PUT(req: NextRequest) {
     columns: Record<string, unknown>
   ): Promise<{ data: { id: string } | null; error: { message: string } | null }> => {
     if (!existing) return { data: null, error: null };
+    if (Object.keys(columns).length === 0) {
+      return { data: { id: existing.id }, error: null };
+    }
     return await supabase
       .from("printers")
       .update(columns)
@@ -170,13 +189,15 @@ export async function PUT(req: NextRequest) {
     if (result.error && isMissingColumnErr(result.error.message)) {
       // Retry with only the columns that shipped in the original schema —
       // i.e. drop the mode/connection_type/host/... fields.
-      const legacyPatch: Record<string, unknown> = {
-        updated_at: patch.updated_at,
-      };
+      const legacyPatch: Record<string, unknown> = {};
       if (patch.os_printer_name !== undefined) {
         legacyPatch.os_printer_name = patch.os_printer_name;
       }
-      result = await tryUpdate(legacyPatch);
+      if (Object.keys(legacyPatch).length > 0) {
+        result = await tryUpdate(legacyPatch);
+      } else {
+        result = { data: { id: existing.id }, error: null };
+      }
       schemaWarning =
         "Migration 0016 is not applied — printer connection fields skipped. Run supabase/migrations/0016_printer_connection.sql in Supabase to enable Wi-Fi/USB/Network config.";
     }

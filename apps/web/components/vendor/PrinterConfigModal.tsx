@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { X, ChevronRight, AlertCircle, Wifi, Usb, Globe } from "lucide-react";
+import { X, ChevronRight, AlertCircle, Wifi, Usb, Globe, Copy, Check } from "lucide-react";
 
 export type ConnectionType = "wifi" | "usb" | "network";
 
@@ -18,6 +18,8 @@ interface PrinterConfigModalProps {
   open: boolean;
   onClose: () => void;
   savedConfig?: PrinterSavedConfig | null;
+  agentToken?: string | null;
+  shopId?: string | null;
   onSaved: () => Promise<void>;
 }
 
@@ -25,9 +27,12 @@ export function PrinterConfigModal({
   open,
   onClose,
   savedConfig,
+  agentToken,
+  shopId,
   onSaved,
 }: PrinterConfigModalProps) {
   const dialogRef = useRef<HTMLDivElement>(null);
+  const [copiedToken, setCopiedToken] = useState(false);
 
   // Active tab: Wi-Fi | USB | Network
   const [activeTab, setActiveTab] = useState<ConnectionType>("wifi");
@@ -404,8 +409,33 @@ export function PrinterConfigModal({
                     </Link>
                     ).
                   </li>
-                  <li>
-                    When it starts, paste in the shop&apos;s Agent Token (visible in your Shop settings) and click Connect.
+                  <li className="space-y-1.5">
+                    <span>When it starts, use your shop&apos;s credentials:</span>
+                    {agentToken && (
+                      <div className="p-2.5 bg-white rounded-xl border border-indigo-200 shadow-xs flex items-center justify-between gap-2">
+                        <div className="font-mono text-xs text-indigo-950 truncate">
+                          <span className="text-zinc-400 select-none">AGENT_TOKEN=</span>
+                          <span className="font-semibold select-all">{agentToken}</span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            navigator.clipboard.writeText(agentToken);
+                            setCopiedToken(true);
+                            setTimeout(() => setCopiedToken(false), 2000);
+                          }}
+                          className="px-2.5 py-1 bg-indigo-50 hover:bg-indigo-100 active:bg-indigo-200 text-indigo-700 rounded-lg text-xs font-semibold shrink-0 flex items-center gap-1.5 transition-colors"
+                        >
+                          {copiedToken ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
+                          <span>{copiedToken ? "Copied!" : "Copy Token"}</span>
+                        </button>
+                      </div>
+                    )}
+                    {shopId && (
+                      <div className="text-[11px] text-zinc-500 font-mono">
+                        SHOP_ID: <span className="select-all font-semibold text-zinc-800">{shopId}</span>
+                      </div>
+                    )}
                   </li>
                   <li>
                     The agent runs quietly in the background, sends heartbeats every 30 seconds, and forwards paid print jobs to the OS printer above.
