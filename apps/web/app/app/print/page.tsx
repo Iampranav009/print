@@ -835,12 +835,11 @@ function PrintContent() {
         )}
       </div>
 
-      {/* Fixed Bottom Bar — sits above the tab bar (64px + safe-area). */}
+      {/* Fixed Bottom Bar */}
       <div
-        className="fixed inset-x-0 z-30 bg-white border-t border-gray-100 px-4 pt-3"
+        className="fixed inset-x-0 bottom-0 z-30 bg-white border-t border-gray-100 px-4 pt-3"
         style={{
-          bottom: "calc(64px + max(0px, env(safe-area-inset-bottom)))",
-          paddingBottom: "12px",
+          paddingBottom: "max(16px, env(safe-area-inset-bottom))",
         }}
       >
         {/* Price */}
@@ -860,26 +859,16 @@ function PrintContent() {
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-3">
-          {/* Save to Library */}
-          <button
-            type="button"
-            disabled={!hasFile}
-            style={{ touchAction: "manipulation" }}
-            className="min-h-[52px] rounded-2xl border-2 border-gray-200 text-blue-600 font-semibold text-sm hover:bg-blue-50 active:bg-blue-100 transition-colors disabled:opacity-40 disabled:cursor-not-allowed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
-          >
-            Save to Library
-          </button>
-
-          {/* Scan Kiosk / Pay */}
+        <div>
+          {/* Scan Kiosk / Pay — single full-width button */}
           {!shopId ? (
             <button
               type="button"
               onClick={() => router.push("/app/scan")}
               style={{ touchAction: "manipulation" }}
-              className="min-h-[52px] rounded-2xl bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white font-semibold text-sm flex items-center justify-center gap-2 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+              className="w-full min-h-[52px] rounded-2xl bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white font-semibold text-base flex items-center justify-center gap-2 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 shadow-sm"
             >
-              <QrCode className="w-4 h-4" />
+              <QrCode className="w-5 h-5" />
               Scan Kiosk
             </button>
           ) : (
@@ -888,9 +877,9 @@ function PrintContent() {
               onClick={handlePay}
               disabled={!hasFile || priceState !== "ready" || paying}
               style={{ touchAction: "manipulation" }}
-              className="min-h-[52px] rounded-2xl bg-green-500 hover:bg-green-600 active:bg-green-700 text-white font-semibold text-sm flex items-center justify-center gap-2 transition-colors disabled:opacity-40 disabled:cursor-not-allowed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-green-500"
+              className="w-full min-h-[52px] rounded-2xl bg-green-500 hover:bg-green-600 active:bg-green-700 text-white font-semibold text-base flex items-center justify-center gap-2 transition-colors disabled:opacity-40 disabled:cursor-not-allowed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-green-500 shadow-sm"
             >
-              {paying ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
+              {paying ? <Loader2 className="w-5 h-5 animate-spin" /> : null}
               {paying ? "Processing…" : "Pay & Print"}
             </button>
           )}

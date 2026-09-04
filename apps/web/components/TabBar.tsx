@@ -20,7 +20,7 @@ const TABS: TabItem[] = [
 export function TabBar() {
   const pathname = usePathname();
 
-  if (pathname === "/app/scan") {
+  if (pathname === "/app/scan" || pathname === "/app/print") {
     return null;
   }
 
