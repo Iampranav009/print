@@ -101,15 +101,21 @@ export function PrinterClient({ initialData }: PrinterClientProps) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ mode: newMode }),
       });
+      const json = await res.json().catch(() => ({}));
       if (!res.ok) {
-        throw new Error("Failed to switch mode");
+        throw new Error(json.error || `HTTP ${res.status}`);
       }
+      // Success — refresh from the server so status.mode reflects reality.
+      // Any partial-schema warning bubbles up as a soft toast so the vendor
+      // knows to run migration 0016 if it hasn't been applied yet.
+      if (json.warning) showToast(json.warning);
       await refreshData();
-    } catch {
+    } catch (err) {
       // Revert
       setMode(previousMode);
       await refreshData();
-      showToast("Could not update mode. Please try again.");
+      const msg = err instanceof Error ? err.message : "Please try again.";
+      showToast(`Could not switch mode: ${msg}`);
     }
   };
 

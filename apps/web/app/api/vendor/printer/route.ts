@@ -99,8 +99,31 @@ export async function PUT(req: NextRequest) {
   const body = (await req.json()) as PrinterConfigBody;
   const supabase = getSupabase();
 
-  // Ensure the shop has a printer row to update — a virtual-only shop may
-  // never have registered one. Insert on first configure.
+  // 1. Source of truth for the auto-print pipeline is shops.virtual_mode.
+  // Update this FIRST so a mode toggle succeeds even if the printer table
+  // is missing migration 0016's new columns. This unblocks the vendor
+  // even when the schema is only partially migrated.
+  if (body.mode !== undefined) {
+    const { error: shopErr } = await supabase
+      .from("shops")
+      .update({ virtual_mode: body.mode === "test" })
+      .eq("id", shopId);
+    if (shopErr) {
+      console.error("[vendor/printer] shops.virtual_mode update failed", shopErr);
+      return Response.json(
+        {
+          error: `Could not update shop mode: ${shopErr.message}`,
+          detail: shopErr,
+        },
+        { status: 500 }
+      );
+    }
+  }
+
+  // 2. Try to sync printer-level fields. If migration 0016 hasn't been
+  // applied yet the mode/connection columns won't exist — that's a
+  // best-effort update; we still return success because the primary
+  // source of truth (shops.virtual_mode) was updated above.
   const { data: existing } = await supabase
     .from("printers")
     .select("id")
@@ -119,43 +142,84 @@ export async function PUT(req: NextRequest) {
   if (body.setup_notes !== undefined) patch.setup_notes = body.setup_notes;
 
   let printerId: string | undefined;
+  let schemaWarning: string | undefined;
+
+  const tryUpdate = async (
+    columns: Record<string, unknown>
+  ): Promise<{ data: { id: string } | null; error: { message: string } | null }> => {
+    if (!existing) return { data: null, error: null };
+    return await supabase
+      .from("printers")
+      .update(columns)
+      .eq("id", existing.id)
+      .select("id")
+      .maybeSingle();
+  };
+
+  const tryInsert = async (
+    columns: Record<string, unknown>
+  ): Promise<{ data: { id: string } | null; error: { message: string } | null }> => {
+    return await supabase.from("printers").insert(columns).select("id").maybeSingle();
+  };
+
+  const isMissingColumnErr = (msg?: string | null) =>
+    !!msg && /column .* does not exist|Could not find the .* column/i.test(msg);
 
   if (existing) {
-    const { data: updated, error } = await supabase
-      .from("printers")
-      .update(patch)
-      .eq("id", existing.id)
-      .select()
-      .single();
-    if (error) return Response.json({ error: error.message }, { status: 500 });
-    printerId = updated.id;
+    let result = await tryUpdate(patch);
+    if (result.error && isMissingColumnErr(result.error.message)) {
+      // Retry with only the columns that shipped in the original schema —
+      // i.e. drop the mode/connection_type/host/... fields.
+      const legacyPatch: Record<string, unknown> = {
+        updated_at: patch.updated_at,
+      };
+      if (patch.os_printer_name !== undefined) {
+        legacyPatch.os_printer_name = patch.os_printer_name;
+      }
+      result = await tryUpdate(legacyPatch);
+      schemaWarning =
+        "Migration 0016 is not applied — printer connection fields skipped. Run supabase/migrations/0016_printer_connection.sql in Supabase to enable Wi-Fi/USB/Network config.";
+    }
+    if (result.error) {
+      return Response.json(
+        { error: `Printer row update failed: ${result.error.message}` },
+        { status: 500 }
+      );
+    }
+    printerId = result.data?.id;
   } else {
-    const { data: inserted, error } = await supabase
-      .from("printers")
-      .insert({
+    const insertRow: Record<string, unknown> = {
+      shop_id: shopId,
+      os_printer_name: body.os_printer_name?.trim() || "default",
+      mode: body.mode ?? "test",
+      connection_type: body.connection_type ?? null,
+      host: body.host?.trim() || null,
+      port: body.port ?? null,
+      wifi_ssid: body.wifi_ssid?.trim() || null,
+      setup_notes: body.setup_notes ?? null,
+    };
+    let result = await tryInsert(insertRow);
+    if (result.error && isMissingColumnErr(result.error.message)) {
+      result = await tryInsert({
         shop_id: shopId,
-        os_printer_name: body.os_printer_name?.trim() || "default",
-        mode: body.mode ?? "test",
-        connection_type: body.connection_type ?? null,
-        host: body.host?.trim() || null,
-        port: body.port ?? null,
-        wifi_ssid: body.wifi_ssid?.trim() || null,
-        setup_notes: body.setup_notes ?? null,
-      })
-      .select()
-      .single();
-    if (error) return Response.json({ error: error.message }, { status: 500 });
-    printerId = inserted.id;
+        os_printer_name: insertRow.os_printer_name,
+      });
+      schemaWarning =
+        "Migration 0016 is not applied — printer row created without connection fields.";
+    }
+    if (result.error) {
+      return Response.json(
+        { error: `Could not create printer row: ${result.error.message}` },
+        { status: 500 }
+      );
+    }
+    printerId = result.data?.id;
   }
 
-  // Keep shops.virtual_mode in lockstep with printer mode so the webhook's
-  // isVirtualShop() check + the kiosk's live activity code stay correct.
-  if (body.mode !== undefined) {
-    await supabase
-      .from("shops")
-      .update({ virtual_mode: body.mode === "test" })
-      .eq("id", shopId);
-  }
-
-  return Response.json({ ok: true, printer_id: printerId });
+  return Response.json({
+    ok: true,
+    printer_id: printerId,
+    mode: body.mode,
+    ...(schemaWarning ? { warning: schemaWarning } : {}),
+  });
 }
