@@ -124,7 +124,7 @@ function SidebarContent({
       </div>
 
       {/* Nav */}
-      <nav className="flex-1 px-3 space-y-0.5 overflow-y-auto" aria-label="Vendor navigation">
+      <nav className="flex-1 px-3 space-y-0.5 overflow-y-auto [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden overscroll-contain" aria-label="Vendor navigation">
         {NAV_ITEMS.map((item) => {
           const locked = !!item.requiresBankVerified && !payoutsUnlocked;
           return (
@@ -201,7 +201,7 @@ export function VendorSidebar(props: VendorSidebarProps) {
   return (
     <>
       {/* Desktop sidebar */}
-      <aside className="hidden lg:flex flex-col w-60 shrink-0 sticky top-0 h-screen">
+      <aside className="hidden lg:flex flex-col w-60 shrink-0 sticky top-0 h-screen self-start z-30">
         <SidebarContent {...props} />
       </aside>
 

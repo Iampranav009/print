@@ -112,7 +112,7 @@ function SidebarContent({
         </div>
       </div>
 
-      <nav className="flex-1 px-3 space-y-0.5 overflow-y-auto" aria-label="Admin navigation">
+      <nav className="flex-1 px-3 space-y-0.5 overflow-y-auto [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden overscroll-contain" aria-label="Admin navigation">
         {NAV_ITEMS.map((item) => (
           <NavItem
             key={item.id}
@@ -176,7 +176,7 @@ export function AdminSidebar(props: AdminSidebarProps) {
 
   return (
     <>
-      <aside className="hidden lg:flex flex-col w-60 shrink-0 sticky top-0 h-screen">
+      <aside className="hidden lg:flex flex-col w-60 shrink-0 sticky top-0 h-screen self-start z-30">
         <SidebarContent {...props} />
       </aside>
 
