@@ -1,177 +1,227 @@
-﻿"use client";
+"use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
-import { Printer, FileText, Stamp, Truck, ChevronRight, BookOpen } from "lucide-react";
-import { formatRelativeTime } from "@/lib/date-utils";
-
-// Demo library documents (will come from API when wired up)
-const DEMO_DOCS: Array<{
-  id: string;
-  name: string;
-  pages: number;
-  date: string;
-  size: string;
-}> = [];
+import Image from "next/image";
+import { createClient } from "@/lib/supabase/client";
+import {
+  Printer,
+  QrCode,
+  ChevronRight,
+  Upload,
+  CreditCard,
+  CheckCircle2,
+  ShieldCheck,
+  Zap,
+  Clock,
+  Sparkles,
+  Truck,
+} from "lucide-react";
 
 export default function HomePage() {
-  const [libraryTab, setLibraryTab] = useState<"Documents" | "e-Stamps">("Documents");
+  const [userName, setUserName] = useState<string>("");
+  const [userInitial, setUserInitial] = useState<string>("U");
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    try {
+      const supabase = createClient();
+      supabase.auth.getUser().then(({ data: { user } }) => {
+        if (user) {
+          const fullName =
+            user.user_metadata?.full_name ||
+            user.user_metadata?.name ||
+            (user.email ? user.email.split("@")[0] : "");
+          if (fullName) {
+            // Take the first name or full name
+            const firstName = fullName.split(" ")[0];
+            setUserName(firstName);
+            setUserInitial(firstName.charAt(0).toUpperCase());
+          }
+          const avatar =
+            user.user_metadata?.avatar_url || user.user_metadata?.picture || null;
+          setAvatarUrl(avatar);
+        }
+      });
+    } catch {
+      // Fallback for SSR or offline mode
+    }
+  }, []);
 
   return (
-    <div className="min-h-full bg-white pb-24">
-      {/* Page Header */}
-      <div className="px-4 pt-4 pb-2">
+    <div className="min-h-full bg-[#fbfdfb] pb-28">
+      {/* Header */}
+      <div className="px-5 pt-5 pb-3 bg-white border-b border-gray-100 shadow-[0_1px_3px_rgba(0,0,0,0.02)]">
         <div className="flex items-center justify-between">
           <div>
-            <p className="text-xs text-gray-500 font-medium">Good morning</p>
-            <h1 className="text-xl font-bold text-gray-900">PrintBuddy</h1>
+            <p className="text-xs font-semibold text-[#0C831F] uppercase tracking-wider flex items-center gap-1.5">
+              <span className="w-2 h-2 rounded-full bg-[#0C831F] animate-pulse" />
+              PrintBuddy
+            </p>
+            <h1 className="text-xl font-bold text-gray-900 mt-0.5 capitalize">
+              Good morning {userName ? userName : "there"} 👋
+            </h1>
           </div>
-          <div className="w-9 h-9 rounded-full bg-green-100 flex items-center justify-center">
-            <span className="text-green-600 font-bold text-sm">P</span>
-          </div>
+
+          {/* User Avatar */}
+          <Link
+            href="/app/profile"
+            style={{ touchAction: "manipulation" }}
+            aria-label="View Profile"
+            className="focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0C831F] rounded-full"
+          >
+            <div className="w-10 h-10 rounded-full bg-[#e7f6ea] border-2 border-[#0C831F]/30 flex items-center justify-center relative overflow-hidden shadow-sm hover:scale-105 transition-transform">
+              {avatarUrl ? (
+                <Image
+                  src={avatarUrl}
+                  alt={userName || "Profile"}
+                  fill
+                  className="object-cover"
+                  unoptimized
+                />
+              ) : (
+                <span className="text-[#0C831F] font-bold text-base">
+                  {userInitial}
+                </span>
+              )}
+            </div>
+          </Link>
         </div>
       </div>
 
-      <div className="px-4 space-y-3">
-        {/* Hero Banner — Print at Kiosk */}
-        <Link
-          href="/app/scan"
-          style={{ touchAction: "manipulation" }}
-          aria-label="Scan a printer QR code to start"
-          className="block"
-        >
-          <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-gray-700 to-gray-900 p-5 min-h-[140px]">
-            {/* Background decorative circles */}
-            <div className="absolute top-0 right-0 w-32 h-32 rounded-full bg-white/5 -translate-y-8 translate-x-8" />
-            <div className="absolute bottom-0 right-8 w-20 h-20 rounded-full bg-white/5 translate-y-6" />
+      <div className="px-4 pt-4 space-y-4 max-w-lg mx-auto">
+        {/* Expanded Big "Print Now" Hero Box */}
+        <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-[#0C831F] via-[#0b741c] to-[#075313] p-6 shadow-xl shadow-[#0C831F]/20 text-white border border-[#0C831F]/40">
+          {/* Subtle decorative background circles */}
+          <div className="absolute top-0 right-0 w-48 h-48 rounded-full bg-white/10 blur-2xl -translate-y-12 translate-x-12 pointer-events-none" />
+          <div className="absolute bottom-0 left-0 w-36 h-36 rounded-full bg-black/10 blur-xl translate-y-8 -translate-x-8 pointer-events-none" />
+          <div className="absolute right-3 top-4 w-28 h-28 rounded-full border border-white/10 pointer-events-none" />
 
-            {/* Kiosk illustration placeholder */}
-            <div className="absolute right-4 bottom-4 w-20 h-24 flex items-end justify-center opacity-80">
-              <div className="relative">
-                {/* Kiosk body */}
-                <div className="w-14 h-16 bg-gray-600 rounded-lg border border-gray-500 flex flex-col items-center justify-start pt-1.5 gap-1">
-                  <div className="w-10 h-7 bg-blue-500 rounded-sm flex items-center justify-center">
-                    <Printer className="w-4 h-4 text-white" />
-                  </div>
-                  <div className="w-8 h-0.5 bg-white/30 rounded" />
-                  <div className="w-8 h-0.5 bg-white/30 rounded" />
-                </div>
-                {/* Base */}
-                <div className="w-16 h-2 bg-gray-500 rounded-b-lg mt-0 mx-auto" />
-              </div>
-            </div>
-
-            <div className="relative z-10">
-              <h2 className="text-white font-bold text-xl leading-snug">Print at Kiosk</h2>
-              <p className="text-gray-300 text-xs mt-0.5">Scan / Locate</p>
-              <div
-                className="mt-4 inline-flex items-center gap-1.5 bg-white/90 hover:bg-white active:bg-white/80 text-gray-900 font-semibold text-sm rounded-full px-4 py-2 transition-colors"
-              >
-                Print Now
-                <ChevronRight className="w-4 h-4" />
-              </div>
-            </div>
+          {/* Badge */}
+          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/15 backdrop-blur-md border border-white/20 text-xs font-semibold tracking-wide mb-4">
+            <Zap className="w-3.5 h-3.5 text-yellow-300 fill-yellow-300" />
+            <span>Instant Self-Serve Print</span>
           </div>
-        </Link>
 
-        {/* Service Cards Row */}
-        <div className="grid grid-cols-2 gap-3">
-          {/* Create Agreements */}
-          <div className="relative overflow-hidden rounded-2xl bg-cyan-400 p-4 min-h-[140px] cursor-pointer active:opacity-90">
-            <div className="absolute top-3 right-3 w-10 h-10 rounded-full bg-white/20 flex items-center justify-center">
-              <FileText className="w-5 h-5 text-white" />
+          {/* Title & Description */}
+          <div className="relative z-10">
+            <h2 className="text-2xl font-black tracking-tight leading-tight">
+              Print at Kiosk
+            </h2>
+            <p className="text-white/90 text-sm mt-1.5 leading-relaxed max-w-[90%]">
+              Upload your document, lock live price, and get your printout in seconds.
+            </p>
+          </div>
+
+          {/* Feature Highlights Grid */}
+          <div className="grid grid-cols-2 gap-2.5 my-5 relative z-10">
+            <div className="flex items-center gap-2 bg-white/10 backdrop-blur-sm rounded-xl px-3 py-2 border border-white/10">
+              <Sparkles className="w-4 h-4 text-yellow-300 flex-shrink-0" />
+              <span className="text-xs font-medium text-white/95">Color &amp; B/W</span>
             </div>
-            <div className="absolute bottom-0 right-0 w-20 h-20 rounded-full bg-white/10 translate-x-4 translate-y-4" />
-            <div className="mt-10">
-              <h3 className="text-white font-bold text-base leading-tight">Create<br />Agreements</h3>
-              <p className="text-white/80 text-[11px] mt-1 font-medium">Instant &amp; Ready</p>
+            <div className="flex items-center gap-2 bg-white/10 backdrop-blur-sm rounded-xl px-3 py-2 border border-white/10">
+              <ShieldCheck className="w-4 h-4 text-emerald-300 flex-shrink-0" />
+              <span className="text-xs font-medium text-white/95">Auto-Deleted</span>
             </div>
           </div>
 
-          {/* Buy e-Stamp */}
-          <div className="relative overflow-hidden rounded-2xl bg-gray-600 p-4 min-h-[140px] cursor-pointer active:opacity-90">
-            <div className="absolute top-3 right-3 w-10 h-10 rounded-full bg-white/20 flex items-center justify-center">
-              <Stamp className="w-5 h-5 text-white" />
-            </div>
-            <div className="absolute bottom-0 right-0 w-20 h-20 rounded-full bg-white/10 translate-x-4 translate-y-4" />
-            <div className="mt-10">
-              <h3 className="text-white font-bold text-base leading-tight">Buy e-Stamp</h3>
-              <p className="text-white/80 text-[11px] mt-1 font-medium">Quick &amp; Easy</p>
-            </div>
+          {/* Action CTAs */}
+          <div className="space-y-2.5 relative z-10 pt-1">
+            {/* Primary Big Print Now CTA */}
+            <Link
+              href="/app/print"
+              style={{ touchAction: "manipulation" }}
+              aria-label="Print Document Now"
+              className="w-full min-h-[54px] flex items-center justify-between px-5 bg-white hover:bg-white/95 active:bg-white/90 text-[#0C831F] font-bold text-base rounded-2xl shadow-lg transition-all transform active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
+            >
+              <div className="flex items-center gap-2.5">
+                <Printer className="w-5 h-5 text-[#0C831F]" />
+                <span>Print Now</span>
+              </div>
+              <div className="w-8 h-8 rounded-full bg-[#e7f6ea] flex items-center justify-center">
+                <ChevronRight className="w-5 h-5 text-[#0C831F]" />
+              </div>
+            </Link>
+
+            {/* Scan QR Code button */}
+            <Link
+              href="/app/scan"
+              style={{ touchAction: "manipulation" }}
+              aria-label="Scan Kiosk QR Code"
+              className="w-full min-h-[46px] flex items-center justify-center gap-2 px-4 bg-white/15 hover:bg-white/20 active:bg-white/25 text-white font-semibold text-sm rounded-xl border border-white/20 transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
+            >
+              <QrCode className="w-4 h-4 text-white" />
+              <span>Scan Kiosk QR to Link Printer</span>
+            </Link>
           </div>
         </div>
 
-        {/* Divider */}
-        <div className="border-t border-gray-100" />
-
-        {/* Delivery Promo Banner */}
-        <div className="relative overflow-hidden rounded-2xl bg-gray-600 p-5 min-h-[120px]">
-          {/* Scooter illustration placeholder */}
-          <div className="absolute right-4 bottom-4 w-20 h-16 flex items-end justify-center opacity-70">
-            <div className="relative">
-              <div className="w-14 h-8 bg-cyan-400 rounded-lg" />
-              <div className="absolute -top-4 right-1 w-8 h-8 rounded-full bg-gray-400 border-2 border-white/50" />
-            </div>
-          </div>
-          <div className="relative z-10 max-w-[55%]">
-            <h3 className="text-white font-bold text-base leading-snug">
-              Get your Prints Delivered to your Doorstep
+        {/* How It Works Section */}
+        <div className="bg-white rounded-3xl p-5 border border-gray-100 shadow-sm space-y-3.5">
+          <div className="flex items-center justify-between">
+            <h3 className="text-sm font-bold text-gray-900 tracking-tight">
+              How PrintBuddy Works
             </h3>
-            <p className="text-gray-300 text-xs mt-1">(Coming Soon)</p>
+            <span className="text-[11px] font-semibold text-[#0C831F] bg-[#e7f6ea] px-2.5 py-0.5 rounded-full">
+              3 Simple Steps
+            </span>
+          </div>
+
+          <div className="grid grid-cols-3 gap-2 text-center">
+            {/* Step 1 */}
+            <div className="bg-[#f8fdf9] border border-[#e7f6ea] rounded-2xl p-3 flex flex-col items-center">
+              <div className="w-9 h-9 rounded-xl bg-[#e7f6ea] text-[#0C831F] flex items-center justify-center mb-2 shadow-xs">
+                <Upload className="w-4 h-4" />
+              </div>
+              <p className="text-[11px] font-bold text-gray-900">1. Upload</p>
+              <p className="text-[9px] text-gray-500 mt-0.5 leading-tight">
+                PDF, Word &amp; Images
+              </p>
+            </div>
+
+            {/* Step 2 */}
+            <div className="bg-[#f8fdf9] border border-[#e7f6ea] rounded-2xl p-3 flex flex-col items-center">
+              <div className="w-9 h-9 rounded-xl bg-[#e7f6ea] text-[#0C831F] flex items-center justify-center mb-2 shadow-xs">
+                <CreditCard className="w-4 h-4" />
+              </div>
+              <p className="text-[11px] font-bold text-gray-900">2. Pay UPI</p>
+              <p className="text-[9px] text-gray-500 mt-0.5 leading-tight">
+                Exact locked price
+              </p>
+            </div>
+
+            {/* Step 3 */}
+            <div className="bg-[#f8fdf9] border border-[#e7f6ea] rounded-2xl p-3 flex flex-col items-center">
+              <div className="w-9 h-9 rounded-xl bg-[#e7f6ea] text-[#0C831F] flex items-center justify-center mb-2 shadow-xs">
+                <CheckCircle2 className="w-4 h-4" />
+              </div>
+              <p className="text-[11px] font-bold text-gray-900">3. Release</p>
+              <p className="text-[9px] text-gray-500 mt-0.5 leading-tight">
+                Instant 4-digit code
+              </p>
+            </div>
           </div>
         </div>
 
-        {/* Library Section */}
-        <div className="pt-1">
-          <h2 className="text-gray-900 font-bold text-lg mb-3">Library</h2>
-
-          {/* Tab pills */}
-          <div className="flex gap-2 mb-4">
-            {(["Documents", "e-Stamps"] as const).map((tab) => (
-              <button
-                key={tab}
-                type="button"
-                onClick={() => setLibraryTab(tab)}
-                style={{ touchAction: "manipulation" }}
-                className={`px-4 py-2 rounded-full text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-green-500 ${
-                  libraryTab === tab
-                    ? "bg-green-500 text-white"
-                    : "bg-gray-100 text-gray-600 hover:bg-gray-200"
-                }`}
-              >
-                {tab}
-              </button>
-            ))}
-          </div>
-
-          {/* Library Content */}
-          {DEMO_DOCS.length === 0 ? (
-            <div className="py-8 text-center">
-              <div className="w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center mx-auto mb-3">
-                <BookOpen className="w-6 h-6 text-gray-400" />
+        {/* Doorstep Delivery Promo Banner */}
+        <div className="relative overflow-hidden rounded-3xl bg-gray-900 p-5 text-white shadow-md border border-gray-800">
+          <div className="flex items-start justify-between gap-3 relative z-10">
+            <div className="max-w-[70%]">
+              <div className="inline-flex items-center gap-1 bg-yellow-400 text-gray-950 text-[10px] font-extrabold px-2 py-0.5 rounded-md mb-2 uppercase tracking-wide">
+                Coming Soon
               </div>
-              <p className="text-gray-500 text-sm">No {libraryTab.toLowerCase()} found</p>
-              <p className="text-gray-400 text-xs mt-1">Your saved documents will appear here</p>
+              <h3 className="text-base font-bold leading-snug">
+                Doorstep Print Delivery
+              </h3>
+              <p className="text-xs text-gray-400 mt-1 leading-relaxed">
+                Get documents printed &amp; delivered to your home or office in minutes.
+              </p>
             </div>
-          ) : (
-            <div className="space-y-2">
-              {DEMO_DOCS.map((doc) => (
-                <div
-                  key={doc.id}
-                  className="flex items-center gap-3 bg-gray-50 rounded-xl p-3"
-                >
-                  <div className="w-9 h-9 rounded-lg bg-yellow-100 flex items-center justify-center flex-shrink-0">
-                    <FileText className="w-4 h-4 text-yellow-600" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold text-gray-900 truncate">{doc.name}</p>
-                    <p className="text-xs text-gray-500">{doc.pages} pages · {formatRelativeTime(doc.date)}</p>
-                  </div>
-                  <ChevronRight className="w-4 h-4 text-gray-400 flex-shrink-0" />
-                </div>
-              ))}
+
+            <div className="w-12 h-12 rounded-2xl bg-[#0C831F] flex items-center justify-center flex-shrink-0 shadow-lg shadow-[#0C831F]/30">
+              <Truck className="w-6 h-6 text-white" />
             </div>
-          )}
+          </div>
         </div>
       </div>
     </div>

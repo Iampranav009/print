@@ -41,16 +41,16 @@ export function TabBar() {
               style={{ touchAction: "manipulation" }}
               aria-current={isActive ? "page" : undefined}
               aria-label={tab.name}
-              className={`flex-1 flex flex-col items-center justify-center gap-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-green-500 rounded-xl transition-colors ${
-                isActive ? "text-green-500" : "text-gray-400"
+              className={`flex-1 flex flex-col items-center justify-center gap-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0C831F] rounded-xl transition-colors ${
+                isActive ? "text-[#0C831F]" : "text-gray-400"
               }`}
             >
               <div className={`w-1 h-1 rounded-full mb-0.5 transition-all ${
-                isActive ? "bg-green-500" : "opacity-0"
+                isActive ? "bg-[#0C831F]" : "opacity-0"
               }`} aria-hidden />
               <Icon className="w-5 h-5" aria-hidden />
               <span className={`text-[10px] font-medium leading-none ${
-                isActive ? "text-green-500 font-semibold" : "text-gray-500"
+                isActive ? "text-[#0C831F] font-semibold" : "text-gray-500"
               }`}>
                 {tab.name}
               </span>
