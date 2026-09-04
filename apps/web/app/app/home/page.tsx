@@ -35,9 +35,9 @@ export default function HomePage() {
       <div className="px-4 space-y-3">
         {/* Hero Banner — Print at Kiosk */}
         <Link
-          href="/app/print"
+          href="/app/scan"
           style={{ touchAction: "manipulation" }}
-          aria-label="Print at Kiosk"
+          aria-label="Scan a printer QR code to start"
           className="block"
         >
           <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-gray-700 to-gray-900 p-5 min-h-[140px]">

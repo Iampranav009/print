@@ -11,6 +11,7 @@ import {
   AlertCircle,
   ShieldCheck,
   Loader2,
+  ImageUp,
 } from "lucide-react";
 
 const CAMERA_PERMISSION_KEY = "printbuddy_camera_permission_granted";
@@ -31,7 +32,16 @@ export function QRScanner() {
   const [torchAvailable, setTorchAvailable] = useState(false);
   const [torchOn, setTorchOn] = useState(false);
   const [invalidToast, setInvalidToast] = useState(false);
+  const [invalidMessage, setInvalidMessage] = useState<string>("This isn't a PrintBuddy code");
   const toastTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+
+  const showInvalidToast = useCallback((message: string) => {
+    setInvalidMessage(message);
+    setInvalidToast(true);
+    if (toastTimeoutRef.current) clearTimeout(toastTimeoutRef.current);
+    toastTimeoutRef.current = setTimeout(() => setInvalidToast(false), 3000);
+  }, []);
 
   // Parse QR text for valid shopId: e.g., https://.../s/<shopId> or /s/<shopId>
   const handleQrDetected = useCallback(
@@ -62,12 +72,7 @@ export function QRScanner() {
         }
         router.push(`/app/print?shop=${encodeURIComponent(shopId)}`);
       } else {
-        // Show invalid toast and continue scanning
-        setInvalidToast(true);
-        if (toastTimeoutRef.current) clearTimeout(toastTimeoutRef.current);
-        toastTimeoutRef.current = setTimeout(() => {
-          setInvalidToast(false);
-        }, 3000);
+        showInvalidToast("This isn't a PrintBuddy code");
       }
     },
     [router]
@@ -238,6 +243,63 @@ export function QRScanner() {
     };
   }, [attachStream]);
 
+  // Decode a QR from an uploaded image file. Draws the image to an offscreen
+  // canvas, runs jsQR on the pixels, then routes through handleQrDetected
+  // (same URL parsing + invalid-toast fallback as the camera scan).
+  const handleImageFile = useCallback(
+    async (file: File) => {
+      try {
+        const img = new Image();
+        const objectUrl = URL.createObjectURL(file);
+        try {
+          await new Promise<void>((resolve, reject) => {
+            img.onload = () => resolve();
+            img.onerror = () => reject(new Error("Could not read image"));
+            img.src = objectUrl;
+          });
+
+          const MAX_DIM = 1600; // downscale huge photos so decoding is fast
+          const scale = Math.min(1, MAX_DIM / Math.max(img.width, img.height));
+          const w = Math.round(img.width * scale);
+          const h = Math.round(img.height * scale);
+
+          const canvas = document.createElement("canvas");
+          canvas.width = w;
+          canvas.height = h;
+          const ctx = canvas.getContext("2d", { willReadFrequently: true });
+          if (!ctx) {
+            showInvalidToast("Couldn't read that image");
+            return;
+          }
+          ctx.drawImage(img, 0, 0, w, h);
+          const imageData = ctx.getImageData(0, 0, w, h);
+          const code = jsQR(imageData.data, imageData.width, imageData.height, {
+            inversionAttempts: "attemptBoth",
+          });
+          if (code?.data) {
+            handleQrDetected(code.data);
+          } else {
+            showInvalidToast("No QR code found in that image");
+          }
+        } finally {
+          URL.revokeObjectURL(objectUrl);
+        }
+      } catch {
+        showInvalidToast("Couldn't read that image");
+      }
+    },
+    [handleQrDetected, showInvalidToast]
+  );
+
+  const onImageInputChange = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0];
+      e.target.value = ""; // allow selecting the same file again
+      if (file) void handleImageFile(file);
+    },
+    [handleImageFile]
+  );
+
   // Toggle Torch
   const toggleTorch = async () => {
     if (!trackRef.current || !torchAvailable) return;
@@ -326,12 +388,34 @@ export function QRScanner() {
           className="absolute top-20 z-30 flex items-center gap-2 bg-red-600 text-white text-sm py-2.5 px-4 rounded-xl shadow-lg"
         >
           <AlertCircle className="w-4 h-4 flex-shrink-0" />
-          <span>This isn&apos;t a PrintBuddy code</span>
+          <span>{invalidMessage}</span>
         </div>
       )}
 
+      {/* Hidden file input — triggered by the Upload QR button */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*"
+        className="sr-only"
+        onChange={onImageInputChange}
+        aria-hidden
+      />
+
       {/* Bottom Controls */}
-      <div className="absolute bottom-6 inset-x-0 z-20 flex items-center justify-center gap-8 px-6">
+      <div className="absolute bottom-6 inset-x-0 z-20 flex items-center justify-center gap-4 px-6">
+        {/* Upload QR image button */}
+        <button
+          type="button"
+          onClick={() => fileInputRef.current?.click()}
+          style={{ touchAction: "manipulation" }}
+          aria-label="Upload a saved QR code image"
+          className="min-h-[48px] px-5 py-2.5 rounded-full bg-black/60 backdrop-blur-md text-white font-medium text-sm hover:bg-black/80 active:bg-black/90 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white flex items-center gap-2"
+        >
+          <ImageUp className="w-4 h-4" aria-hidden />
+          Upload QR
+        </button>
+
         {/* Torch toggle button (if available) */}
         {torchAvailable && (
           <button
