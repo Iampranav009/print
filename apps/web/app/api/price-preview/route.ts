@@ -1,17 +1,69 @@
+// POST /api/price-preview — compute a live price without creating a job.
+// Accepts either the original shape { shopId, totalPages, options } or a
+// flat shape { shopId, pageCount, copies, color, duplex, paper, ... } that
+// the mobile print page sends.
+
 import { getSupabase } from "@/lib/supabase";
 import { computePrice } from "@/lib/pricing";
 import type { PrintOptions, Pricing } from "@printbuddy/shared";
 import { NextRequest } from "next/server";
 
+interface Body {
+  shopId?: string;
+  totalPages?: number;
+  pageCount?: number;
+  options?: Partial<PrintOptions>;
+  // Flat client shape
+  copies?: number;
+  color?: boolean;
+  orientation?: PrintOptions["orientation"];
+  paper?: string;
+  duplex?: boolean;
+  duplex_edge?: PrintOptions["duplex_edge"];
+  pageRange?: string | null;
+  range?: string | null;
+  numberUp?: number;
+  number_up?: number;
+  collate?: boolean;
+  quality?: PrintOptions["quality"];
+  mediaType?: string;
+  media_type?: string;
+  reverse?: boolean;
+  scaling?: PrintOptions["scaling"];
+  finishings?: string[];
+}
+
+const VIRTUAL_SHOP_ID = "00000000-0000-0000-0000-000000000001";
+
 export async function POST(req: NextRequest) {
-  const { shopId, totalPages, options } = (await req.json()) as {
-    shopId: string;
-    totalPages: number;
-    options: Partial<PrintOptions>;
+  const body = (await req.json()) as Body;
+
+  // Accept both { totalPages } and { pageCount }
+  const totalPages = body.totalPages ?? body.pageCount;
+
+  // Accept nested { options } or a flat body
+  const flatOptions: Partial<PrintOptions> = body.options ?? {
+    copies: body.copies,
+    color: body.color,
+    orientation: body.orientation,
+    paper: body.paper,
+    duplex: body.duplex,
+    duplex_edge: body.duplex_edge,
+    pageRange: body.pageRange ?? body.range ?? null,
+    numberUp: body.numberUp ?? body.number_up,
+    collate: body.collate,
+    quality: body.quality,
+    mediaType: body.mediaType ?? body.media_type,
+    reverse: body.reverse,
+    scaling: body.scaling,
+    finishings: body.finishings,
   };
 
-  if (!shopId || !totalPages || !options) {
-    return Response.json({ error: "Missing required fields" }, { status: 400 });
+  const shopId =
+    body.shopId && body.shopId !== "virtual" ? body.shopId : VIRTUAL_SHOP_ID;
+
+  if (!totalPages || totalPages < 1) {
+    return Response.json({ error: "totalPages is required" }, { status: 400 });
   }
 
   const supabase = getSupabase();
@@ -28,21 +80,21 @@ export async function POST(req: NextRequest) {
   }
 
   const safeOptions: PrintOptions = {
-    copies: options.copies ?? 1,
-    color: options.color ?? false,
-    orientation: options.orientation ?? "portrait",
-    paper: options.paper ?? "A4",
-    duplex: options.duplex ?? false,
-    duplex_edge: (options.duplex_edge as "long" | "short") ?? "long",
-    pageRange: options.pageRange ?? null,
-    numberUp: options.numberUp ?? 1,
-    collate: options.collate ?? true,
-    quality: (options.quality as "draft" | "normal" | "high") ?? "normal",
-    mediaType: options.mediaType ?? "plain",
-    reverse: options.reverse ?? false,
+    copies: flatOptions.copies ?? 1,
+    color: flatOptions.color ?? false,
+    orientation: flatOptions.orientation ?? "portrait",
+    paper: flatOptions.paper ?? "A4",
+    duplex: flatOptions.duplex ?? false,
+    duplex_edge: (flatOptions.duplex_edge as "long" | "short") ?? "long",
+    pageRange: flatOptions.pageRange ?? null,
+    numberUp: flatOptions.numberUp ?? 1,
+    collate: flatOptions.collate ?? true,
+    quality: (flatOptions.quality as "draft" | "normal" | "high") ?? "normal",
+    mediaType: flatOptions.mediaType ?? "plain",
+    reverse: flatOptions.reverse ?? false,
     scaling:
-      (options.scaling as "none" | "fit-to-page" | "shrink-to-fit") ?? "none",
-    finishings: options.finishings ?? [],
+      (flatOptions.scaling as "none" | "fit-to-page" | "shrink-to-fit") ?? "none",
+    finishings: flatOptions.finishings ?? [],
   };
 
   const breakdown = computePrice(pricing as Pricing, safeOptions, totalPages);
