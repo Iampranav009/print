@@ -275,7 +275,7 @@ export default function JobDetailPage({
           style={{ touchAction: "manipulation" }}
           className="min-h-[48px] px-6 py-2.5 rounded-2xl bg-gray-100 hover:bg-gray-200 text-gray-800 font-medium text-sm transition-colors mt-2 flex items-center"
         >
-          Back to Library
+          Back to History
         </Link>
       </main>
     );

@@ -1,15 +1,18 @@
 // Virtual print mode: for shops with virtual_mode = true, the web backend
-// itself advances jobs through printing → awaiting_release on a timer,
-// letting the whole flow be demoed and tested without a real printer or
-// the Python agent. Fire-and-forget from the Razorpay webhook.
+// itself advances jobs through the full print pipeline on a timer, letting
+// the whole flow be demoed and tested without a real printer or the Python
+// agent. Fire-and-forget from the Razorpay webhook.
 //
-// Timing mimics realistic printer behaviour so the mobile app and kiosk
-// screen show the right sequence of states.
+// Auto-print flow (no release-code entry required):
+//   paid/dispatched -> (3s: prepping) -> printing -> (10s: printing) -> printed
+//
+// The awaiting_release step is skipped so the printer completes on its own
+// as soon as the webhook confirms payment.
 
 import { getSupabase } from "@/lib/supabase";
 
 const DOWNLOAD_MS = 3_000;   // dispatched -> printing
-const PRINT_MS    = 10_000;  // printing -> awaiting_release
+const PRINT_MS    = 10_000;  // printing -> printed
 
 function sleep(ms: number) {
   return new Promise<void>((r) => setTimeout(r, ms));
@@ -37,7 +40,8 @@ export function advanceVirtualJob(jobId: string): Promise<void> {
 
       await sleep(PRINT_MS);
       if (await isTerminal(jobId)) return;
-      await setStatus(jobId, "awaiting_release");
+      // Skip awaiting_release — auto-print completes directly to printed.
+      await setStatus(jobId, "printed");
     } catch (err) {
       console.error("[virtual-print] advance failed", { jobId, err });
     }
@@ -53,7 +57,6 @@ async function isTerminal(jobId: string): Promise<boolean> {
     .single();
   if (!data) return true;
   return [
-    "released",
     "printed",
     "payment_failed",
     "print_failed",

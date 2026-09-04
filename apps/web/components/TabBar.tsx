@@ -2,7 +2,7 @@
 import React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Home, MapPin, BookOpen, User } from "lucide-react";
+import { Home, MapPin, Clock, User } from "lucide-react";
 
 interface TabItem {
   name: string;
@@ -13,7 +13,7 @@ interface TabItem {
 const TABS: TabItem[] = [
   { name: "Home", href: "/app/home", icon: Home },
   { name: "Nearby", href: "/app/nearby", icon: MapPin },
-  { name: "Library", href: "/app/history", icon: BookOpen },
+  { name: "History", href: "/app/history", icon: Clock },
   { name: "Profile", href: "/app/profile", icon: User },
 ];
 

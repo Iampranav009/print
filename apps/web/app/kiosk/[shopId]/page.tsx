@@ -267,25 +267,31 @@ export default function KioskPage({
     if (!prev) {
       // First time we've seen this job — likely just came in from the webhook.
       if (["paid", "dispatched", "printing"].includes(activeJob.status)) {
-        showToast("success", "Payment received");
+        showToast("success", "Payment successful");
         // The live checkout overlay is no longer relevant.
+        setLiveActivity(null);
+      } else if (activeJob.status === "payment_failed") {
+        showToast("error", "Payment rejected");
         setLiveActivity(null);
       }
       return;
     }
 
     switch (activeJob.status) {
+      case "paid":
+      case "dispatched":
+        showToast("success", "Payment successful");
+        setLiveActivity(null);
+        break;
       case "printing":
         showToast("info", "Printing now…");
-        break;
-      case "awaiting_release":
-        showToast("success", `Ready to collect — code ${activeJob.release_code ?? ""}`);
         break;
       case "printed":
         showToast("success", "Print complete");
         break;
       case "payment_failed":
-        showToast("error", "Payment failed");
+        showToast("error", "Payment rejected");
+        setLiveActivity(null);
         break;
       case "print_failed":
         showToast("error", "Print failed");
@@ -295,20 +301,20 @@ export default function KioskPage({
 
   if (loading) {
     return (
-      <main className="min-h-dvh bg-[#0F172A] text-white flex items-center justify-center p-8">
-        <Loader2 className="w-10 h-10 animate-spin text-indigo-400" />
+      <main className="min-h-dvh bg-white text-zinc-900 flex items-center justify-center p-8">
+        <Loader2 className="w-10 h-10 animate-spin text-indigo-500" />
       </main>
     );
   }
 
   if (error || !shop) {
     return (
-      <main className="min-h-dvh bg-[#0F172A] text-white flex flex-col items-center justify-center p-8 text-center">
-        <div className="w-16 h-16 rounded-full bg-red-500/10 border border-red-500/20 flex items-center justify-center mb-4 text-red-400">
+      <main className="min-h-dvh bg-white text-zinc-900 flex flex-col items-center justify-center p-8 text-center">
+        <div className="w-16 h-16 rounded-full bg-red-50 border border-red-200 flex items-center justify-center mb-4 text-red-500">
           <AlertCircle className="w-8 h-8" />
         </div>
-        <h1 className="text-2xl font-bold mb-2">Kiosk Unavailable</h1>
-        <p className="text-zinc-400 max-w-sm mb-6 leading-relaxed">
+        <h1 className="text-2xl font-bold mb-2">Kiosk unavailable</h1>
+        <p className="text-zinc-500 max-w-sm mb-6 leading-relaxed">
           {error || "Could not find printer node. Please verify the URL."}
         </p>
         <button
@@ -317,30 +323,52 @@ export default function KioskPage({
           style={{ touchAction: "manipulation" }}
           className="min-h-[48px] px-6 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-medium text-sm transition-colors"
         >
-          Retry Connection
+          Retry connection
         </button>
       </main>
     );
   }
 
-  return (
-    <main className="min-h-dvh bg-[#0F172A] text-white flex flex-col lg:flex-row overflow-x-hidden relative">
-      {/* Left Half — QR Block (Landscape 50%, or Stacked Top in Portrait) */}
-      <section
-        aria-label="Shop QR Code"
-        className="w-full lg:w-1/2 flex items-center justify-center p-8 lg:p-12 lg:border-r border-zinc-800/80 min-h-[50dvh] lg:min-h-dvh"
-      >
-        <KioskQR
-          shopId={shop.id}
-          shopName={shop.name}
-          location={shop.location}
-        />
-      </section>
+  // QR visibility rule:
+  // - Always visible when idle or during the upload / checkout phases of a
+  //   session, so the operator can see it and the next customer knows
+  //   scans are welcome.
+  // - Hidden once the printer is actively busy (printing / awaiting_release
+  //   / just finished) so a second customer isn't tempted to scan while
+  //   the first one's paper is still coming out.
+  const HIDE_QR_STATUSES: JobStatus[] = ["printing", "awaiting_release", "printed"];
+  const busyPrinting = !!activeJob && HIDE_QR_STATUSES.includes(activeJob.status);
+  const showQR = !busyPrinting;
 
-      {/* Right Half — Live Status Area (Landscape 50%, or Stacked Bottom in Portrait) */}
+  return (
+    <main className="min-h-dvh bg-white text-zinc-900 flex flex-col lg:flex-row overflow-x-hidden relative">
+      {/* Left — QR (persistent through idle + upload + checkout; hidden while printing) */}
+      {showQR && (
+        <section
+          aria-label="Shop QR Code"
+          className={`w-full flex items-center justify-center p-8 lg:p-12 lg:border-r border-zinc-100 min-h-[50dvh] lg:min-h-dvh transition-all duration-300 ${
+            liveActivity || activeJob ? "lg:w-2/5" : "lg:w-1/2"
+          }`}
+        >
+          <KioskQR
+            shopId={shop.id}
+            shopName={shop.name}
+            location={shop.location}
+            compact={!!(liveActivity || activeJob)}
+          />
+        </section>
+      )}
+
+      {/* Right — Live status (expands full width when QR is hidden) */}
       <section
         aria-label="Live Printer Status"
-        className="w-full lg:w-1/2 flex flex-col justify-center min-h-[50dvh] lg:min-h-dvh"
+        className={`w-full flex flex-col justify-center min-h-[50dvh] lg:min-h-dvh transition-all duration-300 ${
+          showQR
+            ? liveActivity || activeJob
+              ? "lg:w-3/5"
+              : "lg:w-1/2"
+            : "lg:w-full"
+        }`}
       >
         <KioskStatus
           activeJob={activeJob}
@@ -349,7 +377,7 @@ export default function KioskPage({
         />
       </section>
 
-      {/* Toast overlay — shown for 5s on important state transitions */}
+      {/* Toast overlay — auto-dismisses after 5s */}
       {toast && (
         <div
           role="status"
@@ -357,12 +385,12 @@ export default function KioskPage({
           className="fixed top-6 left-1/2 -translate-x-1/2 z-50 max-w-md w-[92%] pointer-events-none"
         >
           <div
-            className={`flex items-center gap-3 rounded-2xl px-4 py-3 shadow-2xl border backdrop-blur ${
+            className={`flex items-center gap-3 rounded-2xl px-4 py-3 shadow-lg border ${
               toast.kind === "success"
-                ? "bg-emerald-500/15 border-emerald-400/40 text-emerald-100"
+                ? "bg-emerald-50 border-emerald-200 text-emerald-800"
                 : toast.kind === "error"
-                ? "bg-red-500/15 border-red-400/40 text-red-100"
-                : "bg-blue-500/15 border-blue-400/40 text-blue-100"
+                ? "bg-red-50 border-red-200 text-red-800"
+                : "bg-indigo-50 border-indigo-200 text-indigo-800"
             }`}
           >
             {toast.kind === "success" ? (

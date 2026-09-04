@@ -37,8 +37,8 @@ export function HistoryClient({ initialJobs }: { initialJobs: Job[] }) {
     <div className="min-h-full bg-white pb-24">
       {/* Header */}
       <div className="px-4 pt-4 pb-2">
-        <h1 className="text-xl font-bold text-gray-900">Library</h1>
-        <p className="text-xs text-gray-500 mt-0.5">Your print history</p>
+        <h1 className="text-xl font-bold text-gray-900">History</h1>
+        <p className="text-xs text-gray-500 mt-0.5">Every print job on this account</p>
       </div>
 
       {jobs.length === 0 ? (
