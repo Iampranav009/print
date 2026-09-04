@@ -18,19 +18,41 @@ export default async function VendorLayout({
 }: {
   children: React.ReactNode;
 }) {
+  const headersList = await headers();
+  const pathname =
+    headersList.get("x-pathname") ??
+    headersList.get("next-url") ??
+    headersList.get("x-url") ??
+    "";
+  const referer = headersList.get("referer") ?? "";
+
+  const isOnboardingOrClaim =
+    pathname.includes("/vendor/onboarding") ||
+    pathname.includes("/vendor/claim") ||
+    referer.includes("/vendor/onboarding") ||
+    referer.includes("/vendor/claim");
+
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
 
   if (!user) {
-    redirect("/login?next=/vendor");
+    redirect(
+      `/login?next=${encodeURIComponent(
+        pathname.startsWith("/vendor") ? pathname : "/vendor"
+      )}`
+    );
+  }
+
+  // If already on onboarding or claim, render children directly without redirect loop or sidebar
+  if (isOnboardingOrClaim) {
+    return <>{children}</>;
   }
 
   // Fetch vendor profile server-side (forwards cookies via absolute URL)
   let vendorData: VendorMeResponse | null = null;
   try {
-    const headersList = await headers();
     const host = headersList.get("host") ?? "localhost:3000";
     const protocol = host.startsWith("localhost") ? "http" : "https";
     const res = await fetch(`${protocol}://${host}/api/vendor/me`, {
