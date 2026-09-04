@@ -20,6 +20,10 @@ const TABS: TabItem[] = [
 export function TabBar() {
   const pathname = usePathname();
 
+  if (pathname === "/app/scan") {
+    return null;
+  }
+
   return (
     <nav
       aria-label="Bottom Navigation"

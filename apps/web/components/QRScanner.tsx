@@ -319,7 +319,7 @@ export function QRScanner() {
   // Permission denied state
   if (hasPermission === false) {
     return (
-      <div className="flex flex-1 flex-col items-center justify-center p-8 text-center bg-zinc-900 text-white min-h-[calc(100dvh-112px)]">
+      <div className="flex flex-1 flex-col items-center justify-center p-8 text-center bg-zinc-900 text-white min-h-dvh h-dvh w-full">
         <div className="w-16 h-16 rounded-full bg-zinc-800 flex items-center justify-center mb-4 text-zinc-400">
           <CameraOff className="w-8 h-8" />
         </div>
@@ -343,7 +343,7 @@ export function QRScanner() {
   }
 
   return (
-    <div className="relative flex-1 w-full h-[calc(100dvh-112px)] bg-black overflow-hidden flex flex-col items-center justify-center select-none">
+    <div className="relative flex-1 w-full h-dvh min-h-dvh bg-black overflow-hidden flex flex-col items-center justify-center select-none">
       {/* Hidden canvas for decoding */}
       <canvas ref={canvasRef} className="hidden" />
 
@@ -440,7 +440,13 @@ export function QRScanner() {
         {/* Cancel Button */}
         <button
           type="button"
-          onClick={() => router.push("/app/print")}
+          onClick={() => {
+            if (typeof window !== "undefined" && window.history.length > 1) {
+              router.back();
+            } else {
+              router.push("/app/home");
+            }
+          }}
           style={{ touchAction: "manipulation" }}
           className="min-h-[48px] px-6 py-2.5 rounded-full bg-black/60 backdrop-blur-md text-white font-medium text-sm hover:bg-black/80 active:bg-black/90 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
         >
@@ -496,7 +502,13 @@ export function QRScanner() {
 
               <button
                 type="button"
-                onClick={() => router.push("/app/print")}
+                onClick={() => {
+                  if (typeof window !== "undefined" && window.history.length > 1) {
+                    router.back();
+                  } else {
+                    router.push("/app/home");
+                  }
+                }}
                 disabled={isRequestingPermission}
                 style={{ touchAction: "manipulation" }}
                 className="w-full min-h-[44px] rounded-xl text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 font-medium text-sm transition-colors"
