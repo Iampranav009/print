@@ -10,23 +10,29 @@ export async function POST(req: NextRequest) {
 
   const body = await req.json();
   const printerStatus = body.printerStatus as string | undefined;
+  const now = new Date().toISOString();
 
   const supabase = getSupabase();
 
   await supabase
     .from("agents")
     .update({
-      last_heartbeat: new Date().toISOString(),
+      last_heartbeat: now,
       status: "online",
     })
     .eq("id", agent.agentId);
 
-  if (printerStatus) {
-    await supabase
-      .from("printers")
-      .update({ status: printerStatus })
-      .eq("shop_id", agent.shopId);
-  }
+  // Also mark the shop's printer as online + timestamped so the vendor
+  // dashboard status pill and kiosk offline banner flip immediately —
+  // no separate probe needed.
+  await supabase
+    .from("printers")
+    .update({
+      online: true,
+      last_seen_at: now,
+      ...(printerStatus ? { status: printerStatus } : {}),
+    })
+    .eq("shop_id", agent.shopId);
 
   return Response.json({ ok: true });
 }

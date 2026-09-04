@@ -38,7 +38,7 @@ export async function GET(
   const { data: printers } = await supabase
     .from("printers")
     .select(
-      "capabilities, capabilities_source, make_and_model, capabilities_updated_at"
+      "capabilities, capabilities_source, make_and_model, capabilities_updated_at, mode, online, last_seen_at, connection_type"
     )
     .eq("shop_id", shopId)
     .order("created_at", { ascending: true });
@@ -48,6 +48,10 @@ export async function GET(
     capabilities_source: p.capabilities_source ?? "default",
     make_and_model: p.make_and_model ?? null,
     capabilities_updated_at: p.capabilities_updated_at ?? null,
+    mode: p.mode ?? (shop.virtual_mode ? "test" : "real"),
+    online: !!p.online,
+    last_seen_at: p.last_seen_at ?? null,
+    connection_type: p.connection_type ?? null,
   }));
 
   // Fall back to the default capability set when a shop has no registered
@@ -55,10 +59,27 @@ export async function GET(
   // orders, and the print UI needs *something* to render controls against.
   const capabilities = printerList[0]?.capabilities ?? DEFAULT_CAPABILITIES;
 
+  // Derived: is the shop's printer effectively online right now?
+  // Test-mode shops (virtual printer) are always online. Real-mode shops
+  // are online only if the printer's heartbeat is recent.
+  const HEARTBEAT_WINDOW_MS = 90_000;
+  const primary = printerList[0];
+  const primaryMode = primary?.mode ?? (shop.virtual_mode ? "test" : "real");
+  const lastSeenMs = primary?.last_seen_at ? new Date(primary.last_seen_at).getTime() : 0;
+  const printerOnline =
+    primaryMode === "test" ||
+    (lastSeenMs > 0 && Date.now() - lastSeenMs < HEARTBEAT_WINDOW_MS);
+
   return Response.json({
     shop,
     pricing,
     printers: printerList,
     capabilities,
+    printer_status: {
+      mode: primaryMode,
+      online: printerOnline,
+      last_seen_at: primary?.last_seen_at ?? null,
+      connection_type: primary?.connection_type ?? null,
+    },
   });
 }

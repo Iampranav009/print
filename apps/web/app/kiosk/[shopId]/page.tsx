@@ -19,6 +19,13 @@ interface ShopDetails {
   virtual_mode?: boolean;
 }
 
+interface PrinterStatus {
+  mode: "test" | "real";
+  online: boolean;
+  last_seen_at: string | null;
+  connection_type: "wifi" | "usb" | "network" | null;
+}
+
 interface DbJob {
   id: string;
   shop_id: string;
@@ -47,6 +54,7 @@ export default function KioskPage({
   const shopId = resolvedParams.shopId;
 
   const [shop, setShop] = useState<ShopDetails | null>(null);
+  const [printerStatus, setPrinterStatus] = useState<PrinterStatus | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -149,6 +157,7 @@ export default function KioskPage({
         const shopData = await shopRes.json();
         if (!active) return;
         setShop(shopData.shop);
+        if (shopData.printer_status) setPrinterStatus(shopData.printer_status);
 
         // 2. Fetch initial jobs for this shop
         const supabase = createClient();
@@ -176,6 +185,25 @@ export default function KioskPage({
       active = false;
     };
   }, [shopId, updateJobStates]);
+
+  // Poll printer_status every 20s so the offline banner + connectivity
+  // reflect the agent heartbeat within a reasonable window even without
+  // full page refresh. Cheap request — just re-fetches /api/shops/:id.
+  useEffect(() => {
+    if (!shopId) return;
+    const tick = async () => {
+      try {
+        const res = await fetch(`/api/shops/${encodeURIComponent(shopId)}`);
+        if (!res.ok) return;
+        const data = await res.json();
+        if (data.printer_status) setPrinterStatus(data.printer_status);
+      } catch {
+        // network hiccup — offline banner already handles the visible signal
+      }
+    };
+    const iv = setInterval(tick, 20_000);
+    return () => clearInterval(iv);
+  }, [shopId]);
 
   // Realtime subscription
   useEffect(() => {
@@ -463,8 +491,25 @@ export default function KioskPage({
   const isBusy = !!liveActivity || !!activeJob;
   const showQR = !isBusy;
 
+  // Offline banner appears ONLY in real mode when the printer's agent
+  // hasn't heartbeated recently. Test/virtual mode always reads "online".
+  const showOfflineBanner =
+    !!printerStatus && printerStatus.mode === "real" && !printerStatus.online;
+
   return (
     <main className="min-h-dvh bg-white text-zinc-900 flex flex-col overflow-x-hidden relative">
+      {showOfflineBanner && (
+        <div
+          role="alert"
+          className="w-full bg-red-600 text-white text-center py-2.5 px-4 text-sm font-semibold flex items-center justify-center gap-2 z-30"
+        >
+          <span className="inline-flex h-2 w-2 rounded-full bg-white/90 animate-pulse" />
+          Printer disconnected — currently offline.
+          <span className="text-white/80 font-normal hidden sm:inline">
+            Prints will resume when the printer reconnects.
+          </span>
+        </div>
+      )}
       {showQR ? (
         // ── Idle: QR + welcome, split evenly ────────────────────────────
         <div className="min-h-dvh flex flex-col lg:flex-row">
