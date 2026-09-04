@@ -3,6 +3,8 @@
 import React, { Suspense, useState, useEffect, useRef, useCallback } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import type { PrinterCapabilities, PriceBreakdown } from "@printbuddy/shared";
+import { PDFDocument } from "pdf-lib";
+import { DocumentPreview } from "@/components/DocumentPreview";
 import {
   ArrowLeft,
   Plus,
@@ -29,6 +31,14 @@ interface FileState {
   path: string;
   mime: string;
   totalPages: number;
+}
+
+// The raw files the user picked, kept around for the preview even after
+// they've been merged into a single PDF for the server.
+interface RawFile {
+  file: File;
+  name: string;
+  mime: string;
 }
 
 interface Config {
@@ -248,6 +258,7 @@ function PrintContent() {
   const [uploadProgress, setUploadProgress] = useState(0);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [fileState, setFileState] = useState<FileState | null>(null);
+  const [rawFiles, setRawFiles] = useState<RawFile[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [showUploadSheet, setShowUploadSheet] = useState(false);
 
@@ -328,42 +339,98 @@ function PrintContent() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [fileState?.path, config?.copies, config?.color, config?.orientation, config?.paper, config?.duplex, config?.useCustomRange, config?.pageRange]);
 
-  // File pick handler
-  const handleFileSelect = useCallback(async (file: File) => {
-    const ACCEPTED = [
+  // Merge PDFs + images into one PDF using pdf-lib. Runs entirely in the
+  // browser so the server keeps its single-file contract. Images become
+  // full-page pages sized to the image's own dimensions.
+  const mergeFilesIntoPdf = useCallback(async (files: File[]): Promise<File> => {
+    const out = await PDFDocument.create();
+
+    for (const f of files) {
+      const buf = await f.arrayBuffer();
+      if (f.type === "application/pdf") {
+        const src = await PDFDocument.load(buf, { ignoreEncryption: true });
+        const pages = await out.copyPages(src, src.getPageIndices());
+        pages.forEach((p) => out.addPage(p));
+      } else if (f.type === "image/jpeg" || f.type === "image/jpg") {
+        const img = await out.embedJpg(new Uint8Array(buf));
+        const page = out.addPage([img.width, img.height]);
+        page.drawImage(img, { x: 0, y: 0, width: img.width, height: img.height });
+      } else if (f.type === "image/png") {
+        const img = await out.embedPng(new Uint8Array(buf));
+        const page = out.addPage([img.width, img.height]);
+        page.drawImage(img, { x: 0, y: 0, width: img.width, height: img.height });
+      }
+    }
+
+    const bytes = await out.save();
+    const suggestedName =
+      files.length === 1
+        ? files[0].name.replace(/\.[^.]+$/, ".pdf")
+        : `documents-${files.length}-files.pdf`;
+    // File constructor requires a BlobPart array — copy into a plain Uint8Array
+    // so TypeScript is happy across pdf-lib's Uint8Array<ArrayBufferLike> type.
+    const buf = new Uint8Array(bytes.length);
+    buf.set(bytes);
+    return new File([buf], suggestedName, { type: "application/pdf" });
+  }, []);
+
+  const handleFilesSelect = useCallback(async (rawInputs: File[]) => {
+    if (rawInputs.length === 0) return;
+
+    const ACCEPTED = new Set([
       "application/pdf",
-      "application/msword",
-      "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-      "application/vnd.ms-powerpoint",
-      "application/vnd.openxmlformats-officedocument.presentationml.presentation",
       "image/jpeg",
       "image/png",
       "image/jpg",
-    ];
-    if (!ACCEPTED.includes(file.type)) {
-      setUploadError("Unsupported file type");
+    ]);
+    const rejected = rawInputs.filter((f) => !ACCEPTED.has(f.type));
+    if (rejected.length > 0) {
+      setUploadError(`Unsupported file type: ${rejected.map((r) => r.name).join(", ")}`);
       return;
     }
-    if (file.size > 50 * 1024 * 1024) {
-      setUploadError("File too large (max 50 MB)");
+    const totalSize = rawInputs.reduce((s, f) => s + f.size, 0);
+    if (totalSize > 50 * 1024 * 1024) {
+      setUploadError("Total size too large (max 50 MB across all files)");
       return;
     }
+
     setUploadError(null);
+    setRawFiles(
+      rawInputs.map((f) => ({ file: f, name: f.name, mime: f.type }))
+    );
     setUploadState("uploading");
     setUploadProgress(0);
     setShowUploadSheet(true);
 
     try {
-      // Get signed upload URL
+      // If more than one file OR the single file is an image, produce a
+      // merged PDF so the server sees a single, printable document.
+      const needsMerge =
+        rawInputs.length > 1 ||
+        (rawInputs[0].type !== "application/pdf");
+
+      const uploadableFile = needsMerge
+        ? await mergeFilesIntoPdf(rawInputs)
+        : rawInputs[0];
+
+      // Get signed upload URL for the (possibly merged) file
       const res = await fetch("/api/uploads", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ fileName: file.name, fileSize: file.size, mimeType: file.type }),
+        body: JSON.stringify({
+          fileName: uploadableFile.name,
+          fileSize: uploadableFile.size,
+          mimeType: uploadableFile.type,
+        }),
       });
       if (!res.ok) throw new Error("Could not get upload URL");
-      const { signedUrl, path, mime } = await res.json() as { signedUrl: string; path: string; mime: string };
+      const { signedUrl, path, mime } = (await res.json()) as {
+        signedUrl: string;
+        path: string;
+        mime: string;
+      };
 
-      await uploadToSignedUrl(signedUrl, file, setUploadProgress);
+      await uploadToSignedUrl(signedUrl, uploadableFile, setUploadProgress);
 
       // Get page count
       const countRes = await fetch("/api/uploads/page-count", {
@@ -372,20 +439,23 @@ function PrintContent() {
         body: JSON.stringify({ path }),
       });
       if (!countRes.ok) throw new Error("Could not count pages");
-      const { pageCount } = await countRes.json() as { pageCount: number };
+      const { pageCount } = (await countRes.json()) as { pageCount: number };
 
-      setFileState({ file, path, mime, totalPages: pageCount });
+      setFileState({ file: uploadableFile, path, mime, totalPages: pageCount });
       setUploadState("done");
       setUploadProgress(100);
-
-      // Auto close after 2s on success
-      setTimeout(() => setShowUploadSheet(false), 2000);
+      setTimeout(() => setShowUploadSheet(false), 1500);
     } catch (err: unknown) {
       setUploadState("error");
       setUploadError(err instanceof Error ? err.message : "Upload failed");
       setShowUploadSheet(false);
     }
-  }, []);
+  }, [mergeFilesIntoPdf]);
+
+  const handleFileSelect = useCallback(
+    (file: File) => handleFilesSelect([file]),
+    [handleFilesSelect]
+  );
 
   // Razorpay pay
   const handlePay = useCallback(async () => {
@@ -507,38 +577,36 @@ function PrintContent() {
               </div>
               <div className="text-center">
                 <p className="text-sm font-semibold text-gray-900">Upload Document</p>
-                <p className="text-xs text-gray-500 mt-1">PDF, Word, PowerPoint, Images · up to 50 MB</p>
+                <p className="text-xs text-gray-500 mt-1">Pick one or more · PDF, JPG, PNG · up to 50 MB total</p>
               </div>
             </button>
           ) : (
-            /* Document Preview Card */
-            <div className="relative bg-white border border-gray-200 rounded-2xl overflow-hidden shadow-sm">
+            /* Document Preview with page-by-page swipe */
+            <div className="relative bg-white border border-gray-200 rounded-2xl overflow-hidden shadow-sm p-3">
               {/* Dismiss */}
               <button
                 type="button"
-                onClick={() => { setFileState(null); setUploadState("idle"); setRawPriceResult(null); setPriceState("idle"); }}
+                onClick={() => {
+                  setFileState(null);
+                  setRawFiles([]);
+                  setUploadState("idle");
+                  setRawPriceResult(null);
+                  setPriceState("idle");
+                }}
                 style={{ touchAction: "manipulation" }}
-                className="absolute top-2.5 right-2.5 z-10 w-7 h-7 rounded-full bg-gray-200 flex items-center justify-center hover:bg-gray-300 transition-colors"
+                className="absolute top-2.5 right-2.5 z-20 w-7 h-7 rounded-full bg-gray-200 flex items-center justify-center hover:bg-gray-300 transition-colors"
                 aria-label="Remove file"
               >
                 <X className="w-3.5 h-3.5 text-gray-600" />
               </button>
 
-              {/* Preview area */}
-              <div
-                className={`w-full bg-gray-50 flex items-center justify-center ${
-                  config?.orientation === "landscape" ? "h-40" : "h-52"
-                }`}
-              >
-                <div className={`bg-white shadow-md rounded flex items-center justify-center text-gray-400 text-xs font-medium ${
-                  config?.orientation === "landscape" ? "w-48 h-32" : "w-32 h-44"
-                }`}>
-                  <div className="text-center">
-                    <FileText className="w-8 h-8 mx-auto mb-2 text-gray-300" />
-                    <p className="text-[10px] text-gray-400 max-w-[100px] truncate px-2">{fileState.file.name}</p>
-                  </div>
-                </div>
-              </div>
+              <DocumentPreview files={rawFiles.length > 0 ? rawFiles : [{ file: fileState.file, name: fileState.file.name, mime: fileState.mime }]} />
+
+              {rawFiles.length > 1 && (
+                <p className="text-[11px] text-gray-500 mt-2 text-center">
+                  {rawFiles.length} files combined into one print job
+                </p>
+              )}
             </div>
           )}
 
@@ -675,10 +743,13 @@ function PrintContent() {
         )}
       </div>
 
-      {/* Fixed Bottom Bar */}
+      {/* Fixed Bottom Bar — sits above the tab bar (64px + safe-area). */}
       <div
-        className="fixed bottom-0 inset-x-0 z-30 bg-white border-t border-gray-100 px-4 pt-3"
-        style={{ paddingBottom: "max(16px, env(safe-area-inset-bottom))" }}
+        className="fixed inset-x-0 z-30 bg-white border-t border-gray-100 px-4 pt-3"
+        style={{
+          bottom: "calc(64px + max(0px, env(safe-area-inset-bottom)))",
+          paddingBottom: "12px",
+        }}
       >
         {/* Price */}
         <div className="flex items-baseline justify-between mb-3">
@@ -734,16 +805,17 @@ function PrintContent() {
         </div>
       </div>
 
-      {/* Hidden file input */}
+      {/* Hidden file input — multiple files are merged into one PDF client-side */}
       <input
         ref={fileInputRef}
         type="file"
+        multiple
         accept=".pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png"
         className="sr-only"
         aria-hidden
         onChange={(e) => {
-          const f = e.target.files?.[0];
-          if (f) handleFileSelect(f);
+          const files = Array.from(e.target.files ?? []);
+          if (files.length > 0) void handleFilesSelect(files);
           e.target.value = "";
         }}
       />

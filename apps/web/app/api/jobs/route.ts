@@ -1,9 +1,39 @@
 import { getSupabase } from "@/lib/supabase";
 import { createClient as createServerSupabase } from "@/lib/supabase/server";
+import { getRazorpay } from "@/lib/razorpay";
 import { computePrice, parsePageRange } from "@/lib/pricing";
 import type { PrintOptions, Pricing, PrinterCapabilities } from "@printbuddy/shared";
 import { PDFDocument } from "pdf-lib";
 import { NextRequest } from "next/server";
+
+const VIRTUAL_SHOP_ID = "00000000-0000-0000-0000-000000000001";
+
+// Client sends { range, number_up } — normalise to the canonical names.
+function normalizeOptions(raw: Record<string, unknown>): Partial<PrintOptions> {
+  return {
+    copies: raw.copies as number | undefined,
+    color: raw.color as boolean | undefined,
+    orientation: raw.orientation as PrintOptions["orientation"] | undefined,
+    paper: raw.paper as string | undefined,
+    duplex: raw.duplex as boolean | undefined,
+    duplex_edge: raw.duplex_edge as PrintOptions["duplex_edge"] | undefined,
+    pageRange: (raw.pageRange as string | null | undefined) ?? (raw.range as string | null | undefined) ?? null,
+    numberUp: (raw.numberUp as number | undefined) ?? (raw.number_up as number | undefined),
+    collate: raw.collate as boolean | undefined,
+    quality: raw.quality as PrintOptions["quality"] | undefined,
+    mediaType: (raw.mediaType as string | undefined) ?? (raw.media_type as string | undefined),
+    reverse: raw.reverse as boolean | undefined,
+    scaling: raw.scaling as PrintOptions["scaling"] | undefined,
+    finishings: raw.finishings as string[] | undefined,
+  };
+}
+
+function inferMime(path: string | undefined | null): string {
+  const ext = path?.split(".").pop()?.toLowerCase();
+  if (ext === "jpg" || ext === "jpeg") return "image/jpeg";
+  if (ext === "png") return "image/png";
+  return "application/pdf";
+}
 
 function generateReleaseCode(): string {
   return String(Math.floor(1000 + Math.random() * 9000));
@@ -64,16 +94,22 @@ function validateAgainstCapabilities(
 
 export async function POST(req: NextRequest) {
   const body = await req.json();
-  const { shopId, filePath, fileMime, options } = body as {
-    shopId: string;
-    filePath: string;
-    fileMime: string;
-    options: PrintOptions;
-  };
+  const rawShopId = body.shopId as string | undefined;
+  const filePath = body.filePath as string | undefined;
+  const rawFileMime = body.fileMime as string | undefined;
+  const rawOptions = (body.options ?? {}) as Record<string, unknown>;
+  const withOrder = body.withOrder !== false; // default true — client wants a
+                                              // Razorpay order in the same call
 
-  if (!shopId || !filePath || !options) {
+  if (!filePath || !rawOptions) {
     return Response.json({ error: "Missing required fields" }, { status: 400 });
   }
+
+  // "virtual" is a shorthand the client uses when the user isn't yet bound
+  // to a real shop — route it to the pilot/demo shop.
+  const shopId = !rawShopId || rawShopId === "virtual" ? VIRTUAL_SHOP_ID : rawShopId;
+
+  const options = normalizeOptions(rawOptions);
 
   // Read the signed-in user (if any) so we can attach user_id to the job for
   // the History tab. Anonymous walk-up jobs are still allowed for back-compat.
@@ -102,9 +138,26 @@ export async function POST(req: NextRequest) {
     .limit(1)
     .single();
 
+  const safeOptionsForValidation: PrintOptions = {
+    copies: options.copies || 1,
+    color: options.color ?? false,
+    orientation: options.orientation || "portrait",
+    paper: options.paper || "A4",
+    duplex: options.duplex ?? false,
+    duplex_edge: options.duplex_edge || "long",
+    pageRange: options.pageRange ?? null,
+    numberUp: options.numberUp || 1,
+    collate: options.collate ?? true,
+    quality: options.quality || "normal",
+    mediaType: options.mediaType || "plain",
+    reverse: options.reverse ?? false,
+    scaling: options.scaling || "none",
+    finishings: options.finishings || [],
+  };
+
   if (printer?.capabilities) {
     const capError = validateAgainstCapabilities(
-      options,
+      safeOptionsForValidation,
       printer.capabilities as PrinterCapabilities
     );
     if (capError) {
@@ -121,32 +174,17 @@ export async function POST(req: NextRequest) {
   }
 
   let totalPages: number;
-  const mime = fileMime || "application/pdf";
+  const mime = rawFileMime || inferMime(filePath);
 
   if (mime === "application/pdf") {
     const arrayBuf = await fileData.arrayBuffer();
-    const pdf = await PDFDocument.load(arrayBuf);
+    const pdf = await PDFDocument.load(arrayBuf, { ignoreEncryption: true });
     totalPages = pdf.getPageCount();
   } else {
     totalPages = 1;
   }
 
-  const safeOptions: PrintOptions = {
-    copies: options.copies || 1,
-    color: options.color ?? false,
-    orientation: options.orientation || "portrait",
-    paper: options.paper || "A4",
-    duplex: options.duplex ?? false,
-    duplex_edge: options.duplex_edge || "long",
-    pageRange: options.pageRange || null,
-    numberUp: options.numberUp || 1,
-    collate: options.collate ?? true,
-    quality: options.quality || "normal",
-    mediaType: options.mediaType || "plain",
-    reverse: options.reverse ?? false,
-    scaling: options.scaling || "none",
-    finishings: options.finishings || [],
-  };
+  const safeOptions = safeOptionsForValidation;
 
   const breakdown = computePrice(pricing as Pricing, safeOptions, totalPages);
   const releaseCode = generateReleaseCode();
@@ -185,6 +223,53 @@ export async function POST(req: NextRequest) {
     return Response.json({ error: "Failed to create job", detail: jobErr?.message, code: jobErr?.code }, { status: 500 });
   }
 
+  // Optionally mint the Razorpay order in the same call. The mobile client
+  // does this to avoid a second round-trip before opening checkout.
+  let orderResult: {
+    orderId: string;
+    keyId: string | undefined;
+    amount: number;
+    currency: string;
+  } | null = null;
+
+  if (withOrder) {
+    try {
+      const razorpay = getRazorpay();
+      const order = await razorpay.orders.create({
+        amount: breakdown.price_paise,
+        currency: "INR",
+        receipt: job.id,
+        notes: { job_id: job.id },
+      });
+
+      await supabase
+        .from("print_jobs")
+        .update({
+          razorpay_order_id: order.id,
+          status: "awaiting_payment",
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", job.id);
+
+      await supabase.from("payments").insert({
+        print_job_id: job.id,
+        razorpay_order_id: order.id,
+        amount_paise: breakdown.price_paise,
+        status: "pending",
+      });
+
+      orderResult = {
+        orderId: order.id,
+        keyId: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
+        amount: breakdown.price_paise,
+        currency: "INR",
+      };
+    } catch (err) {
+      console.error("[jobs] order create failed", err);
+      // Job was still created — client can retry via /api/jobs/:id/pay
+    }
+  }
+
   return Response.json({
     jobId: job.id,
     pages: breakdown.selected_pages,
@@ -192,5 +277,6 @@ export async function POST(req: NextRequest) {
     pricePaise: breakdown.price_paise,
     breakdown,
     releaseCode,
+    ...(orderResult ?? {}),
   });
 }
