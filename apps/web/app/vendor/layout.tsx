@@ -88,6 +88,7 @@ export default async function VendorLayout({
         userName={userName}
         userEmail={userEmail}
         userAvatar={userAvatar}
+        payoutsUnlocked={!!vendorData?.bank?.verified}
       />
 
       {/* Right column */}

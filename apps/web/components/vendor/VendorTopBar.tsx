@@ -13,6 +13,7 @@ const PAGE_TITLES: Record<string, string> = {
   "/vendor/shop": "Shop",
   "/vendor/location": "Printer Location",
   "/vendor/bank": "Bank Details",
+  "/vendor/payouts": "Request Payout",
   "/vendor/profile": "Profile",
   "/vendor/onboarding": "Onboarding",
 };

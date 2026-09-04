@@ -520,7 +520,14 @@ function InvitesSection() {
 }
 
 /* ─── Exports ─── */
-export function AdminSections() {
+interface AdminSectionsProps {
+  showShopsOnly?: boolean;
+  showInvitesOnly?: boolean;
+}
+
+export function AdminSections({ showShopsOnly, showInvitesOnly }: AdminSectionsProps = {}) {
+  if (showShopsOnly) return <ShopsSection />;
+  if (showInvitesOnly) return <InvitesSection />;
   return (
     <div className="space-y-8">
       <ShopsSection />

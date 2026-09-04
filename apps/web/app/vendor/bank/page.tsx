@@ -18,6 +18,7 @@ type BankData = {
 };
 
 const IFSC_REGEX = /^[A-Z]{4}0[A-Z0-9]{6}$/;
+const UPI_REGEX = /^[a-zA-Z0-9.\-_]{2,}@[a-zA-Z][a-zA-Z0-9]{1,}$/;
 
 function Toast({ message, type, onDismiss }: { message: string; type: "success" | "error"; onDismiss: () => void }) {
   useEffect(() => {
@@ -56,6 +57,7 @@ export default function BankPage() {
   const [upiId, setUpiId] = useState("");
 
   const ifscValid = IFSC_REGEX.test(ifsc);
+  const upiValid = UPI_REGEX.test(upiId.trim());
 
   useEffect(() => {
     const load = async () => {
@@ -94,7 +96,7 @@ export default function BankPage() {
           ifsc_code: ifsc.trim(),
           bank_name: bankName.trim() || null,
           branch: branch.trim() || null,
-          upi_id: upiId.trim() || null,
+          upi_id: upiId.trim(),
         }),
       });
       if (!res.ok) {
@@ -115,7 +117,7 @@ export default function BankPage() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!holderName.trim() || !accountNumber.trim() || !ifscValid) return;
+    if (!holderName.trim() || !accountNumber.trim() || !ifscValid || !upiValid) return;
     setConfirmOpen(true);
   };
 
@@ -313,22 +315,52 @@ export default function BankPage() {
             {/* UPI ID */}
             <div>
               <label htmlFor="upi-id" className="block text-sm font-medium text-zinc-700 mb-1.5">
-                UPI ID <span className="text-xs font-normal text-zinc-400">(optional)</span>
+                UPI ID <span className="text-red-500" aria-hidden="true">*</span>
               </label>
-              <input
-                id="upi-id"
-                type="text"
-                value={upiId}
-                onChange={(e) => setUpiId(e.target.value)}
-                placeholder="ravi@upi"
-                className="w-full px-3.5 py-2.5 rounded-xl border border-zinc-200 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600"
-              />
+              <div className="relative">
+                <input
+                  id="upi-id"
+                  type="text"
+                  required
+                  value={upiId}
+                  onChange={(e) => setUpiId(e.target.value)}
+                  placeholder="ravi@upi"
+                  className={`w-full px-3.5 py-2.5 pr-11 rounded-xl border text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600 ${
+                    upiId.trim().length > 0
+                      ? upiValid
+                        ? "border-emerald-300 bg-emerald-50"
+                        : "border-red-300 bg-red-50"
+                      : "border-zinc-200"
+                  }`}
+                  aria-required="true"
+                  aria-invalid={upiId.trim().length > 0 && !upiValid}
+                  aria-describedby="upi-hint"
+                />
+                {upiId.trim().length > 0 && (
+                  <span className="absolute right-3 top-1/2 -translate-y-1/2">
+                    {upiValid ? (
+                      <CheckCircle2 className="w-4 h-4 text-emerald-500" aria-hidden="true" />
+                    ) : (
+                      <XCircle className="w-4 h-4 text-red-400" aria-hidden="true" />
+                    )}
+                  </span>
+                )}
+              </div>
+              {upiId.trim().length > 0 && !upiValid ? (
+                <p id="upi-hint" className="mt-1 text-xs text-red-600">
+                  Format: name@handle (e.g. ravi@upi, 9876543210@ybl)
+                </p>
+              ) : (
+                <p id="upi-hint" className="mt-1 text-xs text-zinc-400">
+                  Required — payouts route through your UPI ID.
+                </p>
+              )}
             </div>
 
             <div className="pt-2">
               <button
                 type="submit"
-                disabled={saving || !holderName.trim() || !accountNumber.trim() || !ifscValid}
+                disabled={saving || !holderName.trim() || !accountNumber.trim() || !ifscValid || !upiValid}
                 className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600"
                 aria-label="Save bank details"
               >
