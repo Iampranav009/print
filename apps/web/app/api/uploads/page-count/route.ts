@@ -1,17 +1,36 @@
+// POST /api/uploads/page-count — count pages in an already-uploaded file.
+// Accepts { filePath, mime } (original) or { path, mime? } (new mobile app).
+// If mime is missing we sniff by extension so callers can pass just `path`.
+
 import { getSupabase } from "@/lib/supabase";
 import { PDFDocument } from "pdf-lib";
 import { NextRequest } from "next/server";
 
+interface Body {
+  filePath?: string;
+  path?: string;
+  mime?: string;
+  mimeType?: string;
+}
+
 export async function POST(req: NextRequest) {
-  const { filePath, mime } = (await req.json()) as {
-    filePath: string;
-    mime: string;
-  };
+  const body = (await req.json()) as Body;
+  const filePath = body.filePath ?? body.path;
+  let mime = body.mime ?? body.mimeType;
 
   if (!filePath) {
     return Response.json({ error: "Missing filePath" }, { status: 400 });
   }
 
+  // If the caller didn't send a mime, infer from extension.
+  if (!mime) {
+    const ext = filePath.split(".").pop()?.toLowerCase();
+    if (ext === "pdf") mime = "application/pdf";
+    else if (ext === "jpg" || ext === "jpeg") mime = "image/jpeg";
+    else if (ext === "png") mime = "image/png";
+  }
+
+  // Non-PDFs are one page.
   if (!mime?.includes("pdf")) {
     return Response.json({ pageCount: 1 });
   }

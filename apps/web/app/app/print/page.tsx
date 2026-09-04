@@ -738,7 +738,7 @@ function PrintContent() {
       <input
         ref={fileInputRef}
         type="file"
-        accept=".pdf,.doc,.docx,.ppt,.pptx,.jpg,.jpeg,.png"
+        accept=".pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png"
         className="sr-only"
         aria-hidden
         onChange={(e) => {
