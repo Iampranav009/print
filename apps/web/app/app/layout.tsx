@@ -2,7 +2,6 @@ import React from "react";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { TabBar } from "@/components/TabBar";
-import { AppTopBar } from "./top-bar";
 
 export default async function AppLayout({
   children,
@@ -19,9 +18,8 @@ export default async function AppLayout({
   }
 
   return (
-    <div className="min-h-dvh h-dvh flex flex-col bg-white text-zinc-900 overflow-hidden">
-      <AppTopBar />
-      <main className="flex-1 overflow-y-auto pb-20">
+    <div className="min-h-dvh h-dvh flex flex-col bg-white text-gray-900 overflow-hidden">
+      <main className="flex-1 overflow-y-auto">
         {children}
       </main>
       <TabBar />

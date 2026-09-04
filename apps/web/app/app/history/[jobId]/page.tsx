@@ -119,26 +119,26 @@ function getStatusConfig(status: JobStatus) {
     case "awaiting_release":
       return {
         icon: (
-          <div className="w-20 h-20 rounded-full bg-emerald-100 flex items-center justify-center">
-            <CheckCircle2 className="w-11 h-11 text-emerald-600" />
+          <div className="w-20 h-20 rounded-full bg-green-100 flex items-center justify-center">
+            <CheckCircle2 className="w-11 h-11 text-green-500" />
           </div>
         ),
         headline: "Ready to collect!",
         sub: "Enter or show the code below at the printer screen.",
-        color: "emerald",
+        color: "green",
       };
     case "released":
     case "printed":
     case "done":
       return {
         icon: (
-          <div className="w-20 h-20 rounded-full bg-emerald-100 flex items-center justify-center">
-            <CheckCircle2 className="w-11 h-11 text-emerald-600" />
+          <div className="w-20 h-20 rounded-full bg-green-100 flex items-center justify-center">
+            <CheckCircle2 className="w-11 h-11 text-green-500" />
           </div>
         ),
         headline: "Printed & Released!",
         sub: "Your printout is ready. Thank you for using PrintBuddy!",
-        color: "emerald",
+        color: "green",
       };
     case "payment_failed":
       return {
@@ -255,7 +255,7 @@ export default function JobDetailPage({
   if (!jobId || (!job && !fetchError)) {
     return (
       <main className="flex flex-1 items-center justify-center p-12 min-h-[calc(100dvh-130px)]">
-        <Loader2 className="w-8 h-8 animate-spin text-zinc-400" />
+        <Loader2 className="w-8 h-8 animate-spin text-green-500" />
       </main>
     );
   }
@@ -263,19 +263,19 @@ export default function JobDetailPage({
   if (fetchError) {
     return (
       <main className="flex flex-1 flex-col items-center justify-center p-8 text-center min-h-[calc(100dvh-130px)] gap-4">
-        <div className="w-14 h-14 rounded-full bg-zinc-100 flex items-center justify-center">
-          <AlertCircle className="w-7 h-7 text-zinc-400" />
+        <div className="w-14 h-14 rounded-full bg-gray-100 flex items-center justify-center">
+          <AlertCircle className="w-7 h-7 text-gray-400" />
         </div>
         <div>
-          <h1 className="text-xl font-semibold text-zinc-900">Order not found</h1>
-          <p className="text-sm text-zinc-500 mt-1">{fetchError}</p>
+          <h1 className="text-xl font-semibold text-gray-900">Order not found</h1>
+          <p className="text-sm text-gray-500 mt-1">{fetchError}</p>
         </div>
         <Link
           href="/app/history"
           style={{ touchAction: "manipulation" }}
-          className="min-h-[48px] px-6 py-2.5 rounded-xl bg-zinc-100 hover:bg-zinc-200 text-zinc-800 font-medium text-sm transition-colors mt-2"
+          className="min-h-[48px] px-6 py-2.5 rounded-2xl bg-gray-100 hover:bg-gray-200 text-gray-800 font-medium text-sm transition-colors mt-2 flex items-center"
         >
-          Back to History
+          Back to Library
         </Link>
       </main>
     );
@@ -286,165 +286,167 @@ export default function JobDetailPage({
   const isAwaiting = job!.status === "awaiting_release";
 
   return (
-    <div className="max-w-lg mx-auto px-4 py-4 space-y-4 pb-24">
-      {/* Back button link */}
-      <div className="flex items-center">
+    <div className="min-h-full bg-white pb-24">
+      {/* Header */}
+      <div className="flex items-center px-4 py-3 border-b border-gray-100">
         <Link
           href="/app/history"
           style={{ touchAction: "manipulation" }}
-          className="inline-flex items-center gap-1 text-xs font-medium text-zinc-500 hover:text-zinc-800 transition-colors py-1.5 px-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600 rounded-lg"
+          className="inline-flex items-center gap-1 text-sm font-medium text-gray-500 hover:text-gray-800 transition-colors py-1.5 px-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-green-500 rounded-lg"
         >
           <ChevronLeft className="w-4 h-4" />
-          <span>All Prints</span>
+          <span>Back</span>
         </Link>
       </div>
 
-      {/* Offline Alert */}
-      {isOffline && (
-        <div
-          role="alert"
-          className="flex items-center gap-2 bg-amber-500 text-white text-xs py-2.5 px-4 rounded-xl shadow-sm"
-        >
-          <WifiOff className="w-4 h-4 flex-shrink-0" />
-          <span>You&apos;re offline — retrying when connection restores</span>
-        </div>
-      )}
-
-      {/* Hero Status Card */}
-      <div
-        className={`rounded-2xl p-7 text-center border shadow-sm ${
-          isAwaiting
-            ? "bg-emerald-50 border-emerald-200"
-            : "bg-white border-zinc-100"
-        }`}
-      >
-        <div className="flex justify-center mb-5">{cfg.icon}</div>
-        <h1 className="text-2xl font-bold text-zinc-900 tracking-tight leading-tight">
-          {cfg.headline}
-        </h1>
-        {cfg.sub && (
-          <p className="text-sm text-zinc-500 mt-2 leading-relaxed max-w-xs mx-auto">
-            {cfg.sub}
-          </p>
+      <div className="max-w-lg mx-auto px-4 pt-4 space-y-4">
+        {/* Offline Alert */}
+        {isOffline && (
+          <div
+            role="alert"
+            className="flex items-center gap-2 bg-yellow-500 text-white text-xs py-2.5 px-4 rounded-xl shadow-sm"
+          >
+            <WifiOff className="w-4 h-4 flex-shrink-0" />
+            <span>You&apos;re offline — retrying when connection restores</span>
+          </div>
         )}
 
-        {/* Big Release Code (Tap to Copy) */}
-        {isAwaiting && job!.release_code && (
-          <div className="mt-7 pt-4 border-t border-emerald-200/60">
-            <p className="text-[11px] font-semibold tracking-widest text-emerald-700 uppercase mb-3">
-              Release Code
+        {/* Hero Status Card */}
+        <div
+          className={`rounded-2xl p-7 text-center border shadow-sm ${
+            isAwaiting
+              ? "bg-green-50 border-green-200"
+              : "bg-white border-gray-100"
+          }`}
+        >
+          <div className="flex justify-center mb-5">{cfg.icon}</div>
+          <h1 className="text-2xl font-bold text-gray-900 tracking-tight leading-tight">
+            {cfg.headline}
+          </h1>
+          {cfg.sub && (
+            <p className="text-sm text-gray-500 mt-2 leading-relaxed max-w-xs mx-auto">
+              {cfg.sub}
             </p>
-            <button
-              type="button"
-              onClick={() => handleCopyCode(job!.release_code!)}
-              style={{ touchAction: "manipulation" }}
-              aria-label={`Release code ${job!.release_code} — tap to copy`}
-              className="block w-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600 rounded-2xl py-2 group"
-            >
-              <div
-                className="text-6xl font-black tracking-[0.3em] tabular-nums text-zinc-900 select-all"
-                aria-live="assertive"
-              >
-                {job!.release_code}
-              </div>
-              <div
-                className={`flex items-center justify-center gap-1.5 text-xs font-medium mt-3 transition-colors ${
-                  copied ? "text-emerald-700 font-semibold" : "text-zinc-500 group-hover:text-zinc-700"
-                }`}
-              >
-                {copied ? (
-                  <>
-                    <Check className="w-3.5 h-3.5 text-emerald-700" />
-                    Copied to clipboard!
-                  </>
-                ) : (
-                  <>
-                    <Copy className="w-3.5 h-3.5 text-zinc-400" />
-                    Tap to copy code
-                  </>
-                )}
-              </div>
-            </button>
-          </div>
-        )}
-
-        {/* Print failure reason */}
-        {job!.status === "print_failed" && job!.failure_reason && (
-          <div className="mt-5 text-xs bg-red-50 text-red-700 rounded-xl p-3.5 text-left border border-red-100">
-            <span className="font-semibold">Reason: </span>
-            {job!.failure_reason}
-          </div>
-        )}
-      </div>
-
-      {/* Slow banner */}
-      {isSlow && !isTerminal && (
-        <div
-          role="status"
-          className="flex items-center gap-3 bg-amber-50 text-amber-900 rounded-2xl p-4 text-xs border border-amber-200/80"
-        >
-          <Clock className="w-4 h-4 flex-shrink-0 text-amber-700" />
-          <span>Taking longer than expected. Your printout will be ready shortly.</span>
-        </div>
-      )}
-
-      {/* Order details Card */}
-      <div className="bg-white border border-zinc-100 rounded-2xl overflow-hidden shadow-sm">
-        <DetailRow label="Order" value={`#${job!.id.slice(0, 8).toUpperCase()}`} />
-        <DetailRow
-          label="Pages"
-          value={`${job!.pages} × ${job!.copies} cop${job!.copies !== 1 ? "ies" : "y"}`}
-        />
-        <DetailRow label="Type" value={job!.color ? "Colour" : "Black & white"} />
-        <DetailRow label="Paper" value={job!.paper} />
-        <DetailRow label="Sides" value={job!.duplex ? "Double-sided" : "Single-sided"} />
-        <DetailRow
-          label="Orientation"
-          value={job!.orientation === "portrait" ? "Portrait" : "Landscape"}
-        />
-        <DetailRow label="Amount paid" value={formatPaise(job!.price_paise)} bold />
-      </div>
-
-      {/* CTAs */}
-      {job!.status === "payment_failed" && job!.shop_id && (
-        <Link
-          href={`/app/print?shop=${job!.shop_id}`}
-          style={{ touchAction: "manipulation" }}
-          className="block w-full min-h-[52px] bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white font-semibold rounded-xl text-sm text-center leading-[52px] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600 shadow-sm"
-        >
-          Try Again
-        </Link>
-      )}
-
-      {job!.status === "print_failed" && (
-        <div className="text-center text-xs text-zinc-500 py-2">
-          Please visit the counter
-          {job!.shop_id && (
-            <>
-              {" "}or{" "}
-              <Link
-                href={`/app/print?shop=${job!.shop_id}`}
-                className="underline underline-offset-2 font-medium text-indigo-600 hover:text-indigo-800"
-              >
-                try a new order
-              </Link>
-            </>
           )}
-          .
-        </div>
-      )}
 
-      {/* Auto-refresh indicator */}
-      {!isTerminal && !isOffline && (
-        <div
-          role="status"
-          aria-live="polite"
-          className="flex items-center justify-center gap-1.5 text-xs text-zinc-400 py-1"
-        >
-          <RefreshCw className="w-3 h-3 animate-spin text-zinc-400" />
-          <span>Auto-refreshing status…</span>
+          {/* Big Release Code */}
+          {isAwaiting && job!.release_code && (
+            <div className="mt-7 pt-4 border-t border-green-200/60">
+              <p className="text-[11px] font-semibold tracking-widest text-green-700 uppercase mb-3">
+                Release Code
+              </p>
+              <button
+                type="button"
+                onClick={() => handleCopyCode(job!.release_code!)}
+                style={{ touchAction: "manipulation" }}
+                aria-label={`Release code ${job!.release_code} — tap to copy`}
+                className="block w-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-green-600 rounded-2xl py-2 group"
+              >
+                <div
+                  className="text-6xl font-black tracking-[0.3em] tabular-nums text-gray-900 select-all"
+                  aria-live="assertive"
+                >
+                  {job!.release_code}
+                </div>
+                <div
+                  className={`flex items-center justify-center gap-1.5 text-xs font-medium mt-3 transition-colors ${
+                    copied ? "text-green-700 font-semibold" : "text-gray-500 group-hover:text-gray-700"
+                  }`}
+                >
+                  {copied ? (
+                    <>
+                      <Check className="w-3.5 h-3.5 text-green-700" />
+                      Copied to clipboard!
+                    </>
+                  ) : (
+                    <>
+                      <Copy className="w-3.5 h-3.5 text-gray-400" />
+                      Tap to copy code
+                    </>
+                  )}
+                </div>
+              </button>
+            </div>
+          )}
+
+          {/* Print failure reason */}
+          {job!.status === "print_failed" && job!.failure_reason && (
+            <div className="mt-5 text-xs bg-red-50 text-red-700 rounded-xl p-3.5 text-left border border-red-100">
+              <span className="font-semibold">Reason: </span>
+              {job!.failure_reason}
+            </div>
+          )}
         </div>
-      )}
+
+        {/* Slow banner */}
+        {isSlow && !isTerminal && (
+          <div
+            role="status"
+            className="flex items-center gap-3 bg-yellow-50 text-yellow-900 rounded-2xl p-4 text-xs border border-yellow-200/80"
+          >
+            <Clock className="w-4 h-4 flex-shrink-0 text-yellow-700" />
+            <span>Taking longer than expected. Your printout will be ready shortly.</span>
+          </div>
+        )}
+
+        {/* Order details Card */}
+        <div className="bg-white border border-gray-100 rounded-2xl overflow-hidden shadow-sm">
+          <DetailRow label="Order" value={`#${job!.id.slice(0, 8).toUpperCase()}`} />
+          <DetailRow
+            label="Pages"
+            value={`${job!.pages} × ${job!.copies} cop${job!.copies !== 1 ? "ies" : "y"}`}
+          />
+          <DetailRow label="Type" value={job!.color ? "Colour" : "Black & white"} />
+          <DetailRow label="Paper" value={job!.paper} />
+          <DetailRow label="Sides" value={job!.duplex ? "Double-sided" : "Single-sided"} />
+          <DetailRow
+            label="Orientation"
+            value={job!.orientation === "portrait" ? "Portrait" : "Landscape"}
+          />
+          <DetailRow label="Amount paid" value={formatPaise(job!.price_paise)} bold />
+        </div>
+
+        {/* CTAs */}
+        {job!.status === "payment_failed" && job!.shop_id && (
+          <Link
+            href={`/app/print?shop=${job!.shop_id}`}
+            style={{ touchAction: "manipulation" }}
+            className="block w-full min-h-[52px] bg-green-500 hover:bg-green-600 active:bg-green-700 text-white font-semibold rounded-2xl text-sm text-center leading-[52px] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-green-500 shadow-sm"
+          >
+            Try Again
+          </Link>
+        )}
+
+        {job!.status === "print_failed" && (
+          <div className="text-center text-xs text-gray-500 py-2">
+            Please visit the counter
+            {job!.shop_id && (
+              <>
+                {" "}or{" "}
+                <Link
+                  href={`/app/print?shop=${job!.shop_id}`}
+                  className="underline underline-offset-2 font-medium text-green-600 hover:text-green-800"
+                >
+                  try a new order
+                </Link>
+              </>
+            )}
+            .
+          </div>
+        )}
+
+        {/* Auto-refresh indicator */}
+        {!isTerminal && !isOffline && (
+          <div
+            role="status"
+            aria-live="polite"
+            className="flex items-center justify-center gap-1.5 text-xs text-gray-400 py-1"
+          >
+            <RefreshCw className="w-3 h-3 animate-spin text-gray-400" />
+            <span>Auto-refreshing status…</span>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
@@ -459,11 +461,11 @@ function DetailRow({
   bold?: boolean;
 }) {
   return (
-    <div className="flex items-center justify-between px-4 py-3.5 gap-4 border-b border-zinc-100 last:border-0">
-      <span className="text-xs text-zinc-500 flex-shrink-0">{label}</span>
+    <div className="flex items-center justify-between px-4 py-3.5 gap-4 border-b border-gray-100 last:border-0">
+      <span className="text-xs text-gray-500 flex-shrink-0">{label}</span>
       <span
         className={`text-xs text-right ${
-          bold ? "font-bold text-zinc-900" : "text-zinc-700 font-medium"
+          bold ? "font-bold text-gray-900" : "text-gray-700 font-medium"
         }`}
       >
         {value}

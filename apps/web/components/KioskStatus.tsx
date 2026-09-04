@@ -83,7 +83,6 @@ export function KioskStatus({ activeJob, recentJobs }: KioskStatusProps) {
   let subline = "Please wait while we process your request.";
 
   switch (activeJob.status) {
-    case "payment_pending":
     case "awaiting_payment":
       iconNode = (
         <div className="w-24 h-24 rounded-full bg-amber-500/10 border border-amber-500/20 flex items-center justify-center">
@@ -93,7 +92,7 @@ export function KioskStatus({ activeJob, recentJobs }: KioskStatusProps) {
       headline = "Confirming payment…";
       subline = "Waiting for payment verification. Keep your phone handy.";
       break;
-    case "downloading":
+    case "paid":
       iconNode = (
         <div className="w-24 h-24 rounded-full bg-blue-500/10 border border-blue-500/20 flex items-center justify-center">
           <Loader2 className="w-12 h-12 text-blue-400 animate-spin" />

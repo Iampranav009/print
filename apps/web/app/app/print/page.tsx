@@ -1,25 +1,20 @@
 "use client";
 
-import React, { Suspense, useState, useEffect, useRef, useCallback, useMemo } from "react";
+import React, { Suspense, useState, useEffect, useRef, useCallback } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import type { PrinterCapabilities, PriceBreakdown } from "@printbuddy/shared";
-import { Pill } from "@/components/Pill";
-import { ControlSection } from "@/components/ControlSection";
-import { Toggle } from "@/components/Toggle";
-import { ToggleRow } from "@/components/ToggleRow";
-import { EmptyState } from "@/components/EmptyState";
 import {
-  Upload,
-  FileText,
-  X,
+  ArrowLeft,
   Plus,
   Minus,
-  ChevronUp,
-  ChevronDown,
-  ChevronRight,
+  FileText,
+  X,
+  Upload,
   Loader2,
   AlertCircle,
+  Check,
   QrCode,
+  ChevronRight,
 } from "lucide-react";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -69,76 +64,27 @@ function formatPaise(p: number) {
   return `₹${(p / 100).toFixed(2)}`;
 }
 
-function validatePageRange(
-  range: string,
-  totalPages: number
-): { valid: boolean; pageCount: number; error: string | null } {
-  if (!range.trim()) return { valid: false, pageCount: 0, error: "Enter a page range" };
-  let count = 0;
-  for (const part of range.split(",")) {
-    const t = part.trim();
-    if (!t) continue;
-    if (t.includes("-")) {
-      const [a, b] = t.split("-");
-      const s = parseInt(a, 10),
-        e = parseInt(b, 10);
-      if (isNaN(s) || isNaN(e)) return { valid: false, pageCount: 0, error: `Invalid range "${t}"` };
-      if (s < 1 || e > totalPages || s > e)
-        return { valid: false, pageCount: 0, error: `Pages ${s}–${e} out of range (1–${totalPages})` };
-      count += e - s + 1;
-    } else {
-      const pg = parseInt(t, 10);
-      if (isNaN(pg)) return { valid: false, pageCount: 0, error: `"${t}" is not a page number` };
-      if (pg < 1 || pg > totalPages)
-        return { valid: false, pageCount: 0, error: `Page ${pg} doesn't exist (1–${totalPages})` };
-      count++;
-    }
-  }
-  return count > 0
-    ? { valid: true, pageCount: count, error: null }
-    : { valid: false, pageCount: 0, error: "Enter at least one page" };
-}
-
-function defaultConfig(caps: PrinterCapabilities): Config {
+function defaultConfig(caps: PrinterCapabilities | null): Config {
   return {
     copies: 1,
-    color: false,
+    color: !!(caps?.color),
     orientation: "portrait",
-    paper: caps.media[0] || "A4",
+    paper: caps?.media?.[0] ?? "A4",
     duplex: false,
     duplex_edge: "long",
     useCustomRange: false,
     pageRange: "",
     numberUp: 1,
     collate: true,
-    quality: caps.quality.includes("normal") ? "normal" : caps.quality[0] || "normal",
+    quality: "normal",
     mediaType: "plain",
     reverse: false,
-    scaling: "none",
+    scaling: "fit",
     finishings: [],
   };
 }
 
-function buildOptions(config: Config) {
-  return {
-    copies: config.copies,
-    color: config.color,
-    orientation: config.orientation,
-    paper: config.paper,
-    duplex: config.duplex,
-    duplex_edge: config.duplex_edge,
-    pageRange: config.useCustomRange && config.pageRange ? config.pageRange : null,
-    numberUp: config.numberUp,
-    collate: config.collate,
-    quality: config.quality,
-    mediaType: config.mediaType,
-    reverse: config.reverse,
-    scaling: config.scaling,
-    finishings: config.finishings,
-  };
-}
-
-function uploadWithProgress(
+async function uploadToSignedUrl(
   url: string,
   file: File,
   onProgress: (pct: number) => void
@@ -160,7 +106,135 @@ function uploadWithProgress(
   });
 }
 
-// ── Print Content Component ───────────────────────────────────────────────────
+// ── Upload Progress Sheet ─────────────────────────────────────────────────────
+
+function UploadProgressSheet({
+  progress,
+  success,
+  onClose,
+}: {
+  progress: number;
+  success: boolean;
+  onClose: () => void;
+}) {
+  return (
+    <div className="fixed inset-0 z-50 flex flex-col">
+      {/* Backdrop */}
+      <div className="flex-1 bg-black/40" onClick={onClose} />
+      {/* Sheet */}
+      <div className="bg-white rounded-t-3xl px-6 pt-6 pb-10 shadow-2xl">
+        <button
+          type="button"
+          onClick={onClose}
+          className="absolute top-5 right-5 w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center"
+          style={{ touchAction: "manipulation" }}
+          aria-label="Close"
+        >
+          <X className="w-4 h-4 text-gray-600" />
+        </button>
+
+        {success ? (
+          <div className="flex flex-col items-center text-center py-4">
+            <div className="w-20 h-20 rounded-full bg-green-100 flex items-center justify-center mb-4">
+              <Check className="w-10 h-10 text-green-500" strokeWidth={3} />
+            </div>
+            <h3 className="text-lg font-bold text-gray-900">Document Successfully Uploaded</h3>
+            <p className="text-xs text-rose-500 mt-2">We delete your uploaded files once job is done</p>
+          </div>
+        ) : (
+          <div className="flex flex-col items-center text-center py-2">
+            {/* Animated doc icon */}
+            <div className="w-24 h-24 mb-4 flex items-center justify-center">
+              <div className="relative">
+                <div className="w-16 h-20 bg-blue-100 rounded-lg border-2 border-blue-200 flex flex-col items-center justify-end pb-3 gap-1">
+                  <div className="w-10 h-1.5 bg-blue-300 rounded" />
+                  <div className="w-10 h-1.5 bg-blue-300 rounded" />
+                  <div className="w-7 h-1.5 bg-blue-300 rounded" />
+                </div>
+                <div className="absolute -top-3 left-1/2 -translate-x-1/2 w-8 h-8 rounded-full bg-blue-400 flex items-center justify-center">
+                  <Upload className="w-4 h-4 text-white" />
+                </div>
+              </div>
+            </div>
+            <h3 className="text-lg font-bold text-gray-900">Uploading Document</h3>
+            <p className="text-xs text-gray-500 mt-1">0/1 files</p>
+
+            {/* Progress bar */}
+            <div className="w-full mt-5 mb-2">
+              <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+                <div
+                  className="h-full bg-rose-500 rounded-full transition-all duration-300"
+                  style={{ width: `${progress}%` }}
+                />
+              </div>
+            </div>
+            <p className="text-sm font-semibold text-gray-700 self-end">{progress}%</p>
+
+            <p className="text-xs text-rose-500 mt-3 font-medium">
+              We delete your uploaded files once delivered
+            </p>
+
+            <button
+              type="button"
+              onClick={onClose}
+              style={{ touchAction: "manipulation" }}
+              className="mt-5 text-sm font-semibold text-gray-700"
+            >
+              Cancel uploading
+            </button>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ── Print Options Card ────────────────────────────────────────────────────────
+
+function OptionPair<T extends string>({
+  label,
+  options,
+  value,
+  onChange,
+  disabled,
+}: {
+  label: string;
+  options: Array<{ value: T; label: string; icon: React.ReactNode }>;
+  value: T;
+  onChange: (v: T) => void;
+  disabled?: boolean;
+}) {
+  return (
+    <div>
+      <p className="text-sm font-bold text-gray-900 mb-2">{label}</p>
+      <div className="grid grid-cols-2 gap-2.5">
+        {options.map((opt) => {
+          const active = value === opt.value;
+          return (
+            <button
+              key={opt.value}
+              type="button"
+              onClick={() => !disabled && onChange(opt.value)}
+              disabled={disabled}
+              style={{ touchAction: "manipulation" }}
+              className={`flex items-center gap-2.5 px-3 py-3 rounded-xl border-2 text-sm font-semibold transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 ${
+                active
+                  ? "border-blue-700 bg-white text-gray-900"
+                  : "border-gray-200 bg-gray-50 text-gray-700 hover:border-gray-300"
+              } ${disabled ? "opacity-40 cursor-not-allowed" : "cursor-pointer"}`}
+              aria-pressed={active}
+            >
+              <span className="text-base leading-none">{opt.icon}</span>
+              <span>{opt.label}</span>
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+// ── Print Content ─────────────────────────────────────────────────────────────
 
 function PrintContent() {
   const searchParams = useSearchParams();
@@ -170,38 +244,25 @@ function PrintContent() {
   const [shopData, setShopData] = useState<ShopData | null>(null);
   const [shopError, setShopError] = useState<string | null>(null);
 
-  const [uploadState, setUploadState] = useState<
-    "idle" | "uploading" | "counting" | "done" | "error"
-  >("idle");
+  const [uploadState, setUploadState] = useState<"idle" | "uploading" | "done" | "error">("idle");
   const [uploadProgress, setUploadProgress] = useState(0);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [fileState, setFileState] = useState<FileState | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [showUploadSheet, setShowUploadSheet] = useState(false);
 
   const [config, setConfig] = useState<Config | null>(null);
-
   const [priceState, setPriceState] = useState<"idle" | "fetching" | "ready" | "error">("idle");
   const [rawPriceResult, setRawPriceResult] = useState<PriceResult | null>(null);
-  const [breakdownOpen, setBreakdownOpen] = useState(false);
 
   const [paying, setPaying] = useState(false);
-  const [pendingJobId, setPendingJobId] = useState<string | null>(null);
-  const [pendingOrderId, setPendingOrderId] = useState<string | null>(null);
-  const [pendingAmount, setPendingAmount] = useState<number | null>(null);
   const [payError, setPayError] = useState<string | null>(null);
-  const [capabilityError, setCapabilityError] = useState<string | null>(null);
-  const [advancedOpen, setAdvancedOpen] = useState(false);
 
-  // Derived loading state
-  const loadingShop = Boolean(shopId && !shopData && !shopError);
-
-  // Fetch shop data
+  // Fetch shop
   useEffect(() => {
     const currentShopId = shopId;
     if (!currentShopId) return;
-
     let active = true;
-
     async function loadShop() {
       if (!currentShopId) return;
       try {
@@ -210,845 +271,490 @@ function PrintContent() {
         const data: ShopData = await res.json();
         if (!active) return;
         setShopData(data);
-        if (data.capabilities) {
-          setConfig(defaultConfig(data.capabilities));
-        }
+        if (data.capabilities) setConfig(defaultConfig(data.capabilities));
       } catch (err: unknown) {
         if (!active) return;
         setShopError(err instanceof Error ? err.message : "Shop not found");
       }
     }
-
     loadShop();
-
-    return () => {
-      active = false;
-    };
+    return () => { active = false; };
   }, [shopId]);
 
-  // Derived capabilities
-  const caps = shopData?.capabilities ?? null;
-
-  const pageRangeValidation = useMemo(() => {
-    if (!config?.useCustomRange || !fileState)
-      return { valid: true, pageCount: fileState?.totalPages ?? 0, error: null };
-    return validatePageRange(config.pageRange, fileState.totalPages);
-  }, [config, fileState]);
-
-  const priceResult =
-    config?.useCustomRange && !pageRangeValidation.valid ? null : rawPriceResult;
-
-  const canPay =
-    !!fileState &&
-    !!config &&
-    pageRangeValidation.valid &&
-    priceState !== "fetching" &&
-    !!priceResult &&
-    !paying;
-
-  // Price calculation (debounced)
+  // Init config when no shop
   useEffect(() => {
-    if (!fileState || !shopId || !config || (config.useCustomRange && !pageRangeValidation.valid)) {
-      return;
-    }
+    if (!shopId && !config) setConfig(defaultConfig(null));
+  }, [shopId, config]);
 
-    const timer = setTimeout(async () => {
-      setPriceState("fetching");
-      try {
-        const res = await fetch("/api/price-preview", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            shopId,
-            totalPages: fileState.totalPages,
-            options: buildOptions(config),
-          }),
-        });
-        if (!res.ok) throw new Error("Price calculation failed");
-        const data = await res.json();
-        setRawPriceResult(data);
-        setPriceState("ready");
-      } catch {
-        setPriceState("error");
-      }
-    }, 400);
-
-    return () => {
-      clearTimeout(timer);
-    };
-  }, [config, fileState, shopId, pageRangeValidation.valid]);
-
-  const updateConfig = useCallback((updater: (prev: Config) => Config) => {
-    setConfig((prev) => (prev ? updater(prev) : prev));
-    setPendingJobId(null);
-    setPendingOrderId(null);
-    setPendingAmount(null);
-    setCapabilityError(null);
-  }, []);
-
-  // Handle File Selection
-  const handleFileSelect = useCallback(
-    async (file: File) => {
-      const ALLOWED = ["application/pdf", "image/jpeg", "image/png"];
-      const MAX_BYTES = 50 * 1024 * 1024;
-      if (!ALLOWED.includes(file.type)) {
-        setUploadError("Only PDF, JPG, or PNG files are supported.");
-        return;
-      }
-      if (file.size > MAX_BYTES) {
-        setUploadError("File must be under 50 MB.");
-        return;
-      }
-      setUploadError(null);
-      setUploadState("uploading");
-      setUploadProgress(0);
-      setRawPriceResult(null);
-      setPriceState("idle");
-      setPendingJobId(null);
-      setPendingOrderId(null);
-      setPendingAmount(null);
-
-      try {
-        const signRes = await fetch("/api/uploads", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ mime: file.type, size: file.size, shopId }),
-        });
-        if (!signRes.ok) {
-          const err = await signRes.json();
-          throw new Error(err.error || "Upload failed");
-        }
-        const { signedUrl, filePath } = await signRes.json();
-        await uploadWithProgress(signedUrl, file, setUploadProgress);
-
-        setUploadState("counting");
-        const countRes = await fetch("/api/uploads/page-count", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ filePath, mime: file.type }),
-        });
-        const countData = countRes.ok ? await countRes.json() : { pageCount: 1 };
-        const totalPages: number = countData.pageCount || 1;
-        setFileState({ file, path: filePath, mime: file.type, totalPages });
-        setUploadState("done");
-      } catch (err: unknown) {
-        setUploadError(err instanceof Error ? err.message : "Upload failed");
-        setUploadState("error");
-      }
-    },
-    [shopId]
-  );
-
-  const handleInputChange = useCallback(
-    (e: React.ChangeEvent<HTMLInputElement>) => {
-      const file = e.target.files?.[0];
-      if (file) handleFileSelect(file);
-      e.target.value = "";
-    },
-    [handleFileSelect]
-  );
-
-  const resetFile = useCallback(() => {
-    setFileState(null);
-    setUploadState("idle");
-    setUploadError(null);
+  // Fetch price
+  const fetchPrice = useCallback(async () => {
+    if (!fileState || !config) return;
+    setPriceState("fetching");
     setRawPriceResult(null);
-    setPriceState("idle");
-    setPendingJobId(null);
-    setPendingOrderId(null);
-    setPendingAmount(null);
-  }, []);
+    try {
+      const body = {
+        shopId: shopId ?? "virtual",
+        pageCount: config.useCustomRange
+          ? Math.max(1, config.pageRange.split(",").reduce((acc, part) => {
+              const t = part.trim();
+              if (t.includes("-")) {
+                const [a, b] = t.split("-").map(Number);
+                return acc + (b - a + 1);
+              }
+              return acc + 1;
+            }, 0))
+          : fileState.totalPages,
+        copies: config.copies,
+        color: config.color,
+        duplex: config.duplex,
+        paper: config.paper,
+      };
+      const res = await fetch("/api/price-preview", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      if (!res.ok) throw new Error("Could not fetch price");
+      const result: PriceResult = await res.json();
+      setRawPriceResult(result);
+      setPriceState("ready");
+    } catch {
+      setPriceState("error");
+    }
+  }, [fileState, config, shopId]);
 
-  // Pay Action
-  const handlePay = useCallback(async () => {
-    if (!canPay || !fileState || !config || !shopData) return;
-    if (!(window as unknown as RazorpayWindow).Razorpay) {
-      setPayError("Payment service is loading — please retry in a moment.");
+  useEffect(() => {
+    if (fileState && config) fetchPrice();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fileState?.path, config?.copies, config?.color, config?.orientation, config?.paper, config?.duplex, config?.useCustomRange, config?.pageRange]);
+
+  // File pick handler
+  const handleFileSelect = useCallback(async (file: File) => {
+    const ACCEPTED = [
+      "application/pdf",
+      "application/msword",
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+      "application/vnd.ms-powerpoint",
+      "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+      "image/jpeg",
+      "image/png",
+      "image/jpg",
+    ];
+    if (!ACCEPTED.includes(file.type)) {
+      setUploadError("Unsupported file type");
       return;
     }
-    setPayError(null);
-    setCapabilityError(null);
-    setPaying(true);
+    if (file.size > 50 * 1024 * 1024) {
+      setUploadError("File too large (max 50 MB)");
+      return;
+    }
+    setUploadError(null);
+    setUploadState("uploading");
+    setUploadProgress(0);
+    setShowUploadSheet(true);
 
     try {
-      let jobId = pendingJobId;
-      let orderId = pendingOrderId;
-      let amount = pendingAmount;
+      // Get signed upload URL
+      const res = await fetch("/api/uploads", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ fileName: file.name, fileSize: file.size, mimeType: file.type }),
+      });
+      if (!res.ok) throw new Error("Could not get upload URL");
+      const { signedUrl, path, mime } = await res.json() as { signedUrl: string; path: string; mime: string };
 
-      if (!jobId || !orderId) {
-        const jobRes = await fetch("/api/jobs", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            shopId,
-            filePath: fileState.path,
-            fileMime: fileState.mime,
-            options: buildOptions(config),
-          }),
-        });
+      await uploadToSignedUrl(signedUrl, file, setUploadProgress);
 
-        if (!jobRes.ok) {
-          const err = await jobRes.json();
-          if (jobRes.status === 422) {
-            setCapabilityError(err.error || "Option not supported by this printer");
-            setPaying(false);
-            return;
-          }
-          throw new Error(err.error || "Failed to create print job");
-        }
+      // Get page count
+      const countRes = await fetch("/api/uploads/page-count", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ path }),
+      });
+      if (!countRes.ok) throw new Error("Could not count pages");
+      const { pageCount } = await countRes.json() as { pageCount: number };
 
-        const createdJob = await jobRes.json();
-        jobId = createdJob.jobId as string;
-        amount = createdJob.pricePaise as number;
+      setFileState({ file, path, mime, totalPages: pageCount });
+      setUploadState("done");
+      setUploadProgress(100);
 
-        const payRes = await fetch(`/api/jobs/${jobId}/pay`, { method: "POST" });
-        if (!payRes.ok) throw new Error("Failed to create payment order");
-        const payData = await payRes.json();
-        orderId = payData.orderId as string;
+      // Auto close after 2s on success
+      setTimeout(() => setShowUploadSheet(false), 2000);
+    } catch (err: unknown) {
+      setUploadState("error");
+      setUploadError(err instanceof Error ? err.message : "Upload failed");
+      setShowUploadSheet(false);
+    }
+  }, []);
 
-        setPendingJobId(jobId);
-        setPendingOrderId(orderId);
-        setPendingAmount(amount);
-      }
+  // Razorpay pay
+  const handlePay = useCallback(async () => {
+    if (!fileState || !config) return;
+    if (rawPriceResult === null) return;
+    setPaying(true);
+    setPayError(null);
+    try {
+      const res = await fetch("/api/jobs", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          shopId: shopId ?? shopData?.shop.id ?? "virtual",
+          filePath: fileState.path,
+          fileName: fileState.file.name,
+          options: {
+            copies: config.copies,
+            color: config.color,
+            orientation: config.orientation,
+            paper: config.paper,
+            duplex: config.duplex,
+            duplex_edge: config.duplex_edge,
+            range: config.useCustomRange ? config.pageRange : null,
+            number_up: config.numberUp,
+            collate: config.collate,
+          },
+        }),
+      });
+      if (!res.ok) throw new Error("Could not create print job");
+      const { jobId, orderId, amount, currency, keyId } = await res.json() as {
+        jobId: string;
+        orderId: string;
+        amount: number;
+        currency: string;
+        keyId: string;
+      };
 
-      const rzp = new (window as unknown as RazorpayWindow).Razorpay({
-        key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
-        amount,
-        currency: "INR",
+      const win = window as unknown as RazorpayWindow;
+      if (typeof win.Razorpay !== "function") throw new Error("Payment not available");
+
+      const rzp = new win.Razorpay({
+        key: keyId,
         order_id: orderId,
-        name: shopData.shop.name,
+        amount,
+        currency,
+        name: "PrintBuddy",
         description: fileState.file.name,
-        config: { display: { sequence: ["upi", "card", "netbanking", "wallet"] } },
+        prefill: {},
+        theme: { color: "#22c55e" },
         handler: () => {
           router.push(`/app/history/${jobId}`);
         },
-        modal: {
-          ondismiss: () => setPaying(false),
-        },
       });
-
       rzp.open();
     } catch (err: unknown) {
       setPayError(err instanceof Error ? err.message : "Payment failed");
+    } finally {
       setPaying(false);
     }
-  }, [canPay, fileState, config, shopData, shopId, pendingJobId, pendingOrderId, pendingAmount, router]);
+  }, [fileState, config, rawPriceResult, shopId, shopData, router]);
 
-  // 1. Missing shop query state
-  if (!shopId) {
-    return (
-      <div className="flex-1 flex flex-col justify-center min-h-[calc(100dvh-130px)] px-4 py-8">
-        <EmptyState
-          icon={<QrCode className="w-8 h-8" />}
-          title="No printer selected"
-          subtitle="Scan the QR code displayed on the printer screen to start your print session."
-          actionText="Scan QR code"
-          actionHref="/app/scan"
-        />
-      </div>
-    );
-  }
+  const caps = shopData?.capabilities ?? null;
+  const hasFile = fileState !== null;
 
-  // 2. Loading shop
-  if (loadingShop) {
-    return (
-      <div className="flex-1 flex items-center justify-center p-12 min-h-[calc(100dvh-130px)]">
-        <Loader2 className="w-8 h-8 animate-spin text-zinc-400" />
-      </div>
-    );
-  }
-
-  // 3. Shop error
-  if (shopError || !shopData) {
-    return (
-      <div className="flex-1 flex flex-col justify-center min-h-[calc(100dvh-130px)] px-4 py-8">
-        <EmptyState
-          icon={<AlertCircle className="w-8 h-8 text-red-500" />}
-          title="Printer not found"
-          subtitle="This printer node is either offline or the QR code has expired. Please try scanning again."
-          actionText="Scan another printer"
-          actionHref="/app/scan"
-        />
-      </div>
-    );
-  }
-
-  // Capability calculations
-  const hasCaps = !!caps;
-  const twoSidedLong = caps?.sides.includes("two-sided-long-edge") ?? false;
-  const twoSidedShort = caps?.sides.includes("two-sided-short-edge") ?? false;
-  const canDuplex = twoSidedLong || twoSidedShort;
-  const canChooseDuplexEdge = config?.duplex && twoSidedLong && twoSidedShort;
-  const showPaperType = (caps?.media_types ?? []).filter((t) => t !== "plain").length > 0;
-  const showNup = (caps?.number_up ?? [1]).some((n) => n > 1);
-  const showQuality = (caps?.quality ?? ["normal"]).length > 1;
-  const showScaling = (caps?.scaling ?? ["none"]).some((s) => s !== "none");
-  const showFinishings = (caps?.finishings ?? []).length > 0;
-  const showCollate = !!(config && config.copies > 1 && caps?.collate);
-  const hasAdvanced =
-    showNup || showQuality || showScaling || showFinishings || caps?.reverse || showCollate;
+  // ── Render ─────────────────────────────────────────────────────────────────
 
   return (
-    <div className="max-w-lg mx-auto px-4 py-4 space-y-4 pb-32">
-      {/* 1. Shop Header Card */}
-      <div className="bg-white rounded-2xl p-4 border border-zinc-100 flex items-center gap-4 shadow-sm">
-        <div className="w-12 h-12 rounded-xl bg-indigo-600 flex items-center justify-center flex-shrink-0 text-2xl leading-none select-none shadow-sm shadow-indigo-600/20">
-          🖨️
-        </div>
-        <div className="min-w-0 flex-1">
-          <h1 className="text-base font-semibold text-zinc-900 leading-tight truncate">
-            {shopData.shop.name}
-          </h1>
-          {shopData.shop.location && (
-            <p className="text-xs text-zinc-500 mt-0.5 truncate">
-              {shopData.shop.location}
-            </p>
+    <div className="min-h-full bg-white flex flex-col">
+      {/* Header */}
+      <div className="flex items-center justify-between px-4 py-3 bg-white border-b border-gray-100">
+        <button
+          type="button"
+          onClick={() => router.back()}
+          style={{ touchAction: "manipulation" }}
+          aria-label="Go back"
+          className="w-9 h-9 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-green-500"
+        >
+          <ArrowLeft className="w-4 h-4 text-gray-700" />
+        </button>
+
+        <div className="flex items-center gap-2">
+          {shopData && (
+            <span className="text-xs font-semibold text-gray-500">{shopData.shop.name}</span>
           )}
+          <button
+            type="button"
+            onClick={() => fileInputRef.current?.click()}
+            style={{ touchAction: "manipulation" }}
+            className="flex items-center gap-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold text-sm rounded-full px-3 py-1.5 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-green-500"
+          >
+            <Plus className="w-3.5 h-3.5" />
+            Add
+          </button>
         </div>
       </div>
 
-      {/* 2. Upload Zone (Idle, Uploading, Counting, Error) */}
-      {(uploadState === "idle" ||
-        uploadState === "uploading" ||
-        uploadState === "counting" ||
-        uploadState === "error") && (
-        <div className="space-y-3">
-          <label className="block cursor-pointer">
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept=".pdf,.jpg,.jpeg,.png"
-              className="sr-only"
-              onChange={handleInputChange}
-              disabled={uploadState === "uploading" || uploadState === "counting"}
-              aria-label="Upload file to print"
-            />
-            <div
-              className={`border-2 border-dashed rounded-2xl text-center transition-colors ${
-                uploadState === "uploading" || uploadState === "counting"
-                  ? "border-zinc-300 bg-zinc-50 p-8"
-                  : uploadState === "error"
-                  ? "border-red-300 bg-red-50/50 p-8"
-                  : "border-zinc-200 hover:border-zinc-300 active:border-zinc-400 active:bg-zinc-50 p-10"
-              }`}
+      {/* Shop Error */}
+      {shopError && (
+        <div className="mx-4 mt-3 flex items-start gap-2 bg-red-50 border border-red-100 rounded-xl p-3 text-xs text-red-700">
+          <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />
+          <span>{shopError}</span>
+        </div>
+      )}
+
+      {/* Scrollable body */}
+      <div className="flex-1 overflow-y-auto pb-36">
+        {/* Upload zone / File preview */}
+        <div className="px-4 pt-4">
+          {!hasFile ? (
+            /* Upload Drop Zone */
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              style={{ touchAction: "manipulation" }}
+              className="w-full flex flex-col items-center justify-center gap-3 border-2 border-dashed border-gray-200 rounded-2xl bg-gray-50 hover:bg-gray-100 active:bg-gray-100 transition-colors p-10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-green-500"
             >
-              {uploadState === "uploading" ? (
-                <div className="space-y-3">
-                  <Loader2 className="w-8 h-8 animate-spin text-indigo-600 mx-auto" />
-                  <p className="text-sm font-medium text-zinc-700">
-                    Uploading… {uploadProgress}%
-                  </p>
-                  <div className="h-1.5 bg-zinc-200 rounded-full overflow-hidden max-w-xs mx-auto">
-                    <div
-                      className="h-full bg-indigo-600 rounded-full transition-all duration-200"
-                      style={{ width: `${uploadProgress}%` }}
-                    />
+              <div className="w-14 h-14 rounded-2xl bg-green-100 flex items-center justify-center">
+                <Upload className="w-7 h-7 text-green-500" />
+              </div>
+              <div className="text-center">
+                <p className="text-sm font-semibold text-gray-900">Upload Document</p>
+                <p className="text-xs text-gray-500 mt-1">PDF, Word, PowerPoint, Images · up to 50 MB</p>
+              </div>
+            </button>
+          ) : (
+            /* Document Preview Card */
+            <div className="relative bg-white border border-gray-200 rounded-2xl overflow-hidden shadow-sm">
+              {/* Dismiss */}
+              <button
+                type="button"
+                onClick={() => { setFileState(null); setUploadState("idle"); setRawPriceResult(null); setPriceState("idle"); }}
+                style={{ touchAction: "manipulation" }}
+                className="absolute top-2.5 right-2.5 z-10 w-7 h-7 rounded-full bg-gray-200 flex items-center justify-center hover:bg-gray-300 transition-colors"
+                aria-label="Remove file"
+              >
+                <X className="w-3.5 h-3.5 text-gray-600" />
+              </button>
+
+              {/* Preview area */}
+              <div
+                className={`w-full bg-gray-50 flex items-center justify-center ${
+                  config?.orientation === "landscape" ? "h-40" : "h-52"
+                }`}
+              >
+                <div className={`bg-white shadow-md rounded flex items-center justify-center text-gray-400 text-xs font-medium ${
+                  config?.orientation === "landscape" ? "w-48 h-32" : "w-32 h-44"
+                }`}>
+                  <div className="text-center">
+                    <FileText className="w-8 h-8 mx-auto mb-2 text-gray-300" />
+                    <p className="text-[10px] text-gray-400 max-w-[100px] truncate px-2">{fileState.file.name}</p>
                   </div>
                 </div>
-              ) : uploadState === "counting" ? (
-                <div className="space-y-2">
-                  <Loader2 className="w-8 h-8 animate-spin text-indigo-600 mx-auto" />
-                  <p className="text-sm font-medium text-zinc-700">
-                    Reading document…
-                  </p>
-                </div>
-              ) : (
-                <div className="space-y-3">
-                  <div className="w-14 h-14 rounded-2xl bg-zinc-100 flex items-center justify-center mx-auto text-zinc-600">
-                    <Upload className="w-6 h-6" />
-                  </div>
-                  <div>
-                    <p className="text-sm font-semibold text-zinc-900">
-                      Tap to upload your file
-                    </p>
-                    <p className="text-xs text-zinc-400 mt-1">
-                      PDF · JPG · PNG • max 50 MB
-                    </p>
-                  </div>
-                </div>
-              )}
+              </div>
             </div>
-          </label>
+          )}
 
           {uploadError && (
-            <div
-              role="alert"
-              className="flex items-start gap-2 bg-red-50 text-red-700 rounded-xl p-3.5 text-xs"
-            >
-              <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />
+            <div className="mt-2 flex items-center gap-2 text-xs text-red-600">
+              <AlertCircle className="w-3.5 h-3.5" />
               <span>{uploadError}</span>
             </div>
           )}
         </div>
-      )}
 
-      {/* 3. Post-upload Flow: File Card & Options */}
-      {uploadState === "done" && fileState && config && (
-        <div className="space-y-4">
-          {/* File Card */}
-          <div className="flex items-center gap-3 bg-zinc-50 rounded-2xl p-4 border border-zinc-200/80 shadow-sm">
-            <div className="w-10 h-10 bg-zinc-200 rounded-xl flex items-center justify-center flex-shrink-0 text-zinc-500">
-              <FileText className="w-5 h-5" />
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-semibold text-zinc-900 truncate">
-                {fileState.file.name}
-              </p>
-              <p className="text-xs text-zinc-500 mt-0.5">
-                {fileState.totalPages} page{fileState.totalPages !== 1 ? "s" : ""}
-              </p>
-            </div>
-            <button
-              type="button"
-              onClick={resetFile}
-              aria-label="Remove and choose another file"
-              style={{ touchAction: "manipulation" }}
-              className="p-2 rounded-full text-zinc-400 hover:text-zinc-600 active:bg-zinc-200 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600"
-            >
-              <X className="w-4 h-4" />
-            </button>
-          </div>
-
-          {/* Capability / Payment Errors */}
-          {capabilityError && (
-            <div
-              role="alert"
-              className="flex items-start gap-2 bg-amber-50 text-amber-800 rounded-xl p-3.5 text-xs"
-            >
-              <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />
-              <span>{capabilityError}</span>
-            </div>
-          )}
-          {payError && (
-            <div
-              role="alert"
-              className="flex items-start gap-2 bg-red-50 text-red-700 rounded-xl p-3.5 text-xs"
-            >
-              <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />
-              <span>{payError}</span>
-            </div>
-          )}
-
-          {/* 4. Options Card */}
-          <div className="bg-white rounded-2xl border border-zinc-100 p-5 shadow-sm space-y-4">
-            {/* Copies */}
-            <div className="pb-4 border-b border-zinc-100">
-              <p className="text-[11px] font-semibold text-zinc-400 uppercase tracking-wider mb-3">
-                Copies
-              </p>
-              <div className="flex items-center gap-5">
-                <button
-                  type="button"
-                  onClick={() => updateConfig((c) => ({ ...c, copies: Math.max(1, c.copies - 1) }))}
-                  disabled={config.copies <= 1}
-                  aria-label="Decrease copies"
-                  style={{ touchAction: "manipulation" }}
-                  className="w-12 h-12 rounded-xl flex items-center justify-center bg-zinc-100 text-zinc-700 hover:bg-zinc-200 disabled:opacity-40 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600"
-                >
-                  <Minus className="w-5 h-5" />
-                </button>
-                <span
-                  className="text-2xl font-bold w-12 text-center tabular-nums text-zinc-900"
-                  aria-live="polite"
-                  aria-atomic
-                >
-                  {config.copies}
-                </span>
-                <button
-                  type="button"
-                  onClick={() =>
-                    updateConfig((c) => ({
-                      ...c,
-                      copies: Math.min(caps?.max_copies ?? 99, c.copies + 1),
-                    }))
-                  }
-                  disabled={config.copies >= (caps?.max_copies ?? 99)}
-                  aria-label="Increase copies"
-                  style={{ touchAction: "manipulation" }}
-                  className="w-12 h-12 rounded-xl flex items-center justify-center bg-zinc-100 text-zinc-700 hover:bg-zinc-200 disabled:opacity-40 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600"
-                >
-                  <Plus className="w-5 h-5" />
-                </button>
-              </div>
-            </div>
-
-            {/* Pages Range */}
-            <ControlSection label="Pages">
-              <Pill
-                flex1
-                active={!config.useCustomRange}
-                onClick={() => updateConfig((c) => ({ ...c, useCustomRange: false, pageRange: "" }))}
-              >
-                All {fileState.totalPages} pages
-              </Pill>
-              <Pill
-                flex1
-                active={config.useCustomRange}
-                onClick={() => updateConfig((c) => ({ ...c, useCustomRange: true }))}
-              >
-                Custom range
-              </Pill>
-            </ControlSection>
-
-            {config.useCustomRange && (
-              <div className="pb-4 border-b border-zinc-100 -mt-2">
-                <input
-                  type="text"
-                  inputMode="numeric"
-                  placeholder="e.g. 1-3, 5, 8-10"
-                  value={config.pageRange}
-                  onChange={(e) => updateConfig((c) => ({ ...c, pageRange: e.target.value }))}
-                  aria-label="Custom page range"
-                  aria-describedby="range-hint"
-                  className={`w-full min-h-[48px] border rounded-xl px-3.5 py-2.5 text-sm bg-zinc-50 focus:bg-white focus:outline-none focus:ring-2 transition-colors ${
-                    pageRangeValidation.error
-                      ? "border-red-400 focus:ring-red-400"
-                      : "border-zinc-200 focus:ring-indigo-600"
-                  }`}
-                />
-                <p
-                  id="range-hint"
-                  className={`text-xs mt-1.5 ${
-                    pageRangeValidation.error ? "text-red-600 font-medium" : "text-zinc-500"
-                  }`}
-                >
-                  {pageRangeValidation.error
-                    ? pageRangeValidation.error
-                    : pageRangeValidation.pageCount > 0
-                    ? `${pageRangeValidation.pageCount} of ${fileState.totalPages} pages selected`
-                    : `Enter page numbers between 1 and ${fileState.totalPages}`}
-                </p>
-              </div>
-            )}
-
-            {/* Color */}
-            {hasCaps && !caps.color ? (
-              <div className="border-b border-zinc-100 pb-4">
-                <p className="text-[11px] font-semibold text-zinc-400 uppercase tracking-wider mb-1">
-                  Color
-                </p>
-                <p className="text-sm font-medium text-zinc-600">Black &amp; white only</p>
-              </div>
-            ) : (
-              <ControlSection label="Color">
-                <Pill
-                  flex1
-                  active={!config.color}
-                  onClick={() => updateConfig((c) => ({ ...c, color: false }))}
-                  aria-label="Black and white"
-                >
-                  B&amp;W
-                </Pill>
-                {(!hasCaps || caps.color) && (
-                  <Pill
-                    flex1
-                    active={config.color}
-                    onClick={() => updateConfig((c) => ({ ...c, color: true }))}
-                    aria-label="Colour"
-                  >
-                    Colour
-                  </Pill>
+        {/* Print Options */}
+        {config && (
+          <div className="mx-4 mt-4 bg-white border border-gray-200 rounded-2xl p-4 space-y-5 shadow-sm">
+            {/* Copies row */}
+            <div className="flex items-start justify-between">
+              <div>
+                <p className="text-sm font-bold text-gray-900">Number of copies</p>
+                {fileState && (
+                  <p className="text-xs text-gray-500 mt-0.5">File 1 ({fileState.totalPages} page{fileState.totalPages !== 1 ? "s" : ""})</p>
                 )}
-              </ControlSection>
+              </div>
+              <div className="flex items-center gap-0 bg-gradient-to-r from-blue-500 to-blue-600 rounded-xl overflow-hidden">
+                <button
+                  type="button"
+                  onClick={() => setConfig((c) => c ? { ...c, copies: Math.max(1, c.copies - 1) } : c)}
+                  style={{ touchAction: "manipulation" }}
+                  aria-label="Decrease copies"
+                  className="w-10 h-10 flex items-center justify-center text-white hover:bg-white/10 active:bg-white/20 transition-colors focus-visible:outline-none"
+                >
+                  <Minus className="w-4 h-4" />
+                </button>
+                <span className="w-8 text-center text-white font-bold text-base">{config.copies}</span>
+                <button
+                  type="button"
+                  onClick={() => setConfig((c) => c ? { ...c, copies: Math.min(99, c.copies + 1) } : c)}
+                  style={{ touchAction: "manipulation" }}
+                  aria-label="Increase copies"
+                  className="w-10 h-10 flex items-center justify-center text-white hover:bg-white/10 active:bg-white/20 transition-colors focus-visible:outline-none"
+                >
+                  <Plus className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+
+            {/* Pages row */}
+            <div className="flex items-center justify-between">
+              <p className="text-sm font-bold text-gray-900">Pages</p>
+              <div className="flex bg-gray-100 rounded-full p-1">
+                {(["All", "Custom"] as const).map((pg) => {
+                  const isActive = pg === "Custom" ? config.useCustomRange : !config.useCustomRange;
+                  return (
+                    <button
+                      key={pg}
+                      type="button"
+                      onClick={() => setConfig((c) => c ? { ...c, useCustomRange: pg === "Custom" } : c)}
+                      style={{ touchAction: "manipulation" }}
+                      className={`px-4 py-1.5 rounded-full text-sm font-semibold transition-colors focus-visible:outline-none ${
+                        isActive ? "bg-blue-500 text-white shadow-sm" : "text-gray-500 hover:text-gray-700"
+                      }`}
+                    >
+                      {pg}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Custom range input */}
+            {config.useCustomRange && (
+              <input
+                type="text"
+                placeholder="e.g. 1-3, 5, 7-9"
+                value={config.pageRange}
+                onChange={(e) => setConfig((c) => c ? { ...c, pageRange: e.target.value } : c)}
+                className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
             )}
+
+            {/* Color choice */}
+            <OptionPair
+              label="Choose print color"
+              value={config.color ? "color" : "bw"}
+              onChange={(v) => setConfig((c) => c ? { ...c, color: v === "color" } : c)}
+              disabled={caps ? !caps.color : false}
+              options={[
+                { value: "color", label: "Coloured", icon: "🎨" },
+                { value: "bw", label: "B & W", icon: "⚫" },
+              ]}
+            />
 
             {/* Orientation */}
-            <ControlSection label="Orientation">
-              <Pill
-                flex1
-                active={config.orientation === "portrait"}
-                onClick={() => updateConfig((c) => ({ ...c, orientation: "portrait" }))}
-              >
-                Portrait
-              </Pill>
-              <Pill
-                flex1
-                active={config.orientation === "landscape"}
-                onClick={() => updateConfig((c) => ({ ...c, orientation: "landscape" }))}
-              >
-                Landscape
-              </Pill>
-            </ControlSection>
+            <OptionPair
+              label="Choose print orientation"
+              value={config.orientation}
+              onChange={(v) => setConfig((c) => c ? { ...c, orientation: v } : c)}
+              options={[
+                { value: "portrait", label: "Portrait", icon: "📄" },
+                { value: "landscape", label: "Landscape", icon: "🖼️" },
+              ]}
+            />
 
-            {/* Sides */}
-            {canDuplex && (
-              <>
-                <ControlSection label="Sides">
-                  <Pill
-                    flex1
-                    active={!config.duplex}
-                    onClick={() => updateConfig((c) => ({ ...c, duplex: false }))}
-                  >
-                    Single-sided
-                  </Pill>
-                  <Pill
-                    flex1
-                    active={config.duplex}
-                    onClick={() => updateConfig((c) => ({ ...c, duplex: true }))}
-                  >
-                    Double-sided
-                  </Pill>
-                </ControlSection>
-
-                {canChooseDuplexEdge && (
-                  <ControlSection label="Binding edge">
-                    <Pill
-                      flex1
-                      active={config.duplex_edge === "long"}
-                      onClick={() => updateConfig((c) => ({ ...c, duplex_edge: "long" }))}
-                    >
-                      Long edge
-                    </Pill>
-                    <Pill
-                      flex1
-                      active={config.duplex_edge === "short"}
-                      onClick={() => updateConfig((c) => ({ ...c, duplex_edge: "short" }))}
-                    >
-                      Short edge
-                    </Pill>
-                  </ControlSection>
-                )}
-              </>
-            )}
-
-            {/* Paper Size */}
-            {(caps?.media ?? ["A4"]).length > 1 && (
-              <ControlSection label="Paper size">
-                {(caps?.media ?? ["A4"]).map((size) => (
-                  <Pill
-                    key={size}
-                    active={config.paper === size}
-                    onClick={() => updateConfig((c) => ({ ...c, paper: size }))}
-                  >
-                    {size}
-                  </Pill>
-                ))}
-              </ControlSection>
-            )}
-
-            {/* Paper Type */}
-            {showPaperType && (
-              <ControlSection label="Paper type">
-                {(caps?.media_types ?? ["plain"]).map((type) => (
-                  <Pill
-                    key={type}
-                    active={config.mediaType === type}
-                    onClick={() => updateConfig((c) => ({ ...c, mediaType: type }))}
-                  >
-                    {type.charAt(0).toUpperCase() + type.slice(1)}
-                  </Pill>
-                ))}
-              </ControlSection>
-            )}
-
-            {/* Collapsible Advanced Options */}
-            {hasAdvanced && (
-              <div className="pt-2">
+            {/* Duplex (if supported) */}
+            {caps?.sides && caps.sides.some(s => s.startsWith("two-sided")) && (
+              <div className="flex items-center justify-between">
+                <p className="text-sm font-bold text-gray-900">Double-sided</p>
                 <button
                   type="button"
-                  onClick={() => setAdvancedOpen((o) => !o)}
+                  onClick={() => setConfig((c) => c ? { ...c, duplex: !c.duplex } : c)}
                   style={{ touchAction: "manipulation" }}
-                  className="w-full flex items-center justify-between py-3 text-sm font-medium text-zinc-600 hover:text-zinc-900 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600 rounded-lg"
+                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-green-500 ${
+                    config.duplex ? "bg-green-500" : "bg-gray-200"
+                  }`}
+                  role="switch"
+                  aria-checked={config.duplex}
                 >
-                  <span>Advanced options</span>
-                  <ChevronRight
-                    className={`w-4 h-4 text-zinc-400 transition-transform duration-200 ${
-                      advancedOpen ? "rotate-90" : ""
+                  <span
+                    className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${
+                      config.duplex ? "translate-x-6" : "translate-x-1"
                     }`}
                   />
                 </button>
-
-                {advancedOpen && (
-                  <div className="pt-2 border-t border-zinc-100 space-y-4">
-                    {showNup && (
-                      <ControlSection label="Pages per sheet">
-                        {(caps?.number_up ?? [1]).map((n) => (
-                          <Pill
-                            key={n}
-                            active={config.numberUp === n}
-                            onClick={() => updateConfig((c) => ({ ...c, numberUp: n }))}
-                            aria-label={`${n} pages per sheet`}
-                          >
-                            {n}
-                          </Pill>
-                        ))}
-                      </ControlSection>
-                    )}
-
-                    {showQuality && (
-                      <ControlSection label="Quality">
-                        {(caps?.quality ?? ["normal"]).map((q) => (
-                          <Pill
-                            key={q}
-                            active={config.quality === q}
-                            onClick={() => updateConfig((c) => ({ ...c, quality: q }))}
-                          >
-                            {q.charAt(0).toUpperCase() + q.slice(1)}
-                          </Pill>
-                        ))}
-                      </ControlSection>
-                    )}
-
-                    {showScaling && (
-                      <ControlSection label="Scaling">
-                        {(caps?.scaling ?? ["none"]).map((s) => (
-                          <Pill
-                            key={s}
-                            active={config.scaling === s}
-                            onClick={() => updateConfig((c) => ({ ...c, scaling: s }))}
-                          >
-                            {s === "none" ? "None" : s === "fit-to-page" ? "Fit to page" : "Shrink to fit"}
-                          </Pill>
-                        ))}
-                      </ControlSection>
-                    )}
-
-                    {showFinishings && (
-                      <ControlSection label="Finishing">
-                        {(caps?.finishings ?? []).map((f) => {
-                          const active = config.finishings.includes(f);
-                          return (
-                            <Pill
-                              key={f}
-                              active={active}
-                              onClick={() =>
-                                updateConfig((c) => ({
-                                  ...c,
-                                  finishings: active
-                                    ? c.finishings.filter((x) => x !== f)
-                                    : [...c.finishings, f],
-                                }))
-                              }
-                            >
-                              {f.charAt(0).toUpperCase() + f.slice(1)}
-                            </Pill>
-                          );
-                        })}
-                      </ControlSection>
-                    )}
-
-                    {showCollate && (
-                      <ToggleRow label="Collate copies" id="collate-toggle">
-                        <Toggle
-                          checked={config.collate}
-                          onChange={() => updateConfig((c) => ({ ...c, collate: !c.collate }))}
-                          aria-labelledby="collate-toggle"
-                        />
-                      </ToggleRow>
-                    )}
-
-                    {caps?.reverse && (
-                      <ToggleRow label="Reverse order" id="reverse-toggle" noDivider>
-                        <Toggle
-                          checked={config.reverse}
-                          onChange={() => updateConfig((c) => ({ ...c, reverse: !c.reverse }))}
-                          aria-labelledby="reverse-toggle"
-                        />
-                      </ToggleRow>
-                    )}
-                  </div>
-                )}
               </div>
             )}
           </div>
-        </div>
-      )}
+        )}
 
-      {/* 5. Fixed Price Bar (Above TabBar) */}
-      {fileState && uploadState === "done" && (
-        <div
-          className="fixed bottom-[calc(64px+max(8px,env(safe-area-inset-bottom)))] inset-x-0 z-30 bg-white border-t border-zinc-200 shadow-[0_-4px_20px_rgba(0,0,0,0.06)]"
-        >
-          <div className="max-w-lg mx-auto px-4 py-3">
-            {/* Expandable Breakdown Card */}
-            {breakdownOpen && priceResult && (
-              <div className="mb-3 bg-zinc-50 rounded-2xl p-4 text-xs space-y-1.5 text-zinc-600 border border-zinc-100 shadow-inner">
-                <p>
-                  {priceResult.breakdown.selected_pages} page
-                  {priceResult.breakdown.selected_pages !== 1 ? "s" : ""} ÷{" "}
-                  {priceResult.breakdown.number_up} per sheet = {priceResult.breakdown.sides} side
-                  {priceResult.breakdown.sides !== 1 ? "s" : ""}
-                </p>
-                <p>
-                  {formatPaise(priceResult.breakdown.per_side_base)}/side (
-                  {config?.color ? "colour" : "B&W"})
-                  {priceResult.breakdown.a3_applied ? " × 2× A3" : ""}
-                </p>
-                {priceResult.breakdown.media_type_surcharge > 0 && (
-                  <p>
-                    + {formatPaise(priceResult.breakdown.media_type_surcharge)}/side (
-                    {config?.mediaType})
-                  </p>
-                )}
-                <p>
-                  × {priceResult.breakdown.copies} cop{priceResult.breakdown.copies !== 1 ? "ies" : "y"}
-                </p>
-                {config?.duplex && priceResult.breakdown.duplex_factor_applied !== 1 && (
-                  <p>
-                    Duplex saving: ×{priceResult.breakdown.duplex_factor_applied.toFixed(2)}
-                  </p>
-                )}
-                {priceResult.breakdown.min_charge_applied && (
-                  <p className="text-amber-600 font-medium">Minimum order charge applied</p>
-                )}
-                <div className="border-t border-zinc-200 pt-2 flex justify-between font-semibold text-sm text-zinc-900">
-                  <span>Total</span>
-                  <span>{formatPaise(priceResult.breakdown.price_paise)}</span>
-                </div>
-              </div>
+        {/* Pay Error */}
+        {payError && (
+          <div className="mx-4 mt-3 flex items-start gap-2 bg-red-50 border border-red-100 rounded-xl p-3 text-xs text-red-700">
+            <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />
+            <span>{payError}</span>
+          </div>
+        )}
+      </div>
+
+      {/* Fixed Bottom Bar */}
+      <div
+        className="fixed bottom-0 inset-x-0 z-30 bg-white border-t border-gray-100 px-4 pt-3"
+        style={{ paddingBottom: "max(16px, env(safe-area-inset-bottom))" }}
+      >
+        {/* Price */}
+        <div className="flex items-baseline justify-between mb-3">
+          <div>
+            <p className="text-sm font-bold text-gray-900">Estimated Cost</p>
+            <p className="text-[10px] text-gray-400">*Final cost may vary based on the kiosk model</p>
+          </div>
+          <div className="text-right">
+            {priceState === "ready" && rawPriceResult ? (
+              <p className="text-xl font-bold text-blue-600">{formatPaise(rawPriceResult.pricePaise)}</p>
+            ) : priceState === "fetching" ? (
+              <Loader2 className="w-5 h-5 text-gray-400 animate-spin" />
+            ) : (
+              <p className="text-xl font-bold text-gray-300">—</p>
             )}
-
-            <div className="flex items-center gap-3">
-              {/* Price + Breakdown Toggle */}
-              <button
-                type="button"
-                onClick={() => setBreakdownOpen((o) => !o)}
-                disabled={!priceResult}
-                aria-label={breakdownOpen ? "Hide price breakdown" : "Show price breakdown"}
-                aria-expanded={breakdownOpen}
-                style={{ touchAction: "manipulation" }}
-                className="flex items-center gap-1.5 min-h-[54px] text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600 rounded-xl px-1"
-              >
-                <span
-                  className={`text-2xl font-bold tabular-nums text-zinc-900 transition-opacity ${
-                    priceState === "fetching" ? "opacity-40" : ""
-                  }`}
-                >
-                  {priceResult ? formatPaise(priceResult.pricePaise) : "—"}
-                </span>
-                {priceState === "fetching" && (
-                  <Loader2 className="w-3.5 h-3.5 animate-spin text-zinc-400" />
-                )}
-                {priceResult &&
-                  (breakdownOpen ? (
-                    <ChevronDown className="w-4 h-4 text-zinc-400" />
-                  ) : (
-                    <ChevronUp className="w-4 h-4 text-zinc-400" />
-                  ))}
-              </button>
-
-              {/* Pay Button */}
-              <button
-                type="button"
-                onClick={handlePay}
-                disabled={!canPay}
-                style={{ touchAction: "manipulation" }}
-                className="flex-1 min-h-[54px] bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white font-semibold rounded-2xl text-base transition-colors disabled:opacity-40 disabled:cursor-not-allowed shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600"
-              >
-                {paying ? (
-                  <span className="flex items-center justify-center gap-2">
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                    Opening…
-                  </span>
-                ) : priceResult ? (
-                  `Pay ${formatPaise(priceResult.pricePaise)}`
-                ) : (
-                  "Pay"
-                )}
-              </button>
-            </div>
           </div>
         </div>
+
+        <div className="grid grid-cols-2 gap-3">
+          {/* Save to Library */}
+          <button
+            type="button"
+            disabled={!hasFile}
+            style={{ touchAction: "manipulation" }}
+            className="min-h-[52px] rounded-2xl border-2 border-gray-200 text-blue-600 font-semibold text-sm hover:bg-blue-50 active:bg-blue-100 transition-colors disabled:opacity-40 disabled:cursor-not-allowed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+          >
+            Save to Library
+          </button>
+
+          {/* Scan Kiosk / Pay */}
+          {!shopId ? (
+            <button
+              type="button"
+              onClick={() => router.push("/app/scan")}
+              style={{ touchAction: "manipulation" }}
+              className="min-h-[52px] rounded-2xl bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white font-semibold text-sm flex items-center justify-center gap-2 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+            >
+              <QrCode className="w-4 h-4" />
+              Scan Kiosk
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={handlePay}
+              disabled={!hasFile || priceState !== "ready" || paying}
+              style={{ touchAction: "manipulation" }}
+              className="min-h-[52px] rounded-2xl bg-green-500 hover:bg-green-600 active:bg-green-700 text-white font-semibold text-sm flex items-center justify-center gap-2 transition-colors disabled:opacity-40 disabled:cursor-not-allowed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-green-500"
+            >
+              {paying ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
+              {paying ? "Processing…" : "Pay & Print"}
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* Hidden file input */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept=".pdf,.doc,.docx,.ppt,.pptx,.jpg,.jpeg,.png"
+        className="sr-only"
+        aria-hidden
+        onChange={(e) => {
+          const f = e.target.files?.[0];
+          if (f) handleFileSelect(f);
+          e.target.value = "";
+        }}
+      />
+
+      {/* Upload Progress Sheet */}
+      {showUploadSheet && (
+        <UploadProgressSheet
+          progress={uploadProgress}
+          success={uploadState === "done"}
+          onClose={() => setShowUploadSheet(false)}
+        />
       )}
     </div>
   );
@@ -1056,13 +762,7 @@ function PrintContent() {
 
 export default function PrintPage() {
   return (
-    <Suspense
-      fallback={
-        <div className="flex-1 flex items-center justify-center p-12 min-h-[calc(100dvh-130px)]">
-          <Loader2 className="w-8 h-8 animate-spin text-zinc-400" />
-        </div>
-      }
-    >
+    <Suspense fallback={<div className="min-h-full flex items-center justify-center"><Loader2 className="w-6 h-6 text-green-500 animate-spin" /></div>}>
       <PrintContent />
     </Suspense>
   );

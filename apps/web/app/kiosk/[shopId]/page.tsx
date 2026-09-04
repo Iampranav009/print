@@ -27,11 +27,10 @@ interface DbJob {
 }
 
 const TERMINAL_STATUSES: JobStatus[] = [
-  "done",
   "printed",
   "payment_failed",
   "print_failed",
-  "cancelled",
+  "refunded",
 ];
 
 export default function KioskPage({

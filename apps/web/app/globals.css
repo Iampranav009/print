@@ -1,8 +1,27 @@
 @import "tailwindcss";
 
 :root {
-  --background: #fafafa;
-  --foreground: #09090b;
+  /* Base */
+  --background: #ffffff;
+  --foreground: #111827;
+
+  /* Brand colors */
+  --color-green: #22c55e;
+  --color-green-dark: #16a34a;
+  --color-green-light: #dcfce7;
+  --color-yellow: #f59e0b;
+  --color-yellow-dark: #d97706;
+  --color-yellow-light: #fef3c7;
+  --color-amber: #f59e0b;
+
+  /* Neutrals */
+  --color-gray-50: #f9fafb;
+  --color-gray-100: #f3f4f6;
+  --color-gray-200: #e5e7eb;
+  --color-gray-400: #9ca3af;
+  --color-gray-500: #6b7280;
+  --color-gray-700: #374151;
+  --color-gray-900: #111827;
 }
 
 @theme inline {
@@ -10,16 +29,15 @@
   --color-foreground: var(--foreground);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #09090b;
-    --foreground: #fafafa;
-  }
-}
-
 body {
   background: var(--background);
   color: var(--foreground);
   font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
   -webkit-tap-highlight-color: transparent;
+  overscroll-behavior: none;
+}
+
+/* Smooth scrolling for inner scrollable areas */
+.scroll-smooth-ios {
+  -webkit-overflow-scrolling: touch;
 }

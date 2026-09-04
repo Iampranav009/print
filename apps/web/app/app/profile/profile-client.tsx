@@ -1,12 +1,10 @@
-"use client";
+﻿"use client";
 
 import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { createClient } from "@/lib/supabase/client";
-import { Toggle } from "@/components/Toggle";
-import { ToggleRow } from "@/components/ToggleRow";
-import { ChevronRight, User, AlertTriangle, Loader2 } from "lucide-react";
+import { ChevronRight, User, AlertTriangle, Loader2, Bell, CreditCard } from "lucide-react";
 
 interface ProfileProps {
   user: {
@@ -26,12 +24,34 @@ function formatPaise(p: number) {
   return `₹${(p / 100).toFixed(2)}`;
 }
 
+function Toggle({ checked, onChange, id }: { checked: boolean; onChange: () => void; id: string }) {
+  return (
+    <button
+      type="button"
+      role="switch"
+      id={id}
+      aria-checked={checked}
+      onClick={onChange}
+      style={{ touchAction: "manipulation" }}
+      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-green-500 ${
+        checked ? "bg-green-500" : "bg-gray-200"
+      }`}
+    >
+      <span
+        className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${
+          checked ? "translate-x-6" : "translate-x-1"
+        }`}
+      />
+    </button>
+  );
+}
+
 export function ProfileClient({ user, stats }: ProfileProps) {
   const router = useRouter();
-  const [emailNotifications, setEmailNotifications] = useState(true);
-  const [marketingEmails, setMarketingEmails] = useState(false);
+  const [emailNotif, setEmailNotif] = useState(true);
+  const [marketing, setMarketing] = useState(false);
   const [signingOut, setSigningOut] = useState(false);
-  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [showDelete, setShowDelete] = useState(false);
 
   const handleSignOut = async () => {
     try {
@@ -45,10 +65,15 @@ export function ProfileClient({ user, stats }: ProfileProps) {
   };
 
   return (
-    <div className="max-w-lg mx-auto px-4 py-6 space-y-6 pb-28">
-      {/* User Header */}
-      <div className="flex flex-col items-center text-center">
-        <div className="w-20 h-20 rounded-full overflow-hidden bg-zinc-100 border-2 border-white shadow-md flex items-center justify-center mb-3.5 relative">
+    <div className="min-h-full bg-white pb-28">
+      {/* Header */}
+      <div className="px-4 pt-4 pb-2">
+        <h1 className="text-xl font-bold text-gray-900">Profile</h1>
+      </div>
+
+      {/* User Card */}
+      <div className="mx-4 mt-2 bg-gradient-to-br from-green-500 to-green-600 rounded-3xl p-5 flex items-center gap-4">
+        <div className="w-16 h-16 rounded-2xl bg-white/20 overflow-hidden flex items-center justify-center flex-shrink-0 relative">
           {user.avatarUrl ? (
             <Image
               src={user.avatarUrl}
@@ -58,113 +83,97 @@ export function ProfileClient({ user, stats }: ProfileProps) {
               unoptimized
             />
           ) : (
-            <User className="w-10 h-10 text-zinc-400" />
+            <User className="w-8 h-8 text-white" />
           )}
         </div>
-        <h2 className="text-xl font-semibold text-zinc-900">
-          {user.fullName || "PrintBuddy Customer"}
-        </h2>
-        {user.email && (
-          <p className="text-xs text-zinc-500 mt-0.5">{user.email}</p>
-        )}
-      </div>
-
-      {/* Stats Row (3 tiles side-by-side) */}
-      <div className="grid grid-cols-3 gap-3">
-        {/* Total Prints */}
-        <div className="bg-white rounded-2xl p-3.5 border border-zinc-100 shadow-sm text-center">
-          <p className="text-[11px] font-semibold text-zinc-400 uppercase tracking-wider mb-1">
-            Prints
-          </p>
-          <p className="text-lg font-bold text-zinc-900 tabular-nums">
-            {stats.totalPrints}
-          </p>
-        </div>
-
-        {/* Total Spent */}
-        <div className="bg-white rounded-2xl p-3.5 border border-zinc-100 shadow-sm text-center">
-          <p className="text-[11px] font-semibold text-zinc-400 uppercase tracking-wider mb-1">
-            Total Spent
-          </p>
-          <p className="text-lg font-bold text-zinc-900 tabular-nums truncate">
-            {formatPaise(stats.totalSpentPaise)}
-          </p>
-        </div>
-
-        {/* Favourite Shop */}
-        <div className="bg-white rounded-2xl p-3.5 border border-zinc-100 shadow-sm text-center">
-          <p className="text-[11px] font-semibold text-zinc-400 uppercase tracking-wider mb-1">
-            Fav Shop
-          </p>
-          <p className="text-sm font-bold text-zinc-900 truncate mt-1">
-            {stats.favoriteShop || "—"}
-          </p>
+        <div className="flex-1 min-w-0">
+          <h2 className="text-white font-bold text-base truncate">
+            {user.fullName || "PrintBuddy Customer"}
+          </h2>
+          {user.email && (
+            <p className="text-white/80 text-xs mt-0.5 truncate">{user.email}</p>
+          )}
         </div>
       </div>
 
-      {/* Settings Section */}
-      <div className="space-y-2">
-        <p className="text-xs font-semibold text-zinc-400 uppercase tracking-wider px-1">
-          Preferences
-        </p>
-        <div className="bg-white rounded-2xl border border-zinc-100 shadow-sm px-4">
-          <ToggleRow label="Email notifications" id="email-notif-label">
-            <Toggle
-              checked={emailNotifications}
-              onChange={() => setEmailNotifications((v) => !v)}
-              aria-labelledby="email-notif-label"
-            />
-          </ToggleRow>
+      {/* Stats */}
+      <div className="grid grid-cols-3 gap-3 mx-4 mt-4">
+        <div className="bg-yellow-50 rounded-2xl p-3.5 text-center border border-yellow-100">
+          <p className="text-lg font-bold text-gray-900 tabular-nums">{stats.totalPrints}</p>
+          <p className="text-[10px] font-semibold text-yellow-700 uppercase tracking-wider mt-0.5">Prints</p>
+        </div>
+        <div className="bg-green-50 rounded-2xl p-3.5 text-center border border-green-100">
+          <p className="text-sm font-bold text-gray-900 tabular-nums truncate">{formatPaise(stats.totalSpentPaise)}</p>
+          <p className="text-[10px] font-semibold text-green-700 uppercase tracking-wider mt-0.5">Spent</p>
+        </div>
+        <div className="bg-gray-50 rounded-2xl p-3.5 text-center border border-gray-100">
+          <p className="text-sm font-bold text-gray-900 truncate mt-1">{stats.favoriteShop || "—"}</p>
+          <p className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider mt-0.5">Fav Shop</p>
+        </div>
+      </div>
 
-          <ToggleRow label="Marketing emails" id="marketing-notif-label">
-            <Toggle
-              checked={marketingEmails}
-              onChange={() => setMarketingEmails((v) => !v)}
-              aria-labelledby="marketing-notif-label"
-            />
-          </ToggleRow>
+      {/* Preferences */}
+      <div className="mx-4 mt-6">
+        <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2 px-1">Preferences</p>
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm px-4">
+          {/* Email notifications */}
+          <div className="flex items-center justify-between py-4 border-b border-gray-100">
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 rounded-xl bg-yellow-100 flex items-center justify-center">
+                <Bell className="w-4 h-4 text-yellow-600" />
+              </div>
+              <span className="text-sm font-medium text-gray-900">Email notifications</span>
+            </div>
+            <Toggle checked={emailNotif} onChange={() => setEmailNotif((v) => !v)} id="email-notif" />
+          </div>
 
-          {/* Payment methods stub */}
+          {/* Marketing */}
+          <div className="flex items-center justify-between py-4 border-b border-gray-100">
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 rounded-xl bg-yellow-100 flex items-center justify-center">
+                <Bell className="w-4 h-4 text-yellow-600" />
+              </div>
+              <span className="text-sm font-medium text-gray-900">Marketing emails</span>
+            </div>
+            <Toggle checked={marketing} onChange={() => setMarketing((v) => !v)} id="marketing-notif" />
+          </div>
+
+          {/* Payment methods */}
           <button
             type="button"
-            onClick={() => {
-              alert("Saved payment methods are managed via Razorpay during checkout.");
-            }}
+            onClick={() => alert("Saved payment methods are managed via Razorpay during checkout.")}
             style={{ touchAction: "manipulation" }}
-            className="w-full flex items-center justify-between py-4 text-sm font-medium text-zinc-900 hover:text-zinc-700 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600"
+            className="w-full flex items-center justify-between py-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-green-500 rounded-b-2xl"
           >
-            <span>Payment methods</span>
-            <ChevronRight className="w-4 h-4 text-zinc-400" />
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 rounded-xl bg-green-100 flex items-center justify-center">
+                <CreditCard className="w-4 h-4 text-green-600" />
+              </div>
+              <span className="text-sm font-medium text-gray-900">Payment methods</span>
+            </div>
+            <ChevronRight className="w-4 h-4 text-gray-400" />
           </button>
         </div>
       </div>
 
-      {/* Danger Zone */}
-      <div className="space-y-2 pt-2">
-        <p className="text-xs font-semibold text-zinc-400 uppercase tracking-wider px-1">
-          Account
-        </p>
-        <div className="bg-white rounded-2xl border border-zinc-100 shadow-sm p-4 space-y-3">
-          {/* Sign Out Button */}
+      {/* Account section */}
+      <div className="mx-4 mt-6">
+        <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2 px-1">Account</p>
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 space-y-3">
           <button
             type="button"
             onClick={handleSignOut}
             disabled={signingOut}
             style={{ touchAction: "manipulation" }}
-            className="w-full min-h-[48px] bg-zinc-100 hover:bg-zinc-200 active:bg-zinc-300 text-zinc-800 font-medium text-sm rounded-xl transition-colors flex items-center justify-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-500"
+            className="w-full min-h-[48px] bg-gray-100 hover:bg-gray-200 active:bg-gray-300 text-gray-800 font-medium text-sm rounded-xl transition-colors flex items-center justify-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-400"
           >
-            {signingOut ? (
-              <Loader2 className="w-4 h-4 animate-spin text-zinc-500" />
-            ) : (
-              "Sign out"
-            )}
+            {signingOut ? <Loader2 className="w-4 h-4 animate-spin text-gray-500" /> : "Sign out"}
           </button>
 
-          {/* Delete Account Button */}
-          {!showDeleteConfirm ? (
+          {!showDelete ? (
             <button
               type="button"
-              onClick={() => setShowDeleteConfirm(true)}
+              onClick={() => setShowDelete(true)}
               style={{ touchAction: "manipulation" }}
               className="w-full min-h-[48px] text-red-600 hover:bg-red-50 active:bg-red-100 font-medium text-sm rounded-xl transition-colors flex items-center justify-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500"
             >
@@ -176,9 +185,7 @@ export function ProfileClient({ user, stats }: ProfileProps) {
                 <AlertTriangle className="w-4 h-4 text-red-600" />
                 <span>Confirm account deletion?</span>
               </div>
-              <p>
-                This will delete your PrintBuddy account data permanently.
-              </p>
+              <p>This will delete your PrintBuddy account data permanently.</p>
               <div className="flex gap-2 pt-1">
                 <button
                   type="button"
@@ -190,9 +197,9 @@ export function ProfileClient({ user, stats }: ProfileProps) {
                 </button>
                 <button
                   type="button"
-                  onClick={() => setShowDeleteConfirm(false)}
+                  onClick={() => setShowDelete(false)}
                   style={{ touchAction: "manipulation" }}
-                  className="min-h-[38px] px-3.5 bg-white border border-zinc-200 text-zinc-700 rounded-lg font-medium text-xs hover:bg-zinc-50 transition-colors"
+                  className="min-h-[38px] px-3.5 bg-white border border-gray-200 text-gray-700 rounded-lg font-medium text-xs hover:bg-gray-50 transition-colors"
                 >
                   Cancel
                 </button>

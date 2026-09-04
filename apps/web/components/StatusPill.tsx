@@ -1,99 +1,44 @@
 import React from "react";
 
 export type JobStatus =
-  | "queued"
-  | "downloading"
-  | "printing"
-  | "awaiting_release"
-  | "released"
-  | "printed"
-  | "done"
-  | "payment_pending"
-  | "payment_failed"
-  | "print_failed"
-  | "cancelled"
+  | "created"
   | "priced"
   | "awaiting_payment"
   | "paid"
+  | "awaiting_release"
   | "dispatched"
+  | "printing"
+  | "printed"
+  | "cancelled"
+  | "expired"
+  | "payment_failed"
+  | "print_failed"
   | "refunded";
 
-interface StatusPillProps {
-  status: JobStatus | string;
-  className?: string;
-}
+const STATUS_CONFIG: Record<
+  JobStatus,
+  { label: string; className: string }
+> = {
+  created: { label: "New", className: "bg-gray-100 text-gray-600" },
+  priced: { label: "Priced", className: "bg-yellow-100 text-yellow-700" },
+  awaiting_payment: { label: "Pay Now", className: "bg-amber-100 text-amber-700" },
+  paid: { label: "Paid", className: "bg-green-100 text-green-700" },
+  awaiting_release: { label: "Ready", className: "bg-green-100 text-green-700" },
+  dispatched: { label: "Dispatched", className: "bg-green-100 text-green-700" },
+  printing: { label: "Printing", className: "bg-yellow-100 text-yellow-700" },
+  printed: { label: "Printed", className: "bg-green-100 text-green-700" },
+  cancelled: { label: "Cancelled", className: "bg-gray-100 text-gray-500" },
+  expired: { label: "Expired", className: "bg-gray-100 text-gray-500" },
+  payment_failed: { label: "Failed", className: "bg-red-100 text-red-600" },
+  print_failed: { label: "Error", className: "bg-red-100 text-red-600" },
+  refunded: { label: "Refunded", className: "bg-yellow-100 text-yellow-700" },
+};
 
-export function formatStatusLabel(status: string): string {
-  switch (status) {
-    case "awaiting_release":
-      return "Ready to collect";
-    case "payment_pending":
-    case "awaiting_payment":
-      return "Payment pending";
-    case "downloading":
-      return "Preparing";
-    case "printing":
-      return "Printing";
-    case "printed":
-    case "released":
-    case "done":
-      return "Completed";
-    case "payment_failed":
-      return "Payment failed";
-    case "print_failed":
-      return "Print failed";
-    case "cancelled":
-      return "Cancelled";
-    case "refunded":
-      return "Refunded";
-    case "queued":
-      return "Queued";
-    case "dispatched":
-      return "Dispatched";
-    case "paid":
-      return "Paid";
-    case "priced":
-      return "Priced";
-    default:
-      return status.replace(/_/g, " ");
-  }
-}
-
-export function StatusPill({ status, className = "" }: StatusPillProps) {
-  let colorStyles = "bg-zinc-100 text-zinc-700 border-zinc-200";
-
-  switch (status) {
-    case "done":
-    case "printed":
-    case "released":
-      colorStyles = "bg-emerald-50 text-emerald-700 border-emerald-200";
-      break;
-    case "payment_pending":
-    case "awaiting_payment":
-    case "awaiting_release":
-    case "printing":
-    case "downloading":
-    case "dispatched":
-      colorStyles = "bg-amber-50 text-amber-800 border-amber-200";
-      break;
-    case "payment_failed":
-    case "print_failed":
-      colorStyles = "bg-red-50 text-red-700 border-red-200";
-      break;
-    case "queued":
-    case "cancelled":
-    case "refunded":
-    case "priced":
-    default:
-      colorStyles = "bg-zinc-100 text-zinc-700 border-zinc-200";
-      break;
-  }
-
+export function StatusPill({ status }: { status: JobStatus }) {
+  const cfg = STATUS_CONFIG[status] ?? { label: status, className: "bg-gray-100 text-gray-600" };
   return (
-    <span
-      className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold border ${colorStyles} ${className}`}
-    >
-      {formatStatusLabel(status)}
+    <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold tracking-wide ${cfg.className}`}>
+      {cfg.label}
     </span>
   );
 }

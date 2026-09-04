@@ -1,10 +1,9 @@
-"use client";
+﻿"use client";
 
 import React, { useState } from "react";
 import Link from "next/link";
-import { FileText, Clock } from "lucide-react";
+import { FileText, Clock, ChevronRight, Printer } from "lucide-react";
 import { StatusPill, type JobStatus } from "@/components/StatusPill";
-import { EmptyState } from "@/components/EmptyState";
 import { formatRelativeTime } from "@/lib/date-utils";
 
 export interface Job {
@@ -34,65 +33,74 @@ function formatPaise(p: number) {
 export function HistoryClient({ initialJobs }: { initialJobs: Job[] }) {
   const [jobs] = useState<Job[]>(initialJobs);
 
-  if (!jobs || jobs.length === 0) {
-    return (
-      <div className="flex-1 flex flex-col justify-center min-h-[calc(100dvh-130px)] px-4 py-8">
-        <EmptyState
-          icon={<Clock className="w-8 h-8" />}
-          title="No prints yet"
-          subtitle="Your history will appear here after your first print"
-          actionText="Start a print"
-          actionHref="/app/scan"
-        />
-      </div>
-    );
-  }
-
   return (
-    <div className="max-w-lg mx-auto px-4 py-4 space-y-3 pb-24">
-      <div className="flex items-center justify-between pb-1">
-        <p className="text-xs font-semibold text-zinc-400 uppercase tracking-wider">
-          Past Prints ({jobs.length})
-        </p>
+    <div className="min-h-full bg-white pb-24">
+      {/* Header */}
+      <div className="px-4 pt-4 pb-2">
+        <h1 className="text-xl font-bold text-gray-900">Library</h1>
+        <p className="text-xs text-gray-500 mt-0.5">Your print history</p>
       </div>
 
-      <div className="space-y-2.5">
-        {jobs.map((job) => (
+      {jobs.length === 0 ? (
+        <div className="flex flex-col items-center justify-center py-20 px-6">
+          <div className="w-16 h-16 rounded-2xl bg-yellow-100 flex items-center justify-center mb-4">
+            <Clock className="w-8 h-8 text-yellow-500" />
+          </div>
+          <h3 className="text-base font-bold text-gray-900 text-center">No prints yet</h3>
+          <p className="text-sm text-gray-500 text-center mt-1 max-w-xs">
+            Your history will appear here after your first print
+          </p>
           <Link
-            key={job.id}
-            href={`/app/history/${job.id}`}
+            href="/app/scan"
             style={{ touchAction: "manipulation" }}
-            className="block bg-white hover:bg-zinc-50/80 active:bg-zinc-100 rounded-2xl p-4 border border-zinc-100 shadow-sm transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600"
+            className="mt-6 min-h-[48px] px-6 bg-green-500 hover:bg-green-600 active:bg-green-700 text-white font-semibold text-sm rounded-2xl flex items-center gap-2 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-green-500"
           >
-            <div className="flex items-center gap-3.5">
-              {/* File Icon */}
-              <div className="w-11 h-11 rounded-xl bg-zinc-100 flex items-center justify-center flex-shrink-0 text-zinc-500">
-                <FileText className="w-5 h-5" />
+            <Printer className="w-4 h-4" />
+            Start a print
+          </Link>
+        </div>
+      ) : (
+        <div className="px-4 space-y-2.5">
+          <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">
+            Past Prints ({jobs.length})
+          </p>
+          {jobs.map((job) => (
+            <Link
+              key={job.id}
+              href={`/app/history/${job.id}`}
+              style={{ touchAction: "manipulation" }}
+              className="flex items-center gap-3 bg-white hover:bg-gray-50 active:bg-gray-100 rounded-2xl p-4 border border-gray-100 shadow-sm transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-green-500"
+            >
+              {/* File icon */}
+              <div className="w-11 h-11 rounded-xl bg-yellow-100 flex items-center justify-center flex-shrink-0">
+                <FileText className="w-5 h-5 text-yellow-600" />
               </div>
 
-              {/* Middle Column */}
+              {/* Middle */}
               <div className="flex-1 min-w-0">
-                <h3 className="text-sm font-semibold text-zinc-900 truncate">
+                <h3 className="text-sm font-semibold text-gray-900 truncate">
                   {job.file_name || `Print #${job.id.slice(0, 6)}`}
                 </h3>
-                <div className="flex items-center gap-1.5 text-xs text-zinc-500 mt-0.5 truncate">
-                  <span>{job.shop_name}</span>
-                  <span>•</span>
-                  <span>{formatRelativeTime(job.created_at)}</span>
+                <div className="flex items-center gap-1 text-xs text-gray-500 mt-0.5">
+                  <span className="truncate">{job.shop_name}</span>
+                  <span>·</span>
+                  <span className="whitespace-nowrap">{formatRelativeTime(job.created_at)}</span>
                 </div>
               </div>
 
-              {/* Right Column */}
+              {/* Right */}
               <div className="flex flex-col items-end gap-1.5 flex-shrink-0">
                 <StatusPill status={job.status} />
-                <span className="text-sm font-bold tabular-nums text-zinc-900">
+                <span className="text-sm font-bold tabular-nums text-gray-900">
                   {formatPaise(job.price_paise)}
                 </span>
               </div>
-            </div>
-          </Link>
-        ))}
-      </div>
+
+              <ChevronRight className="w-4 h-4 text-gray-300 flex-shrink-0" />
+            </Link>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
