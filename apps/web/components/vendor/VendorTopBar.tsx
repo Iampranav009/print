@@ -1,6 +1,7 @@
 "use client";
 
 import { usePathname } from "next/navigation";
+import { PrinterStatusPill } from "./PrinterStatusPill";
 
 interface ShopBadgeProps {
   shopName: string | null;
@@ -11,6 +12,7 @@ const PAGE_TITLES: Record<string, string> = {
   "/vendor": "Overview",
   "/vendor/analytics": "Analytics",
   "/vendor/shop": "Shop",
+  "/vendor/printer": "Printer",
   "/vendor/location": "Printer Location",
   "/vendor/bank": "Bank Details",
   "/vendor/payouts": "Request Payout",
@@ -47,15 +49,19 @@ export function VendorTopBar({ shopName, shopStatus }: ShopBadgeProps) {
       {/* Page title — leave space for hamburger on mobile */}
       <h1 className="text-base font-semibold text-zinc-900 ml-12 lg:ml-0">{title}</h1>
 
-      {/* Shop badge */}
-      {shopName && (
-        <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-zinc-50 border border-zinc-100">
-          <StatusDot status={shopStatus} />
-          <span className="text-sm font-medium text-zinc-700 max-w-[160px] truncate">
-            {shopName}
-          </span>
-        </div>
-      )}
+      {/* Right side items */}
+      <div className="flex items-center gap-3">
+        <PrinterStatusPill isLink={true} />
+
+        {shopName && (
+          <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-zinc-50 border border-zinc-100">
+            <StatusDot status={shopStatus} />
+            <span className="text-sm font-medium text-zinc-700 max-w-[160px] truncate">
+              {shopName}
+            </span>
+          </div>
+        )}
+      </div>
     </header>
   );
 }
