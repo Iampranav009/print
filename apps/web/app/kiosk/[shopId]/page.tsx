@@ -86,7 +86,13 @@ export default function KioskPage({
     return raw.replace(/^[0-9]+_/, "");
   };
 
-  // Recompute active and recent jobs from an array of jobs
+  // Recompute active and recent jobs from an array of jobs.
+  //
+  // Sticky-state rule (user requirement): once the kiosk is displaying an
+  // active job, only OVERWRITE it — never CLEAR it — from a DB refresh.
+  // Clearing happens only when a new upload:start event arrives, i.e. a
+  // fresh customer session begins. This is what makes "Print complete" and
+  // "Payment rejected" stay on screen instead of flipping back to the QR.
   const updateJobStates = useCallback((allJobs: DbJob[]) => {
     const formattedJobs: KioskJob[] = allJobs.map((j) => ({
       id: j.id,
@@ -99,11 +105,23 @@ export default function KioskPage({
       updated_at: j.updated_at,
     }));
 
-    // Active job: newest job whose status is NOT terminal
-    const active = formattedJobs.find(
+    // Prefer a live non-terminal job (that means work is in progress).
+    const nonTerminal = formattedJobs.find(
       (j) => !TERMINAL_STATUSES.includes(j.status)
     );
-    setActiveJob(active || null);
+
+    setActiveJob((prev) => {
+      // 1. Fresh non-terminal job takes over immediately.
+      if (nonTerminal) return nonTerminal;
+      // 2. No live work in the DB and we're already showing something:
+      //    keep showing it. Upload:start will clear this when a new
+      //    session begins.
+      if (prev) return prev;
+      // 3. Nothing in flight, nothing showing → try to hydrate from the
+      //    newest terminal row (e.g. server restart mid-session) so the
+      //    operator sees "Print complete" instead of the QR.
+      return formattedJobs[0] ?? null;
+    });
 
     // Recent jobs: up to 3 terminal completed jobs
     const completed = formattedJobs
@@ -205,6 +223,11 @@ export default function KioskPage({
 
         switch (evt.type) {
           case "upload:start":
+            // A new customer session begins here — this is the ONLY moment
+            // we clear a sticky terminal state (Print complete / Payment
+            // rejected / Print failed) so the kiosk resets for the new one.
+            setActiveJob(null);
+            setRetryPrompt(null);
             setLiveActivity({
               kind: "uploading",
               fileName: evt.fileName,
@@ -222,15 +245,15 @@ export default function KioskPage({
             break;
 
           case "upload:done":
+            // Hold the "100% complete" state until checkout begins or the
+            // job transitions. NO auto-expiry — user must not see the QR
+            // reappear mid-flow.
             setLiveActivity((prev) =>
               prev && prev.kind === "uploading"
                 ? { ...prev, percent: 100, fileName: evt.fileName }
                 : { kind: "uploading", fileName: evt.fileName, fileCount: 1, percent: 100 }
             );
             showToast("success", `Upload complete — ${evt.pageCount} page${evt.pageCount !== 1 ? "s" : ""}`);
-            // Give the "100% complete" bar a moment, then let the checkout
-            // event or DB status take over.
-            liveExpiryRef.current = setTimeout(() => setLiveActivity(null), 4000);
             break;
 
           case "checkout:opened":
@@ -242,10 +265,8 @@ export default function KioskPage({
             break;
 
           case "checkout:dismissed":
-            // Only clear if we're still showing checkout for this session.
-            setLiveActivity((prev) =>
-              prev && prev.kind === "checkout" ? null : prev
-            );
+            // Keep the "Waiting for payment…" up — user may reopen Razorpay.
+            // Toast is enough to signal what happened. Don't reveal QR.
             showToast("info", "Payment window closed");
             break;
 
@@ -325,11 +346,8 @@ export default function KioskPage({
             setLiveActivity(null);
             showToast("success", "Print complete");
             fetchLatestJobs();
-            // Return to idle a moment after so the QR reappears.
-            setTimeout(() => {
-              setActiveJob(null);
-              fetchLatestJobs();
-            }, 6000);
+            // No auto-return-to-idle. "Print complete" stays on screen
+            // until the next upload:start event begins a new session.
             break;
           }
 
@@ -536,16 +554,13 @@ export default function KioskPage({
             </p>
             <button
               type="button"
-              onClick={() => {
-                setRetryPrompt(null);
-                setActiveJob(null);
-              }}
+              onClick={() => setRetryPrompt(null)}
               className="w-full min-h-[52px] rounded-2xl bg-zinc-900 hover:bg-zinc-800 text-white font-semibold text-base transition-colors"
             >
               Dismiss
             </button>
             <p className="text-xs text-zinc-400 mt-4">
-              This alert clears when you tap Dismiss, or when a new session starts.
+              The rejection stays on screen. A new scan will start a fresh session.
             </p>
           </div>
         </div>
