@@ -77,10 +77,30 @@ export async function middleware(req: NextRequest) {
     return createRedirect(callbackUrl);
   }
 
+  // Vendor login route handling
+  const isVendorLogin = pathname === "/vendor/login" || pathname.startsWith("/vendor/login");
+  if (isVendorLogin) {
+    if (user) {
+      const next = req.nextUrl.searchParams.get("next") || "/vendor";
+      const redirectUrl = req.nextUrl.clone();
+      redirectUrl.pathname = next.startsWith("/") ? next.split("?")[0] : "/vendor";
+      redirectUrl.search = next.includes("?") ? "?" + next.split("?")[1] : "";
+      return createRedirect(redirectUrl);
+    }
+    return res;
+  }
+
   // Customer app + vendor portal + admin dashboard all need a signed-in
   // user. Middleware just checks presence — role/admin allowlist is
   // enforced by the layouts and API routes themselves.
-  const AUTHED_ROOTS = ["/app", "/vendor", "/dashboard"];
+  if ((pathname === "/vendor" || pathname.startsWith("/vendor/")) && !user) {
+    const vendorLoginUrl = req.nextUrl.clone();
+    vendorLoginUrl.pathname = "/vendor/login";
+    vendorLoginUrl.searchParams.set("next", pathname + req.nextUrl.search);
+    return createRedirect(vendorLoginUrl);
+  }
+
+  const AUTHED_ROOTS = ["/app", "/dashboard"];
   if (AUTHED_ROOTS.some((p) => pathname === p || pathname.startsWith(p + "/")) && !user) {
     const loginUrl = req.nextUrl.clone();
     loginUrl.pathname = "/login";

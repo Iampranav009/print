@@ -26,6 +26,14 @@ export default async function VendorLayout({
     "";
   const referer = headersList.get("referer") ?? "";
 
+  const isVendorLogin =
+    pathname.includes("/vendor/login") ||
+    referer.includes("/vendor/login");
+
+  if (isVendorLogin) {
+    return <>{children}</>;
+  }
+
   const isOnboardingOrClaim =
     pathname.includes("/vendor/onboarding") ||
     pathname.includes("/vendor/claim") ||
@@ -39,7 +47,7 @@ export default async function VendorLayout({
 
   if (!user) {
     redirect(
-      `/login?next=${encodeURIComponent(
+      `/vendor/login?next=${encodeURIComponent(
         pathname.startsWith("/vendor") ? pathname : "/vendor"
       )}`
     );

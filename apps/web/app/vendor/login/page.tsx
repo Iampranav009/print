@@ -2,13 +2,13 @@
 
 import React, { Suspense, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { Printer } from "lucide-react";
+import { Store } from "lucide-react";
 import { AuthComponent } from "@/components/ui/sign-up";
 import Link from "next/link";
 
-function LoginContent() {
+function VendorLoginContent() {
   const searchParams = useSearchParams();
-  const nextParam = searchParams?.get("next") || "/app/print";
+  const nextParam = searchParams?.get("next") || "/vendor";
   const errorParam = searchParams?.get("error");
   const [errorMessage, setErrorMessage] = useState<string | undefined>();
 
@@ -24,18 +24,18 @@ function LoginContent() {
     }
   }, [errorParam]);
 
-  const CustomerLogo = () => (
-    <div className="w-8 h-8 rounded-xl bg-green-600 flex items-center justify-center shadow-md shadow-green-600/30">
-      <Printer className="w-4 h-4 text-white" />
+  const VendorLogo = () => (
+    <div className="w-8 h-8 rounded-xl bg-indigo-600 flex items-center justify-center shadow-md shadow-indigo-600/30">
+      <Store className="w-4 h-4 text-white" />
     </div>
   );
 
   return (
     <AuthComponent
-      logo={<CustomerLogo />}
-      brandName="PrintBuddy"
-      title="PrintBuddy"
-      subtitle="Self-serve printing · Scan · Pay · Print"
+      logo={<VendorLogo />}
+      brandName="PrintBuddy Vendor"
+      title="Vendor Portal"
+      subtitle="Manage your shop, live queue, and earnings"
       nextUrl={nextParam}
       initialMode="signin"
       footerExtra={
@@ -44,12 +44,12 @@ function LoginContent() {
             <p className="text-xs text-destructive mb-1 font-medium">{errorMessage}</p>
           )}
           <p className="text-xs text-muted-foreground">
-            Are you a shop owner?{" "}
+            Looking for customer printing?{" "}
             <Link
-              href={`/vendor/login${nextParam.startsWith("/vendor") ? `?next=${encodeURIComponent(nextParam)}` : ""}`}
+              href="/login"
               className="font-semibold text-foreground underline hover:text-primary transition-colors cursor-pointer"
             >
-              Vendor sign in
+              Customer sign in
             </Link>
           </p>
         </div>
@@ -58,16 +58,16 @@ function LoginContent() {
   );
 }
 
-export default function LoginPage() {
+export default function VendorLoginPage() {
   return (
     <Suspense
       fallback={
         <div className="min-h-screen w-screen flex items-center justify-center bg-background">
-          <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+          <div className="w-8 h-8 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin" />
         </div>
       }
     >
-      <LoginContent />
+      <VendorLoginContent />
     </Suspense>
   );
 }
