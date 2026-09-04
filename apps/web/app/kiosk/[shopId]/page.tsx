@@ -1,11 +1,16 @@
 "use client";
 
-import React, { useEffect, useState, useCallback, use } from "react";
+import React, { useEffect, useState, useCallback, useRef, use } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { KioskQR } from "@/components/KioskQR";
-import { KioskStatus, type KioskJob } from "@/components/KioskStatus";
+import { KioskStatus, type KioskJob, type KioskLiveActivity } from "@/components/KioskStatus";
 import { type JobStatus } from "@/components/StatusPill";
-import { Loader2, AlertCircle } from "lucide-react";
+import { Loader2, AlertCircle, CheckCircle2, XCircle } from "lucide-react";
+import {
+  KIOSK_BROADCAST_EVENT,
+  kioskChannelName,
+  type KioskEvent,
+} from "@/lib/kiosk-events";
 
 interface ShopDetails {
   id: string;
@@ -47,6 +52,25 @@ export default function KioskPage({
 
   const [activeJob, setActiveJob] = useState<KioskJob | null>(null);
   const [recentJobs, setRecentJobs] = useState<KioskJob[]>([]);
+
+  // Transient event from the customer's mobile session, arriving via
+  // Supabase Realtime broadcast (WebSocket). Overrides the DB job for
+  // the hero slot while it's fresh (< 60s old).
+  const [liveActivity, setLiveActivity] = useState<KioskLiveActivity | null>(null);
+  const liveExpiryRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const seenJobStatusesRef = useRef<Map<string, JobStatus>>(new Map());
+
+  // Toast notifications for state transitions the operator should notice.
+  const [toast, setToast] = useState<{
+    kind: "success" | "error" | "info";
+    message: string;
+  } | null>(null);
+  const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const showToast = useCallback((kind: "success" | "error" | "info", message: string) => {
+    setToast({ kind, message });
+    if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
+    toastTimerRef.current = setTimeout(() => setToast(null), 5000);
+  }, []);
 
   // Helper to extract clean file name
   const extractFileName = (filePath?: string | null) => {
@@ -148,8 +172,12 @@ export default function KioskPage({
       }
     };
 
+    // Broadcast + DB changes ride on the same channel so we open only one
+    // WebSocket. The mobile client posts { type: KIOSK_BROADCAST_EVENT }
+    // events from lib/kiosk-events; DB status changes come through the
+    // postgres_changes listener.
     const channel = supabase
-      .channel(`kiosk:${shopId}`)
+      .channel(kioskChannelName(shopId), { config: { broadcast: { self: false } } })
       .on(
         "postgres_changes",
         {
@@ -162,6 +190,60 @@ export default function KioskPage({
           fetchLatestJobs();
         }
       )
+      .on("broadcast", { event: KIOSK_BROADCAST_EVENT }, (msg) => {
+        const evt = msg.payload as KioskEvent | undefined;
+        if (!evt) return;
+
+        // Any live event clears the previous expiry timer.
+        if (liveExpiryRef.current) clearTimeout(liveExpiryRef.current);
+
+        switch (evt.type) {
+          case "upload:start":
+            setLiveActivity({
+              kind: "uploading",
+              fileName: evt.fileName,
+              fileCount: evt.fileCount,
+              percent: 0,
+            });
+            break;
+
+          case "upload:progress":
+            setLiveActivity((prev) =>
+              prev && prev.kind === "uploading"
+                ? { ...prev, percent: evt.percent }
+                : { kind: "uploading", fileName: "Document", fileCount: 1, percent: evt.percent }
+            );
+            break;
+
+          case "upload:done":
+            setLiveActivity((prev) =>
+              prev && prev.kind === "uploading"
+                ? { ...prev, percent: 100, fileName: evt.fileName }
+                : { kind: "uploading", fileName: evt.fileName, fileCount: 1, percent: 100 }
+            );
+            showToast("success", `Upload complete — ${evt.pageCount} page${evt.pageCount !== 1 ? "s" : ""}`);
+            // Give the "100% complete" bar a moment, then let the checkout
+            // event or DB status take over.
+            liveExpiryRef.current = setTimeout(() => setLiveActivity(null), 4000);
+            break;
+
+          case "checkout:opened":
+            setLiveActivity({
+              kind: "checkout",
+              fileName: evt.fileName,
+              amountPaise: evt.amountPaise,
+            });
+            break;
+
+          case "checkout:dismissed":
+            // Only clear if we're still showing checkout for this session.
+            setLiveActivity((prev) =>
+              prev && prev.kind === "checkout" ? null : prev
+            );
+            showToast("info", "Payment window closed");
+            break;
+        }
+      })
       .subscribe();
 
     // Fallback polling interval every 12 seconds
@@ -170,8 +252,46 @@ export default function KioskPage({
     return () => {
       supabase.removeChannel(channel);
       clearInterval(interval);
+      if (liveExpiryRef.current) clearTimeout(liveExpiryRef.current);
     };
-  }, [shopId, updateJobStates]);
+  }, [shopId, updateJobStates, showToast]);
+
+  // Notify on job status transitions the operator should notice: payment
+  // captured (job appears with paid+ status), print done, or a failure.
+  useEffect(() => {
+    if (!activeJob) return;
+    const prev = seenJobStatusesRef.current.get(activeJob.id);
+    if (prev === activeJob.status) return;
+    seenJobStatusesRef.current.set(activeJob.id, activeJob.status);
+
+    if (!prev) {
+      // First time we've seen this job — likely just came in from the webhook.
+      if (["paid", "dispatched", "printing"].includes(activeJob.status)) {
+        showToast("success", "Payment received");
+        // The live checkout overlay is no longer relevant.
+        setLiveActivity(null);
+      }
+      return;
+    }
+
+    switch (activeJob.status) {
+      case "printing":
+        showToast("info", "Printing now…");
+        break;
+      case "awaiting_release":
+        showToast("success", `Ready to collect — code ${activeJob.release_code ?? ""}`);
+        break;
+      case "printed":
+        showToast("success", "Print complete");
+        break;
+      case "payment_failed":
+        showToast("error", "Payment failed");
+        break;
+      case "print_failed":
+        showToast("error", "Print failed");
+        break;
+    }
+  }, [activeJob, showToast]);
 
   if (loading) {
     return (
@@ -204,7 +324,7 @@ export default function KioskPage({
   }
 
   return (
-    <main className="min-h-dvh bg-[#0F172A] text-white flex flex-col lg:flex-row overflow-x-hidden">
+    <main className="min-h-dvh bg-[#0F172A] text-white flex flex-col lg:flex-row overflow-x-hidden relative">
       {/* Left Half — QR Block (Landscape 50%, or Stacked Top in Portrait) */}
       <section
         aria-label="Shop QR Code"
@@ -225,8 +345,37 @@ export default function KioskPage({
         <KioskStatus
           activeJob={activeJob}
           recentJobs={recentJobs}
+          liveActivity={liveActivity}
         />
       </section>
+
+      {/* Toast overlay — shown for 5s on important state transitions */}
+      {toast && (
+        <div
+          role="status"
+          aria-live="polite"
+          className="fixed top-6 left-1/2 -translate-x-1/2 z-50 max-w-md w-[92%] pointer-events-none"
+        >
+          <div
+            className={`flex items-center gap-3 rounded-2xl px-4 py-3 shadow-2xl border backdrop-blur ${
+              toast.kind === "success"
+                ? "bg-emerald-500/15 border-emerald-400/40 text-emerald-100"
+                : toast.kind === "error"
+                ? "bg-red-500/15 border-red-400/40 text-red-100"
+                : "bg-blue-500/15 border-blue-400/40 text-blue-100"
+            }`}
+          >
+            {toast.kind === "success" ? (
+              <CheckCircle2 className="w-5 h-5 flex-shrink-0" />
+            ) : toast.kind === "error" ? (
+              <XCircle className="w-5 h-5 flex-shrink-0" />
+            ) : (
+              <Loader2 className="w-5 h-5 flex-shrink-0" />
+            )}
+            <span className="text-sm font-semibold">{toast.message}</span>
+          </div>
+        </div>
+      )}
     </main>
   );
 }

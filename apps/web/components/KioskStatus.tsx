@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { Clock, Loader2, Printer, CheckCircle2 } from "lucide-react";
+import { Clock, Loader2, Printer, CheckCircle2, Upload, CreditCard } from "lucide-react";
 import { StatusPill, type JobStatus } from "./StatusPill";
 import { formatRelativeTime } from "@/lib/date-utils";
 
@@ -17,12 +17,107 @@ export interface KioskJob {
   updated_at?: string;
 }
 
+// A transient client-side event that beats out the DB job for the hero slot.
+// Broadcast from the mobile customer's session while they're uploading or
+// paying — before the DB has any status yet.
+export type KioskLiveActivity =
+  | { kind: "uploading"; fileName: string; fileCount: number; percent: number }
+  | { kind: "checkout"; fileName: string; amountPaise: number };
+
 interface KioskStatusProps {
   activeJob: KioskJob | null;
   recentJobs: KioskJob[];
+  liveActivity?: KioskLiveActivity | null;
 }
 
-export function KioskStatus({ activeJob, recentJobs }: KioskStatusProps) {
+function formatPaise(p: number) {
+  return `₹${(p / 100).toFixed(2)}`;
+}
+
+export function KioskStatus({ activeJob, recentJobs, liveActivity }: KioskStatusProps) {
+  // A live upload or checkout beats the DB job for the hero slot — the DB
+  // job doesn't exist yet during upload, and during checkout the job
+  // status may still be `priced` before the webhook fires.
+  if (liveActivity) {
+    return (
+      <div className="flex flex-col justify-between h-full p-8 lg:p-12 select-none">
+        <div className="flex-1 flex flex-col justify-center space-y-6">
+          {liveActivity.kind === "uploading" ? (
+            <>
+              <div className="w-24 h-24 rounded-full bg-blue-500/10 border border-blue-500/20 flex items-center justify-center">
+                <Upload className="w-12 h-12 text-blue-400" />
+              </div>
+              <div>
+                <h2 className="text-3xl lg:text-4xl font-bold text-white tracking-tight">
+                  Uploading your file…
+                </h2>
+                <p className="text-lg lg:text-xl text-zinc-400 mt-2 max-w-lg">
+                  {liveActivity.fileCount > 1
+                    ? `Sending ${liveActivity.fileCount} files from your phone`
+                    : "Sending from your phone"}
+                </p>
+              </div>
+              <div className="max-w-md">
+                <div className="h-2 bg-zinc-800 rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-blue-500 transition-all duration-200"
+                    style={{ width: `${Math.min(100, Math.max(0, liveActivity.percent))}%` }}
+                  />
+                </div>
+                <p className="text-sm text-zinc-500 mt-2 tabular-nums">
+                  {liveActivity.percent}% · {liveActivity.fileName}
+                </p>
+              </div>
+            </>
+          ) : (
+            <>
+              <div className="w-24 h-24 rounded-full bg-amber-500/10 border border-amber-500/20 flex items-center justify-center">
+                <CreditCard className="w-12 h-12 text-amber-400" />
+              </div>
+              <div>
+                <h2 className="text-3xl lg:text-4xl font-bold text-white tracking-tight">
+                  Waiting for payment…
+                </h2>
+                <p className="text-lg lg:text-xl text-zinc-400 mt-2 max-w-lg">
+                  Customer is completing payment on their phone.
+                </p>
+              </div>
+              <div className="text-4xl font-black tabular-nums text-white">
+                {formatPaise(liveActivity.amountPaise)}
+              </div>
+              <p className="text-sm text-zinc-500 truncate">{liveActivity.fileName}</p>
+            </>
+          )}
+        </div>
+
+        {/* Recent Activity Strip */}
+        {recentJobs.length > 0 && (
+          <div className="mt-8 pt-6 border-t border-zinc-800/80 opacity-70">
+            <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-3">
+              Recent Activity
+            </p>
+            <div className="flex flex-wrap gap-3">
+              {recentJobs.slice(0, 3).map((j) => (
+                <div
+                  key={j.id}
+                  className="flex items-center gap-2.5 bg-zinc-900/80 border border-zinc-800 rounded-xl px-3.5 py-2 text-sm"
+                >
+                  <span className="font-medium text-zinc-300 truncate max-w-[140px]">
+                    {j.file_name || `Job #${j.id.slice(0, 6)}`}
+                  </span>
+                  <StatusPill status={j.status} />
+                  <span className="text-xs text-zinc-500">
+                    {formatRelativeTime(j.created_at)}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  }
+
   // If idle
   if (!activeJob) {
     return (

@@ -4,7 +4,15 @@ import React, { Suspense, useState, useEffect, useRef, useCallback } from "react
 import { useSearchParams, useRouter } from "next/navigation";
 import type { PrinterCapabilities, PriceBreakdown } from "@printbuddy/shared";
 import { PDFDocument } from "pdf-lib";
+import type { RealtimeChannel } from "@supabase/supabase-js";
 import { DocumentPreview } from "@/components/DocumentPreview";
+import { createClient as createBrowserSupabase } from "@/lib/supabase/client";
+import {
+  KIOSK_BROADCAST_EVENT,
+  kioskChannelName,
+  newSessionId,
+  type KioskEvent,
+} from "@/lib/kiosk-events";
 import {
   ArrowLeft,
   Plus,
@@ -269,6 +277,37 @@ function PrintContent() {
   const [paying, setPaying] = useState(false);
   const [payError, setPayError] = useState<string | null>(null);
 
+  // Live broadcast channel to the matching kiosk screen. One session per
+  // page load; regenerated when the user picks a fresh file so old kiosk
+  // state doesn't linger.
+  const sessionIdRef = useRef<string>(newSessionId());
+  const broadcastChannelRef = useRef<RealtimeChannel | null>(null);
+  const lastProgressBroadcastRef = useRef<number>(0);
+
+  useEffect(() => {
+    if (!shopId) return;
+    const supabase = createBrowserSupabase();
+    const channel = supabase.channel(kioskChannelName(shopId), {
+      config: { broadcast: { self: false } },
+    });
+    channel.subscribe();
+    broadcastChannelRef.current = channel;
+    return () => {
+      channel.unsubscribe();
+      broadcastChannelRef.current = null;
+    };
+  }, [shopId]);
+
+  const broadcast = useCallback((event: KioskEvent) => {
+    const channel = broadcastChannelRef.current;
+    if (!channel) return;
+    channel
+      .send({ type: "broadcast", event: KIOSK_BROADCAST_EVENT, payload: event })
+      .catch(() => {
+        // silent — the kiosk display is a best-effort mirror
+      });
+  }, []);
+
   // Fetch shop
   useEffect(() => {
     const currentShopId = shopId;
@@ -402,6 +441,17 @@ function PrintContent() {
     setUploadProgress(0);
     setShowUploadSheet(true);
 
+    // New upload = new customer session on the kiosk view.
+    sessionIdRef.current = newSessionId();
+    lastProgressBroadcastRef.current = 0;
+    broadcast({
+      type: "upload:start",
+      sessionId: sessionIdRef.current,
+      fileName: rawInputs[0].name,
+      fileCount: rawInputs.length,
+      sentAt: new Date().toISOString(),
+    });
+
     try {
       // If more than one file OR the single file is an image, produce a
       // merged PDF so the server sees a single, printable document.
@@ -430,7 +480,20 @@ function PrintContent() {
         mime: string;
       };
 
-      await uploadToSignedUrl(signedUrl, uploadableFile, setUploadProgress);
+      await uploadToSignedUrl(signedUrl, uploadableFile, (pct) => {
+        setUploadProgress(pct);
+        // Throttle broadcasts — only every 5% (and always at 100%) so we
+        // don't spam the kiosk with hundreds of tiny updates.
+        if (pct - lastProgressBroadcastRef.current >= 5 || pct === 100) {
+          lastProgressBroadcastRef.current = pct;
+          broadcast({
+            type: "upload:progress",
+            sessionId: sessionIdRef.current,
+            percent: pct,
+            sentAt: new Date().toISOString(),
+          });
+        }
+      });
 
       // Get page count
       const countRes = await fetch("/api/uploads/page-count", {
@@ -444,6 +507,15 @@ function PrintContent() {
       setFileState({ file: uploadableFile, path, mime, totalPages: pageCount });
       setUploadState("done");
       setUploadProgress(100);
+
+      broadcast({
+        type: "upload:done",
+        sessionId: sessionIdRef.current,
+        fileName: uploadableFile.name,
+        pageCount,
+        sentAt: new Date().toISOString(),
+      });
+
       setTimeout(() => setShowUploadSheet(false), 1500);
     } catch (err: unknown) {
       setUploadState("error");
@@ -505,17 +577,35 @@ function PrintContent() {
         description: fileState.file.name,
         prefill: {},
         theme: { color: "#22c55e" },
+        modal: {
+          ondismiss: () => {
+            broadcast({
+              type: "checkout:dismissed",
+              sessionId: sessionIdRef.current,
+              sentAt: new Date().toISOString(),
+            });
+          },
+        },
         handler: () => {
           router.push(`/app/history/${jobId}`);
         },
       });
+
+      broadcast({
+        type: "checkout:opened",
+        sessionId: sessionIdRef.current,
+        amountPaise: amount,
+        fileName: fileState.file.name,
+        sentAt: new Date().toISOString(),
+      });
+
       rzp.open();
     } catch (err: unknown) {
       setPayError(err instanceof Error ? err.message : "Payment failed");
     } finally {
       setPaying(false);
     }
-  }, [fileState, config, rawPriceResult, shopId, shopData, router]);
+  }, [fileState, config, rawPriceResult, shopId, shopData, router, broadcast]);
 
   const caps = shopData?.capabilities ?? null;
   const hasFile = fileState !== null;
