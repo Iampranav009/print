@@ -14,6 +14,8 @@ import {
   ChevronDown,
   X,
   Menu,
+  Wallet,
+  Lock,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 
@@ -21,14 +23,24 @@ interface VendorSidebarProps {
   userName: string | null;
   userEmail: string | null;
   userAvatar: string | null;
+  payoutsUnlocked: boolean;
 }
 
-const NAV_ITEMS = [
+interface NavItem {
+  href: string;
+  label: string;
+  icon: React.ElementType;
+  exact?: boolean;
+  requiresBankVerified?: boolean;
+}
+
+const NAV_ITEMS: NavItem[] = [
   { href: "/vendor", label: "Overview", icon: LayoutDashboard, exact: true },
   { href: "/vendor/analytics", label: "Analytics", icon: BarChart3 },
   { href: "/vendor/shop", label: "Shop", icon: Store },
   { href: "/vendor/location", label: "Printer location", icon: MapPin },
   { href: "/vendor/bank", label: "Bank details", icon: Landmark },
+  { href: "/vendor/payouts", label: "Request payout", icon: Wallet, requiresBankVerified: true },
   { href: "/vendor/profile", label: "Profile", icon: User },
 ];
 
@@ -38,15 +50,33 @@ function NavLink({
   icon: Icon,
   exact,
   onClick,
+  locked,
+  lockedTooltip,
 }: {
   href: string;
   label: string;
   icon: React.ElementType;
   exact?: boolean;
   onClick?: () => void;
+  locked?: boolean;
+  lockedTooltip?: string;
 }) {
   const pathname = usePathname();
   const isActive = exact ? pathname === href : pathname === href || pathname.startsWith(href + "/");
+
+  if (locked) {
+    return (
+      <div
+        aria-disabled="true"
+        title={lockedTooltip}
+        className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-zinc-400 cursor-not-allowed select-none"
+      >
+        <Icon className="w-4 h-4 shrink-0" />
+        <span className="flex-1">{label}</span>
+        <Lock className="w-3.5 h-3.5 shrink-0" aria-label="Locked" />
+      </div>
+    );
+  }
 
   return (
     <Link
@@ -69,6 +99,7 @@ function SidebarContent({
   userName,
   userEmail,
   userAvatar,
+  payoutsUnlocked,
   onNavClick,
 }: VendorSidebarProps & { onNavClick?: () => void }) {
   const router = useRouter();
@@ -94,9 +125,23 @@ function SidebarContent({
 
       {/* Nav */}
       <nav className="flex-1 px-3 space-y-0.5 overflow-y-auto" aria-label="Vendor navigation">
-        {NAV_ITEMS.map((item) => (
-          <NavLink key={item.href} {...item} onClick={onNavClick} />
-        ))}
+        {NAV_ITEMS.map((item) => {
+          const locked = !!item.requiresBankVerified && !payoutsUnlocked;
+          return (
+            <NavLink
+              key={item.href}
+              href={item.href}
+              label={item.label}
+              icon={item.icon}
+              exact={item.exact}
+              onClick={onNavClick}
+              locked={locked}
+              lockedTooltip={
+                locked ? "Unlocks once the admin verifies your bank details" : undefined
+              }
+            />
+          );
+        })}
       </nav>
 
       {/* User section */}
@@ -156,7 +201,7 @@ export function VendorSidebar(props: VendorSidebarProps) {
   return (
     <>
       {/* Desktop sidebar */}
-      <aside className="hidden lg:flex flex-col w-60 shrink-0">
+      <aside className="hidden lg:flex flex-col w-60 shrink-0 sticky top-0 h-screen">
         <SidebarContent {...props} />
       </aside>
 
