@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import React, { useState, useEffect } from "react";
 import { Loader2, AlertCircle, Printer } from "lucide-react";
@@ -7,9 +7,15 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const [nextParam, setNextParam] = useState<string>("/app/print");
+
   useEffect(() => {
     if (typeof window !== "undefined") {
       const params = new URLSearchParams(window.location.search);
+      const next = params.get("next");
+      if (next) {
+        setNextParam(next);
+      }
       const err = params.get("error");
       if (err) {
         if (err === "oauth_init_failed") {
@@ -67,7 +73,7 @@ export default function LoginPage() {
 
         {/* Google login */}
         <a
-          href="/api/auth/google"
+          href={`/api/auth/google?next=${encodeURIComponent(nextParam)}`}
           onClick={() => setLoading(true)}
           aria-label="Continue with Google"
           className="w-full min-h-[56px] flex items-center justify-center gap-3 bg-white hover:bg-gray-50 active:bg-gray-100 text-gray-800 font-semibold text-sm rounded-2xl border border-gray-200 shadow-sm transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-green-500 cursor-pointer mb-4"

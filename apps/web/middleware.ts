@@ -19,7 +19,15 @@ export async function middleware(req: NextRequest) {
   const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
   if (!url || !key) return res;
 
+  const ONE_YEAR = 60 * 60 * 24 * 365;
+
   const supabase = createServerClient(url, key, {
+    cookieOptions: {
+      maxAge: ONE_YEAR,
+      sameSite: "lax",
+      path: "/",
+      secure: process.env.NODE_ENV === "production",
+    },
     cookies: {
       getAll() {
         return req.cookies.getAll();
@@ -34,9 +42,10 @@ export async function middleware(req: NextRequest) {
         cookiesToSet.forEach(({ name, value, options }) =>
           res.cookies.set(name, value, {
             ...options,
-            maxAge: options?.maxAge ?? 60 * 60 * 24 * 365, // 1 year remember me
-            sameSite: "lax",
-            path: "/",
+            maxAge: options?.maxAge ?? ONE_YEAR,
+            sameSite: options?.sameSite ?? "lax",
+            path: options?.path ?? "/",
+            secure: process.env.NODE_ENV === "production",
           })
         );
       },
@@ -47,12 +56,25 @@ export async function middleware(req: NextRequest) {
 
   const { pathname } = req.nextUrl;
 
+  const createRedirect = (redirectUrl: URL | string) => {
+    const redirectRes = NextResponse.redirect(redirectUrl);
+    res.cookies.getAll().forEach((cookie) => {
+      redirectRes.cookies.set(cookie.name, cookie.value, {
+        maxAge: ONE_YEAR,
+        sameSite: "lax",
+        path: "/",
+        secure: process.env.NODE_ENV === "production",
+      });
+    });
+    return redirectRes;
+  };
+
   // Safety net: If Supabase falls back to Site URL with ?code=..., forward to /auth/callback
   const code = req.nextUrl.searchParams.get("code");
   if (code && !pathname.startsWith("/auth/callback")) {
     const callbackUrl = req.nextUrl.clone();
     callbackUrl.pathname = "/auth/callback";
-    return NextResponse.redirect(callbackUrl);
+    return createRedirect(callbackUrl);
   }
 
   // Customer app + vendor portal + admin dashboard all need a signed-in
@@ -63,7 +85,7 @@ export async function middleware(req: NextRequest) {
     const loginUrl = req.nextUrl.clone();
     loginUrl.pathname = "/login";
     loginUrl.searchParams.set("next", pathname + req.nextUrl.search);
-    return NextResponse.redirect(loginUrl);
+    return createRedirect(loginUrl);
   }
 
   if (pathname === "/login" && user) {
@@ -71,7 +93,7 @@ export async function middleware(req: NextRequest) {
     const redirectUrl = req.nextUrl.clone();
     redirectUrl.pathname = next.startsWith("/") ? next.split("?")[0] : "/app/print";
     redirectUrl.search = next.includes("?") ? "?" + next.split("?")[1] : "";
-    return NextResponse.redirect(redirectUrl);
+    return createRedirect(redirectUrl);
   }
 
   return res;
