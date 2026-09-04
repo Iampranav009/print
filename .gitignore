@@ -1,0 +1,12 @@
+node_modules/
+.next/
+.env*
+*.tsbuildinfo
+next-env.d.ts
+__pycache__/
+*.pyc
+.venv/
+dist/
+.vercel
+.agent
+.claude/

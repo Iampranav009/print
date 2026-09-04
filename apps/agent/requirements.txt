@@ -1,0 +1,2 @@
+requests>=2.31.0
+pycups>=2.0.1;sys_platform=="linux"
