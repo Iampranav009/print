@@ -11,8 +11,6 @@ import {
   WifiOff,
   RefreshCw,
   AlertCircle,
-  Copy,
-  Check,
   ChevronLeft,
 } from "lucide-react";
 
@@ -109,23 +107,14 @@ function getStatusConfig(status: JobStatus) {
         sub: "Rasterizing and sending document to printer.",
         color: "blue",
       };
+    case "dispatched":
+    case "awaiting_release":
     case "printing":
       return {
         icon: <Printer className="w-10 h-10 text-blue-600 animate-pulse" />,
         headline: "Printing now…",
-        sub: "Your document is currently running through the printer.",
+        sub: "Your document is printing automatically. Collect it from the printer tray once done.",
         color: "blue",
-      };
-    case "awaiting_release":
-      return {
-        icon: (
-          <div className="w-20 h-20 rounded-full bg-green-100 flex items-center justify-center">
-            <CheckCircle2 className="w-11 h-11 text-green-500" />
-          </div>
-        ),
-        headline: "Ready to collect!",
-        sub: "Enter or show the code below at the printer screen.",
-        color: "green",
       };
     case "released":
     case "printed":
@@ -136,8 +125,8 @@ function getStatusConfig(status: JobStatus) {
             <CheckCircle2 className="w-11 h-11 text-green-500" />
           </div>
         ),
-        headline: "Printed & Released!",
-        sub: "Your printout is ready. Thank you for using PrintBuddy!",
+        headline: "Printed! Collect from tray",
+        sub: "Your document has printed. Thank you for using PrintBuddy!",
         color: "green",
       };
     case "payment_failed":
@@ -183,7 +172,6 @@ export default function JobDetailPage({
   const [job, setJob] = useState<Job | null>(null);
   const [fetchError, setFetchError] = useState<string | null>(null);
   const [isSlow, setIsSlow] = useState(false);
-  const [copied, setCopied] = useState(false);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const slowTimerRef = useRef<NodeJS.Timeout | null>(null);
   const prevStatusRef = useRef<JobStatus | null>(null);
@@ -242,34 +230,7 @@ export default function JobDetailPage({
     };
   }, [jobId]);
 
-  const [releasing, setReleasing] = useState(false);
 
-  const handleCopyCode = useCallback(async (code: string) => {
-    try {
-      await navigator.clipboard.writeText(code);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    } catch {
-      // clipboard fallback
-    }
-  }, []);
-
-  const handleRelease = useCallback(async () => {
-    if (!job?.id || releasing) return;
-    setReleasing(true);
-    try {
-      const res = await fetch(`/api/jobs/${job.id}/release`, {
-        method: "POST",
-      });
-      if (res.ok) {
-        setJob((prev) => (prev ? { ...prev, status: "released" } : prev));
-      }
-    } catch {
-      // ignore
-    } finally {
-      setReleasing(false);
-    }
-  }, [job?.id, releasing]);
 
   if (!jobId || (!job && !fetchError)) {
     return (
@@ -302,7 +263,10 @@ export default function JobDetailPage({
 
   const cfg = getStatusConfig(job!.status);
   const isTerminal = TERMINAL.includes(job!.status);
-  const isAwaiting = job!.status === "awaiting_release";
+  const isPrinted =
+    job!.status === "printed" ||
+    job!.status === "released" ||
+    job!.status === "done";
 
   return (
     <div className="min-h-full bg-white pb-24">
@@ -333,7 +297,7 @@ export default function JobDetailPage({
         {/* Hero Status Card */}
         <div
           className={`rounded-2xl p-7 text-center border shadow-sm ${
-            isAwaiting
+            isPrinted
               ? "bg-green-50 border-green-200"
               : "bg-white border-gray-100"
           }`}
@@ -346,61 +310,6 @@ export default function JobDetailPage({
             <p className="text-sm text-gray-500 mt-2 leading-relaxed max-w-xs mx-auto">
               {cfg.sub}
             </p>
-          )}
-
-          {/* Big Release Code */}
-          {isAwaiting && job!.release_code && (
-            <div className="mt-7 pt-4 border-t border-green-200/60">
-              <p className="text-[11px] font-semibold tracking-widest text-green-700 uppercase mb-3">
-                Release Code
-              </p>
-              <button
-                type="button"
-                onClick={() => handleCopyCode(job!.release_code!)}
-                style={{ touchAction: "manipulation" }}
-                aria-label={`Release code ${job!.release_code} — tap to copy`}
-                className="block w-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-green-600 rounded-2xl py-2 group"
-              >
-                <div
-                  className="text-6xl font-black tracking-[0.3em] tabular-nums text-gray-900 select-all"
-                  aria-live="assertive"
-                >
-                  {job!.release_code}
-                </div>
-                <div
-                  className={`flex items-center justify-center gap-1.5 text-xs font-medium mt-3 transition-colors ${
-                    copied ? "text-green-700 font-semibold" : "text-gray-500 group-hover:text-gray-700"
-                  }`}
-                >
-                  {copied ? (
-                    <>
-                      <Check className="w-3.5 h-3.5 text-green-700" />
-                      Copied to clipboard!
-                    </>
-                  ) : (
-                    <>
-                      <Copy className="w-3.5 h-3.5 text-gray-400" />
-                      Tap to copy code
-                    </>
-                  )}
-                </div>
-              </button>
-
-              <div className="mt-5 pt-4 border-t border-green-200/60">
-                <button
-                  type="button"
-                  onClick={handleRelease}
-                  disabled={releasing}
-                  className="w-full py-3 px-4 rounded-xl bg-green-600 hover:bg-green-700 active:bg-green-800 text-white font-medium text-sm transition-colors flex items-center justify-center gap-2 shadow-sm disabled:opacity-50"
-                >
-                  <Printer className="w-4 h-4" />
-                  <span>{releasing ? "Releasing print…" : "I'm at the printer — Print Now"}</span>
-                </button>
-                <p className="text-[11px] text-gray-500 mt-2 text-center">
-                  Tap when you are ready to collect your document from the printer tray
-                </p>
-              </div>
-            </div>
           )}
 
           {/* Print failure reason */}

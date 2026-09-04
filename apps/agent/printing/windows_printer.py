@@ -1,9 +1,35 @@
-"""SumatraPDF-based Windows printing for PrintBuddy."""
-
 import logging
+import os
+import shutil
 import subprocess
 
 log = logging.getLogger("printbuddy-agent")
+
+
+def get_sumatra_executable() -> str:
+    """Resolve path to SumatraPDF executable."""
+    env_path = os.environ.get("SUMATRAPDF_PATH")
+    if env_path and os.path.isfile(env_path):
+        return env_path
+
+    which_path = shutil.which("SumatraPDF.exe") or shutil.which("SumatraPDF")
+    if which_path:
+        return which_path
+
+    local_app_data = os.environ.get("LOCALAPPDATA", "")
+    prog_files = os.environ.get("ProgramFiles", "C:\\Program Files")
+    prog_files_x86 = os.environ.get("ProgramFiles(x86)", "C:\\Program Files (x86)")
+
+    candidates = [
+        os.path.join(local_app_data, "SumatraPDF", "SumatraPDF.exe"),
+        os.path.join(prog_files, "SumatraPDF", "SumatraPDF.exe"),
+        os.path.join(prog_files_x86, "SumatraPDF", "SumatraPDF.exe"),
+    ]
+    for candidate in candidates:
+        if os.path.isfile(candidate):
+            return candidate
+
+    return "SumatraPDF.exe"
 
 
 def print_windows(
@@ -67,7 +93,8 @@ def print_windows(
             log.warning("[%s] Dropped options: %s", str(job.get("id", "?"))[:8], "; ".join(dropped))
 
         settings = ",".join(settings_parts) if settings_parts else ""
-        cmd = ["SumatraPDF.exe", "-print-to", printer_name]
+        sumatra_exe = get_sumatra_executable()
+        cmd = [sumatra_exe, "-print-to", printer_name]
         if settings:
             cmd.extend(["-print-settings", settings])
         cmd.append(file_path)

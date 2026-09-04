@@ -5,9 +5,9 @@ import { NextRequest } from "next/server";
 import type { JobStatus } from "@printbuddy/shared";
 
 const VALID_TRANSITIONS: Partial<Record<JobStatus, JobStatus[]>> = {
-  dispatched: ["awaiting_release"],
-  awaiting_release: ["released"],
-  released: ["printing"],
+  dispatched: ["awaiting_release", "printing", "print_failed"],
+  awaiting_release: ["released", "printing", "print_failed"],
+  released: ["printing", "print_failed"],
   printing: ["printed", "print_failed"],
 };
 

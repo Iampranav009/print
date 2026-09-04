@@ -231,17 +231,8 @@ def poll_and_print() -> None:
     job_id = job["id"]
     status = job["status"]
 
-    if status == "dispatched":
-        log.info("[%s] Job dispatched — setting to awaiting_release", job_id[:8])
-        update_status(job_id, "awaiting_release")
-        return
-
-    if status == "awaiting_release":
-        # Waiting for customer tap or counter release; avoid spamming logs
-        return
-
-    if status == "released":
-        log.info("[%s] Job released! Starting print process...", job_id[:8])
+    if status in ("dispatched", "released", "awaiting_release"):
+        log.info("[%s] Job ready (%s) — auto-printing now...", job_id[:8], status)
         download_url = job.get("downloadUrl")
         if not download_url:
             update_status(job_id, "print_failed", "No download URL")
@@ -258,14 +249,17 @@ def poll_and_print() -> None:
             success, reason = print_file(file_path, job)
             if success:
                 update_status(job_id, "printed")
+                log.info("[%s] Successfully printed!", job_id[:8])
             else:
                 update_status(job_id, "print_failed", reason or "Printer error")
+                log.error("[%s] Print failed: %s", job_id[:8], reason)
         finally:
             try:
                 os.unlink(file_path)
                 log.info("[%s] Cleaned up temp file %s", job_id[:8], file_path)
             except OSError:
                 pass
+        return
 
 
 def main() -> None:

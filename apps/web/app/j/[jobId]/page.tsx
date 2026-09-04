@@ -10,8 +10,6 @@ import {
   WifiOff,
   RefreshCw,
   AlertCircle,
-  Copy,
-  Check,
 } from "lucide-react";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -27,7 +25,12 @@ type JobStatus =
   | "payment_pending"
   | "payment_failed"
   | "print_failed"
-  | "cancelled";
+  | "cancelled"
+  | "priced"
+  | "awaiting_payment"
+  | "paid"
+  | "dispatched"
+  | "refunded";
 
 interface Job {
   id: string;
@@ -84,23 +87,14 @@ function getStatusConfig(status: JobStatus) {
         sub: "Sending your document to the printer.",
         color: "blue",
       };
+    case "dispatched":
+    case "awaiting_release":
     case "printing":
       return {
         icon: <Printer className="w-10 h-10 text-blue-600 animate-pulse" />,
         headline: "Printing now…",
-        sub: "Your document is on the printer.",
+        sub: "Your document is printing automatically. Collect it from the printer tray once done.",
         color: "blue",
-      };
-    case "awaiting_release":
-      return {
-        icon: (
-          <div className="w-20 h-20 rounded-full bg-emerald-100 dark:bg-emerald-900/40 flex items-center justify-center">
-            <CheckCircle2 className="w-11 h-11 text-emerald-600 dark:text-emerald-400" />
-          </div>
-        ),
-        headline: "Ready to collect!",
-        sub: "Show the code below at the counter.",
-        color: "emerald",
       };
     case "released":
     case "printed":
@@ -111,8 +105,8 @@ function getStatusConfig(status: JobStatus) {
             <CheckCircle2 className="w-11 h-11 text-emerald-600 dark:text-emerald-400" />
           </div>
         ),
-        headline: "Collected — enjoy!",
-        sub: "Your printout has been released. Thanks for using PrintBuddy.",
+        headline: "Printed! Collect from tray",
+        sub: "Your document has printed. Thanks for using PrintBuddy!",
         color: "emerald",
       };
     case "payment_failed":
@@ -158,7 +152,6 @@ export default function JobPage({
   const [fetchError, setFetchError] = useState<string | null>(null);
   const [isOffline, setIsOffline] = useState(false);
   const [isSlow, setIsSlow] = useState(false);
-  const [copied, setCopied] = useState(false);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const slowTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const prevStatusRef = useRef<JobStatus | null>(null);
@@ -227,34 +220,7 @@ export default function JobPage({
     };
   }, [fetchJob, jobId]);
 
-  const [releasing, setReleasing] = useState(false);
 
-  const handleCopyCode = useCallback(async (code: string) => {
-    try {
-      await navigator.clipboard.writeText(code);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    } catch {
-      // clipboard unavailable — code is already visible and selectable
-    }
-  }, []);
-
-  const handleRelease = useCallback(async () => {
-    if (!job?.id || releasing) return;
-    setReleasing(true);
-    try {
-      const res = await fetch(`/api/jobs/${job.id}/release`, {
-        method: "POST",
-      });
-      if (res.ok) {
-        await fetchJob();
-      }
-    } catch {
-      // ignore
-    } finally {
-      setReleasing(false);
-    }
-  }, [job?.id, releasing, fetchJob]);
 
   // ── Loading ─────────────────────────────────────────────────────────────────
   if (!jobId || (!job && !fetchError)) {
@@ -281,7 +247,10 @@ export default function JobPage({
 
   const cfg = getStatusConfig(job!.status);
   const isTerminal = TERMINAL.includes(job!.status);
-  const isAwaiting = job!.status === "awaiting_release";
+  const isPrinted =
+    job!.status === "printed" ||
+    job!.status === "released" ||
+    job!.status === "done";
 
   return (
     <>
@@ -302,11 +271,11 @@ export default function JobPage({
       >
         {/* Hero status card */}
         <div
-          className={`rounded-3xl p-7 text-center border shadow-sm
-            ${isAwaiting
+          className={`rounded-3xl p-7 text-center border shadow-sm ${
+            isPrinted
               ? "bg-emerald-50 dark:bg-emerald-950/30 border-emerald-200 dark:border-emerald-800"
               : "bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800"
-            }`}
+          }`}
         >
           <div className="flex justify-center mb-5">{cfg.icon}</div>
           <h1 className="text-2xl font-bold text-zinc-900 dark:text-zinc-50 leading-tight">
@@ -316,56 +285,6 @@ export default function JobPage({
             <p className="text-sm text-zinc-500 dark:text-zinc-400 mt-2 leading-relaxed">
               {cfg.sub}
             </p>
-          )}
-
-          {/* Release code — tap to copy */}
-          {isAwaiting && job!.release_code && (
-            <div className="mt-7">
-              <p className="text-[11px] font-semibold tracking-widest text-emerald-600 dark:text-emerald-400 uppercase mb-4">
-                Release code
-              </p>
-              <button
-                onClick={() => handleCopyCode(job!.release_code!)}
-                style={{ touchAction: "manipulation" }}
-                aria-label={`Release code ${job!.release_code} — tap to copy`}
-                className="block w-full"
-              >
-                <div
-                  className="text-6xl font-black tracking-[0.3em] tabular-nums text-zinc-900 dark:text-zinc-50 select-all py-2"
-                  aria-live="assertive"
-                >
-                  {job!.release_code}
-                </div>
-                <div
-                  className={`flex items-center justify-center gap-1.5 text-sm mt-2 transition-colors ${
-                    copied
-                      ? "text-emerald-600 dark:text-emerald-400"
-                      : "text-zinc-400 dark:text-zinc-500"
-                  }`}
-                >
-                  {copied ? (
-                    <><Check className="w-3.5 h-3.5" /> Copied!</>
-                  ) : (
-                    <><Copy className="w-3.5 h-3.5" /> Tap to copy</>
-                  )}
-                </div>
-              </button>
-
-              <div className="mt-6 pt-5 border-t border-zinc-100 dark:border-zinc-800/80">
-                <button
-                  type="button"
-                  onClick={handleRelease}
-                  disabled={releasing}
-                  className="w-full py-3.5 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white font-medium text-sm transition-colors flex items-center justify-center gap-2 shadow-sm disabled:opacity-50"
-                >
-                  <Printer className="w-4 h-4" />
-                  <span>{releasing ? "Releasing print…" : "I'm at the printer — Print Now"}</span>
-                </button>
-                <p className="text-[11px] text-zinc-400 dark:text-zinc-500 mt-2 text-center">
-                  Tap when you are ready to collect your document from the printer tray
-                </p>
-              </div>
-            </div>
           )}
 
           {/* Print failure reason */}
