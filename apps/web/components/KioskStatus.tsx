@@ -40,6 +40,9 @@ interface KioskStatusProps {
   /** Full-screen mode: bigger icons + type, centered layout, no side padding.
    * The kiosk switches to this the moment any activity starts. */
   centered?: boolean;
+  /** Seconds remaining before auto-return to idle. Only set after a
+   * successful print — nulls the countdown UI otherwise. */
+  returnCountdown?: number | null;
 }
 
 function formatPaise(p: number) {
@@ -147,7 +150,13 @@ function RecentStrip({ recentJobs }: { recentJobs: KioskJob[] }) {
 
 // ── Main component ──────────────────────────────────────────────────────────
 
-export function KioskStatus({ activeJob, recentJobs, liveActivity, centered }: KioskStatusProps) {
+export function KioskStatus({
+  activeJob,
+  recentJobs,
+  liveActivity,
+  centered,
+  returnCountdown,
+}: KioskStatusProps) {
   // ── Live upload / checkout (before the DB job exists or catches up) ──────
   if (liveActivity?.kind === "uploading") {
     return (
@@ -316,6 +325,10 @@ export function KioskStatus({ activeJob, recentJobs, liveActivity, centered }: K
       break;
   }
 
+  const isPrinted = activeJob.status === "printed";
+  const showCountdown =
+    isPrinted && typeof returnCountdown === "number" && returnCountdown > 0;
+
   return (
     <div className="flex flex-col h-full w-full">
       <HeroFrame tone={tone} icon={iconNode} headline={headline} sub={sub} centered={centered}>
@@ -328,6 +341,51 @@ export function KioskStatus({ activeJob, recentJobs, liveActivity, centered }: K
                 <span className="truncate max-w-xs">{activeJob.file_name}</span>
               </>
             )}
+          </div>
+        )}
+
+        {showCountdown && (
+          <div
+            role="status"
+            aria-live="polite"
+            className={`mt-8 inline-flex items-center gap-3 px-5 py-3 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-800 font-semibold ${
+              centered ? "text-lg" : "text-sm"
+            }`}
+          >
+            {/* Ring progress + big number */}
+            <div className="relative w-8 h-8 flex items-center justify-center">
+              <svg viewBox="0 0 32 32" className="absolute inset-0 -rotate-90">
+                <circle
+                  cx="16"
+                  cy="16"
+                  r="14"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeOpacity="0.2"
+                  strokeWidth="3"
+                />
+                <circle
+                  cx="16"
+                  cy="16"
+                  r="14"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="3"
+                  strokeLinecap="round"
+                  strokeDasharray={2 * Math.PI * 14}
+                  strokeDashoffset={
+                    2 * Math.PI * 14 * (1 - (returnCountdown as number) / 5)
+                  }
+                  style={{ transition: "stroke-dashoffset 1s linear" }}
+                />
+              </svg>
+              <span className="text-sm font-black tabular-nums">
+                {returnCountdown}
+              </span>
+            </div>
+            <span>
+              Returning to home in {returnCountdown}s
+            </span>
           </div>
         )}
       </HeroFrame>

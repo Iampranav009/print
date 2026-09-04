@@ -86,6 +86,37 @@ export default function KioskPage({
     reason: string;
   } | null>(null);
 
+  // After a successful print, count down from 5s and then return to idle
+  // so the QR reappears for the next customer. Only runs on print:completed
+  // — payment_failed / print_failed stay on screen until a new session.
+  const [returnCountdown, setReturnCountdown] = useState<number | null>(null);
+  const countdownTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const clearReturnCountdown = useCallback(() => {
+    if (countdownTimerRef.current) clearInterval(countdownTimerRef.current);
+    countdownTimerRef.current = null;
+    setReturnCountdown(null);
+  }, []);
+  const startReturnCountdown = useCallback(
+    (seconds: number) => {
+      clearReturnCountdown();
+      setReturnCountdown(seconds);
+      countdownTimerRef.current = setInterval(() => {
+        setReturnCountdown((prev) => {
+          if (prev === null) return null;
+          if (prev <= 1) {
+            if (countdownTimerRef.current) clearInterval(countdownTimerRef.current);
+            countdownTimerRef.current = null;
+            // Time's up — return to idle so the QR reappears.
+            setActiveJob(null);
+            return null;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+    },
+    [clearReturnCountdown]
+  );
+
   // Helper to extract clean file name
   const extractFileName = (filePath?: string | null) => {
     if (!filePath) return "Document.pdf";
@@ -256,6 +287,7 @@ export default function KioskPage({
             // rejected / Print failed) so the kiosk resets for the new one.
             setActiveJob(null);
             setRetryPrompt(null);
+            clearReturnCountdown();
             setLiveActivity({
               kind: "uploading",
               fileName: evt.fileName,
@@ -374,8 +406,10 @@ export default function KioskPage({
             setLiveActivity(null);
             showToast("success", "Print complete");
             fetchLatestJobs();
-            // No auto-return-to-idle. "Print complete" stays on screen
-            // until the next upload:start event begins a new session.
+            // Start the visible 5s "Returning to home in Xs" countdown.
+            // Success is the ONLY state that auto-returns — failures stay
+            // on screen until a new session.
+            startReturnCountdown(5);
             break;
           }
 
@@ -408,8 +442,9 @@ export default function KioskPage({
       supabase.removeChannel(channel);
       clearInterval(interval);
       if (liveExpiryRef.current) clearTimeout(liveExpiryRef.current);
+      if (countdownTimerRef.current) clearInterval(countdownTimerRef.current);
     };
-  }, [shopId, updateJobStates, showToast]);
+  }, [shopId, updateJobStates, showToast, startReturnCountdown, clearReturnCountdown]);
 
   // Notify on job status transitions the operator should notice: payment
   // captured (job appears with paid+ status), print done, or a failure.
@@ -531,6 +566,7 @@ export default function KioskPage({
               activeJob={activeJob}
               recentJobs={recentJobs}
               liveActivity={liveActivity}
+              returnCountdown={returnCountdown}
             />
           </section>
         </div>
@@ -545,6 +581,7 @@ export default function KioskPage({
               activeJob={activeJob}
               recentJobs={recentJobs}
               liveActivity={liveActivity}
+              returnCountdown={returnCountdown}
               centered
             />
           </div>
