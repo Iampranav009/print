@@ -6,12 +6,12 @@ import {
   Loader2,
   Printer,
   CheckCircle2,
-  Upload,
   CreditCard,
   XCircle,
   FileCheck2,
 } from "lucide-react";
 import { StatusPill, type JobStatus } from "./StatusPill";
+import { DocumentUploadIcon } from "./DocumentUploadIcon";
 import { formatRelativeTime } from "@/lib/date-utils";
 
 export interface KioskJob {
@@ -90,7 +90,7 @@ function HeroFrame({
         >
           {icon}
         </div>
-        <h2 className={`text-5xl lg:text-7xl font-black tracking-tight leading-[1.05] ${headlineColor}`}>
+        <h2 className={`text-5xl lg:text-7xl font-bold tracking-tight leading-[1.05] ${headlineColor}`}>
           {headline}
         </h2>
         {sub && (
@@ -161,21 +161,37 @@ export function KioskStatus({
   if (liveActivity?.kind === "uploading") {
     return (
       <div className="flex flex-col h-full w-full">
-        <HeroFrame
-          tone="info"
-          icon={<Upload className="w-14 h-14" />}
-          headline="Uploading your file…"
-          sub={
-            liveActivity.fileCount > 1
-              ? `Sending ${liveActivity.fileCount} files from your phone`
-              : "Sending from your phone"
-          }
-          centered={centered}
+        <div
+          className={`flex-1 flex flex-col ${
+            centered ? "items-center text-center" : "items-start"
+          } justify-center px-6 lg:px-12 py-10`}
         >
-          <div className="mt-8 max-w-lg">
+          {/* Same document icon the mobile app uses — kept identical here
+              so the kiosk feels like the same product. */}
+          <div className="mb-8">
+            <DocumentUploadIcon size={centered ? "lg" : "md"} />
+          </div>
+          <h2
+            className={`${
+              centered ? "text-5xl lg:text-7xl" : "text-4xl lg:text-5xl"
+            } font-bold tracking-tight leading-tight text-zinc-900`}
+          >
+            Uploading your file…
+          </h2>
+          <p
+            className={`${
+              centered ? "text-xl lg:text-2xl" : "text-lg lg:text-xl"
+            } text-zinc-500 mt-3 max-w-2xl leading-relaxed`}
+          >
+            {liveActivity.fileCount > 1
+              ? `Sending ${liveActivity.fileCount} files from your phone`
+              : "Sending from your phone"}
+          </p>
+
+          <div className={`mt-8 w-full ${centered ? "max-w-xl" : "max-w-lg"}`}>
             <div className="h-2.5 bg-zinc-100 rounded-full overflow-hidden">
               <div
-                className="h-full bg-indigo-600 transition-all duration-200"
+                className="h-full bg-blue-500 transition-all duration-200"
                 style={{ width: `${Math.min(100, Math.max(0, liveActivity.percent))}%` }}
               />
             </div>
@@ -188,7 +204,8 @@ export function KioskStatus({
               </span>
             </div>
           </div>
-        </HeroFrame>
+        </div>
+
         <div className="px-6 lg:px-12 pb-8">
           <RecentStrip recentJobs={recentJobs} />
         </div>
@@ -207,7 +224,7 @@ export function KioskStatus({
           centered={centered}
         >
           <div className="mt-6 flex items-baseline gap-3">
-            <span className="text-5xl font-black tabular-nums text-zinc-900">
+            <span className="text-5xl font-bold tabular-nums text-zinc-900">
               {formatPaise(liveActivity.amountPaise)}
             </span>
           </div>
@@ -379,7 +396,7 @@ export function KioskStatus({
                   style={{ transition: "stroke-dashoffset 1s linear" }}
                 />
               </svg>
-              <span className="text-sm font-black tabular-nums">
+              <span className="text-sm font-bold tabular-nums">
                 {returnCountdown}
               </span>
             </div>

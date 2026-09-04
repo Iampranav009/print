@@ -6,6 +6,7 @@ import type { PrinterCapabilities, PriceBreakdown } from "@printbuddy/shared";
 import { PDFDocument } from "pdf-lib";
 import type { RealtimeChannel } from "@supabase/supabase-js";
 import { DocumentPreview } from "@/components/DocumentPreview";
+import { DocumentUploadIcon } from "@/components/DocumentUploadIcon";
 import { createClient as createBrowserSupabase } from "@/lib/supabase/client";
 import {
   KIOSK_BROADCAST_EVENT,
@@ -130,11 +131,17 @@ function UploadProgressSheet({
   progress,
   success,
   onClose,
+  totalFiles,
 }: {
   progress: number;
   success: boolean;
   onClose: () => void;
+  totalFiles: number;
 }) {
+  // Files "processed" is derived from progress. When it hits 100% every
+  // file the user picked has been sent (they're merged client-side into
+  // one PDF before upload, so upload progress applies to the whole batch).
+  const filesDone = progress >= 100 ? totalFiles : 0;
   return (
     <div className="fixed inset-0 z-50 flex flex-col">
       {/* Backdrop */}
@@ -161,21 +168,16 @@ function UploadProgressSheet({
           </div>
         ) : (
           <div className="flex flex-col items-center text-center py-2">
-            {/* Animated doc icon */}
-            <div className="w-24 h-24 mb-4 flex items-center justify-center">
-              <div className="relative">
-                <div className="w-16 h-20 bg-blue-100 rounded-lg border-2 border-blue-200 flex flex-col items-center justify-end pb-3 gap-1">
-                  <div className="w-10 h-1.5 bg-blue-300 rounded" />
-                  <div className="w-10 h-1.5 bg-blue-300 rounded" />
-                  <div className="w-7 h-1.5 bg-blue-300 rounded" />
-                </div>
-                <div className="absolute -top-3 left-1/2 -translate-x-1/2 w-8 h-8 rounded-full bg-blue-400 flex items-center justify-center">
-                  <Upload className="w-4 h-4 text-white" />
-                </div>
-              </div>
+            {/* Shared upload icon so mobile + kiosk render identically */}
+            <div className="mb-4">
+              <DocumentUploadIcon size="sm" />
             </div>
-            <h3 className="text-lg font-bold text-gray-900">Uploading Document</h3>
-            <p className="text-xs text-gray-500 mt-1">0/1 files</p>
+            <h3 className="text-lg font-bold text-gray-900">
+              Uploading {totalFiles === 1 ? "Document" : "Documents"}
+            </h3>
+            <p className="text-xs text-gray-500 mt-1 tabular-nums">
+              {filesDone}/{totalFiles} file{totalFiles !== 1 ? "s" : ""}
+            </p>
 
             {/* Progress bar */}
             <div className="w-full mt-5 mb-2">
@@ -913,6 +915,7 @@ function PrintContent() {
       {/* Upload Progress Sheet */}
       {showUploadSheet && (
         <UploadProgressSheet
+          totalFiles={Math.max(1, rawFiles.length)}
           progress={uploadProgress}
           success={uploadState === "done"}
           onClose={() => setShowUploadSheet(false)}
