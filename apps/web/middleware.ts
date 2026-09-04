@@ -44,7 +44,11 @@ export async function middleware(req: NextRequest) {
     return NextResponse.redirect(callbackUrl);
   }
 
-  if (pathname.startsWith("/app") && !user) {
+  // Customer app + vendor portal + admin dashboard all need a signed-in
+  // user. Middleware just checks presence — role/admin allowlist is
+  // enforced by the layouts and API routes themselves.
+  const AUTHED_ROOTS = ["/app", "/vendor", "/dashboard"];
+  if (AUTHED_ROOTS.some((p) => pathname === p || pathname.startsWith(p + "/")) && !user) {
     const loginUrl = req.nextUrl.clone();
     loginUrl.pathname = "/login";
     loginUrl.searchParams.set("next", pathname + req.nextUrl.search);
