@@ -76,11 +76,12 @@ export function SimpleBarChart({ data, mode = "prints", height = 240 }: SimpleBa
   const barW = Math.max(4, (plotW / data.length) * 0.65);
   const gap = plotW / data.length;
 
-  // Y-axis ticks
+  // Y-axis ticks - deduplicate ticks when maxVal is small (e.g. maxVal = 1)
   const yTicks = 4;
-  const yTickVals = Array.from({ length: yTicks + 1 }, (_, i) =>
+  const rawTickVals = Array.from({ length: yTicks + 1 }, (_, i) =>
     Math.round((maxVal / yTicks) * i)
   );
+  const yTickVals = Array.from(new Set(rawTickVals));
 
   return (
     <div className="relative w-full select-none">
@@ -93,10 +94,10 @@ export function SimpleBarChart({ data, mode = "prints", height = 240 }: SimpleBa
         onMouseLeave={() => setTooltip(null)}
       >
         {/* Y-axis gridlines + labels */}
-        {yTickVals.map((val) => {
+        {yTickVals.map((val, idx) => {
           const y = PADDING.top + plotH - (val / maxVal) * plotH;
           return (
-            <g key={val}>
+            <g key={`ytick-${idx}-${val}`}>
               <line
                 x1={PADDING.left}
                 x2={chartW - PADDING.right}
@@ -135,7 +136,7 @@ export function SimpleBarChart({ data, mode = "prints", height = 240 }: SimpleBa
 
             return (
               <g
-                key={d.bucket}
+                key={`prints-bar-${d.bucket}-${i}`}
                 role="group"
                 aria-label={`${label}: ${d.prints} prints`}
                 onMouseEnter={(e) => {
@@ -200,7 +201,7 @@ export function SimpleBarChart({ data, mode = "prints", height = 240 }: SimpleBa
 
             return (
               <g
-                key={d.bucket}
+                key={`rev-bar-${d.bucket}-${i}`}
                 role="group"
                 aria-label={`${label}: ${formatRevenue(d.revenue_paise)}`}
                 onMouseEnter={() => {
