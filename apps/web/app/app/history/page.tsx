@@ -1,5 +1,6 @@
 import React from "react";
 import { createClient } from "@/lib/supabase/server";
+import { getSupabase } from "@/lib/supabase";
 import { HistoryClient, type Job } from "./history-client";
 import { type JobStatus } from "@/components/StatusPill";
 
@@ -24,14 +25,21 @@ interface HistoryRow {
 }
 
 export default async function HistoryPage() {
-  const supabase = await createClient();
+  // Read the signed-in user via the anon cookie-aware client…
+  const authed = await createClient();
   const {
     data: { user },
-  } = await supabase.auth.getUser();
+  } = await authed.auth.getUser();
 
   let jobs: Job[] = [];
 
   if (user) {
+    // …but query print_jobs with the service-role client. print_jobs has
+    // RLS enabled with no SELECT policy for authenticated users, so the
+    // anon client returns [] even for the owner. Service-role bypasses
+    // RLS; the .eq("user_id", user.id) filter keeps the scope correct.
+    const supabase = getSupabase();
+
     const { data } = await supabase
       .from("print_jobs")
       .select(`
