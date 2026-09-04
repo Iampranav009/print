@@ -1,6 +1,7 @@
 import { getSupabase } from "@/lib/supabase";
 import { verifyWebhookSignature } from "@/lib/razorpay";
 import { advanceVirtualJob, isVirtualShop } from "@/lib/virtual-print";
+import { broadcastToKiosk } from "@/lib/kiosk-broadcast";
 import { NextRequest } from "next/server";
 
 export async function POST(req: NextRequest) {
@@ -38,7 +39,7 @@ export async function POST(req: NextRequest) {
 
     const { data: job } = await supabase
       .from("print_jobs")
-      .select("id, status, shop_id")
+      .select("id, status, shop_id, price_paise, file_path")
       .eq("razorpay_order_id", orderId)
       .single();
 
@@ -73,6 +74,19 @@ export async function POST(req: NextRequest) {
       })
       .eq("id", job.id);
 
+    // Kiosk WebSocket: push a payment-success event immediately so the
+    // kiosk display swaps to "Payment successful" without waiting for
+    // postgres_changes (which anon-key subscribers may not receive when
+    // RLS is enabled on print_jobs).
+    const fileName = (job.file_path as string | null)?.split("/").pop()?.replace(/^\d+_/, "");
+    await broadcastToKiosk(job.shop_id, {
+      type: "payment:success",
+      jobId: job.id,
+      amountPaise: job.price_paise ?? 0,
+      fileName,
+      sentAt: new Date().toISOString(),
+    });
+
     // Virtual-mode shops have no real printer — advance the job through the
     // rest of the pipeline on a timer so the mobile app and kiosk see the
     // full flow. Real shops let the Python agent drive from here.
@@ -86,6 +100,12 @@ export async function POST(req: NextRequest) {
     if (payment?.order_id) {
       const supabase = getSupabase();
 
+      const { data: job } = await supabase
+        .from("print_jobs")
+        .select("id, shop_id")
+        .eq("razorpay_order_id", payment.order_id)
+        .single();
+
       await supabase
         .from("payments")
         .update({ status: "failed" })
@@ -98,6 +118,15 @@ export async function POST(req: NextRequest) {
           updated_at: new Date().toISOString(),
         })
         .eq("razorpay_order_id", payment.order_id);
+
+      if (job) {
+        await broadcastToKiosk(job.shop_id, {
+          type: "payment:failed",
+          jobId: job.id,
+          reason: payment.error_description ?? "Payment was rejected",
+          sentAt: new Date().toISOString(),
+        });
+      }
     }
   }
 

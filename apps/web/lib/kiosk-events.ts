@@ -50,12 +50,55 @@ export interface CheckoutDismissedEvent {
   sentAt: string;
 }
 
+// Server-side events (broadcast from webhook / virtual-print ticker using
+// the service-role client). No sessionId — these are keyed by jobId.
+export interface PaymentSuccessEvent {
+  type: "payment:success";
+  jobId: string;
+  amountPaise: number;
+  fileName?: string;
+  sentAt: string;
+}
+
+export interface PaymentFailedEvent {
+  type: "payment:failed";
+  jobId: string;
+  reason?: string;
+  sentAt: string;
+}
+
+export interface PrintStartedEvent {
+  type: "print:started";
+  jobId: string;
+  fileName?: string;
+  sentAt: string;
+}
+
+export interface PrintCompletedEvent {
+  type: "print:completed";
+  jobId: string;
+  fileName?: string;
+  sentAt: string;
+}
+
+export interface PrintFailedEvent {
+  type: "print:failed";
+  jobId: string;
+  reason?: string;
+  sentAt: string;
+}
+
 export type KioskEvent =
   | UploadStartEvent
   | UploadProgressEvent
   | UploadDoneEvent
   | CheckoutOpenedEvent
-  | CheckoutDismissedEvent;
+  | CheckoutDismissedEvent
+  | PaymentSuccessEvent
+  | PaymentFailedEvent
+  | PrintStartedEvent
+  | PrintCompletedEvent
+  | PrintFailedEvent;
 
 export const KIOSK_BROADCAST_EVENT = "kiosk-live" as const;
 

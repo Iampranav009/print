@@ -72,6 +72,12 @@ export default function KioskPage({
     toastTimerRef.current = setTimeout(() => setToast(null), 5000);
   }, []);
 
+  // Retry-payment prompt shown when Razorpay reports the payment failed.
+  const [retryPrompt, setRetryPrompt] = useState<{
+    jobId: string;
+    reason: string;
+  } | null>(null);
+
   // Helper to extract clean file name
   const extractFileName = (filePath?: string | null) => {
     if (!filePath) return "Document.pdf";
@@ -242,6 +248,109 @@ export default function KioskPage({
             );
             showToast("info", "Payment window closed");
             break;
+
+          // ── Server-side events (broadcast from webhook / virtual ticker)
+          // These arrive whether or not RLS lets anon see the DB row change.
+          case "payment:success": {
+            const synth: KioskJob = {
+              id: evt.jobId,
+              shop_id: shopId,
+              status: "dispatched",
+              price_paise: evt.amountPaise,
+              release_code: null,
+              file_name: evt.fileName,
+              created_at: evt.sentAt,
+              updated_at: evt.sentAt,
+            };
+            setActiveJob(synth);
+            setLiveActivity(null);
+            showToast("success", "Payment successful");
+            // Refresh from DB in the background so subsequent state
+            // transitions have full row data.
+            fetchLatestJobs();
+            break;
+          }
+
+          case "payment:failed": {
+            const synth: KioskJob = {
+              id: evt.jobId,
+              shop_id: shopId,
+              status: "payment_failed",
+              release_code: null,
+              file_name: undefined,
+              created_at: evt.sentAt,
+              updated_at: evt.sentAt,
+            };
+            setActiveJob(synth);
+            setLiveActivity(null);
+            setRetryPrompt({ jobId: evt.jobId, reason: evt.reason ?? "Payment was rejected" });
+            showToast("error", "Payment rejected");
+            fetchLatestJobs();
+            break;
+          }
+
+          case "print:started": {
+            setActiveJob((prev) =>
+              prev
+                ? { ...prev, status: "printing", updated_at: evt.sentAt }
+                : {
+                    id: evt.jobId,
+                    shop_id: shopId,
+                    status: "printing",
+                    release_code: null,
+                    file_name: evt.fileName,
+                    created_at: evt.sentAt,
+                    updated_at: evt.sentAt,
+                  }
+            );
+            setLiveActivity(null);
+            showToast("info", "Printing now…");
+            break;
+          }
+
+          case "print:completed": {
+            setActiveJob((prev) =>
+              prev
+                ? { ...prev, status: "printed", updated_at: evt.sentAt }
+                : {
+                    id: evt.jobId,
+                    shop_id: shopId,
+                    status: "printed",
+                    release_code: null,
+                    file_name: evt.fileName,
+                    created_at: evt.sentAt,
+                    updated_at: evt.sentAt,
+                  }
+            );
+            setLiveActivity(null);
+            showToast("success", "Print complete");
+            fetchLatestJobs();
+            // Return to idle a moment after so the QR reappears.
+            setTimeout(() => {
+              setActiveJob(null);
+              fetchLatestJobs();
+            }, 6000);
+            break;
+          }
+
+          case "print:failed": {
+            setActiveJob((prev) =>
+              prev
+                ? { ...prev, status: "print_failed", updated_at: evt.sentAt }
+                : {
+                    id: evt.jobId,
+                    shop_id: shopId,
+                    status: "print_failed",
+                    release_code: null,
+                    file_name: undefined,
+                    created_at: evt.sentAt,
+                    updated_at: evt.sentAt,
+                  }
+            );
+            showToast("error", "Print failed");
+            fetchLatestJobs();
+            break;
+          }
         }
       })
       .subscribe();
@@ -330,52 +439,54 @@ export default function KioskPage({
   }
 
   // QR visibility rule:
-  // - Always visible when idle or during the upload / checkout phases of a
-  //   session, so the operator can see it and the next customer knows
-  //   scans are welcome.
-  // - Hidden once the printer is actively busy (printing / awaiting_release
-  //   / just finished) so a second customer isn't tempted to scan while
-  //   the first one's paper is still coming out.
-  const HIDE_QR_STATUSES: JobStatus[] = ["printing", "awaiting_release", "printed"];
-  const busyPrinting = !!activeJob && HIDE_QR_STATUSES.includes(activeJob.status);
-  const showQR = !busyPrinting;
+  // - Idle only. The moment any session activity starts (upload, checkout,
+  //   payment result, printing), the QR goes away and the status takes the
+  //   full screen, big and centered.
+  const isBusy = !!liveActivity || !!activeJob;
+  const showQR = !isBusy;
 
   return (
-    <main className="min-h-dvh bg-white text-zinc-900 flex flex-col lg:flex-row overflow-x-hidden relative">
-      {/* Left — QR (persistent through idle + upload + checkout; hidden while printing) */}
-      {showQR && (
+    <main className="min-h-dvh bg-white text-zinc-900 flex flex-col overflow-x-hidden relative">
+      {showQR ? (
+        // ── Idle: QR + welcome, split evenly ────────────────────────────
+        <div className="min-h-dvh flex flex-col lg:flex-row">
+          <section
+            aria-label="Shop QR Code"
+            className="w-full lg:w-1/2 flex items-center justify-center p-8 lg:p-12 lg:border-r border-zinc-100 min-h-[50dvh] lg:min-h-dvh"
+          >
+            <KioskQR
+              shopId={shop.id}
+              shopName={shop.name}
+              location={shop.location}
+            />
+          </section>
+          <section
+            aria-label="Live Printer Status"
+            className="w-full lg:w-1/2 flex flex-col justify-center min-h-[50dvh] lg:min-h-dvh"
+          >
+            <KioskStatus
+              activeJob={activeJob}
+              recentJobs={recentJobs}
+              liveActivity={liveActivity}
+            />
+          </section>
+        </div>
+      ) : (
+        // ── Active: full-screen centered status, no QR ──────────────────
         <section
-          aria-label="Shop QR Code"
-          className={`w-full flex items-center justify-center p-8 lg:p-12 lg:border-r border-zinc-100 min-h-[50dvh] lg:min-h-dvh transition-all duration-300 ${
-            liveActivity || activeJob ? "lg:w-2/5" : "lg:w-1/2"
-          }`}
+          aria-label="Live Printer Status"
+          className="min-h-dvh w-full flex flex-col justify-center items-center"
         >
-          <KioskQR
-            shopId={shop.id}
-            shopName={shop.name}
-            location={shop.location}
-            compact={!!(liveActivity || activeJob)}
-          />
+          <div className="w-full max-w-3xl mx-auto text-center">
+            <KioskStatus
+              activeJob={activeJob}
+              recentJobs={recentJobs}
+              liveActivity={liveActivity}
+              centered
+            />
+          </div>
         </section>
       )}
-
-      {/* Right — Live status (expands full width when QR is hidden) */}
-      <section
-        aria-label="Live Printer Status"
-        className={`w-full flex flex-col justify-center min-h-[50dvh] lg:min-h-dvh transition-all duration-300 ${
-          showQR
-            ? liveActivity || activeJob
-              ? "lg:w-3/5"
-              : "lg:w-1/2"
-            : "lg:w-full"
-        }`}
-      >
-        <KioskStatus
-          activeJob={activeJob}
-          recentJobs={recentJobs}
-          liveActivity={liveActivity}
-        />
-      </section>
 
       {/* Toast overlay — auto-dismisses after 5s */}
       {toast && (
@@ -401,6 +512,41 @@ export default function KioskPage({
               <Loader2 className="w-5 h-5 flex-shrink-0" />
             )}
             <span className="text-sm font-semibold">{toast.message}</span>
+          </div>
+        </div>
+      )}
+
+      {/* Retry-payment modal — shown when Razorpay reports payment failed. */}
+      {retryPrompt && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="retry-title"
+          className="fixed inset-0 z-40 bg-black/40 flex items-center justify-center p-6"
+        >
+          <div className="w-full max-w-md bg-white rounded-3xl p-8 text-center shadow-2xl">
+            <div className="w-20 h-20 rounded-full bg-red-50 border border-red-100 flex items-center justify-center mx-auto mb-5 text-red-500">
+              <XCircle className="w-11 h-11" />
+            </div>
+            <h2 id="retry-title" className="text-2xl font-bold text-zinc-900 mb-2">
+              Payment rejected
+            </h2>
+            <p className="text-sm text-zinc-500 mb-6 leading-relaxed">
+              {retryPrompt.reason}. Please try again from your phone to complete the print.
+            </p>
+            <button
+              type="button"
+              onClick={() => {
+                setRetryPrompt(null);
+                setActiveJob(null);
+              }}
+              className="w-full min-h-[52px] rounded-2xl bg-zinc-900 hover:bg-zinc-800 text-white font-semibold text-base transition-colors"
+            >
+              Dismiss
+            </button>
+            <p className="text-xs text-zinc-400 mt-4">
+              This alert clears when you tap Dismiss, or when a new session starts.
+            </p>
           </div>
         </div>
       )}

@@ -37,6 +37,9 @@ interface KioskStatusProps {
   activeJob: KioskJob | null;
   recentJobs: KioskJob[];
   liveActivity?: KioskLiveActivity | null;
+  /** Full-screen mode: bigger icons + type, centered layout, no side padding.
+   * The kiosk switches to this the moment any activity starts. */
+  centered?: boolean;
 }
 
 function formatPaise(p: number) {
@@ -50,12 +53,14 @@ function HeroFrame({
   icon,
   headline,
   sub,
+  centered,
   children,
 }: {
   tone: "neutral" | "info" | "success" | "warn" | "danger";
   icon: React.ReactNode;
   headline: string;
   sub?: string;
+  centered?: boolean;
   children?: React.ReactNode;
 }) {
   const iconRing = {
@@ -73,6 +78,27 @@ function HeroFrame({
     warn: "text-amber-800",
     danger: "text-red-700",
   }[tone];
+
+  if (centered) {
+    return (
+      <div className="flex-1 flex flex-col items-center justify-center px-6 py-10 text-center">
+        <div
+          className={`w-40 h-40 rounded-[2rem] flex items-center justify-center mb-8 ring-2 ${iconRing} [&>svg]:w-20 [&>svg]:h-20`}
+        >
+          {icon}
+        </div>
+        <h2 className={`text-5xl lg:text-7xl font-black tracking-tight leading-[1.05] ${headlineColor}`}>
+          {headline}
+        </h2>
+        {sub && (
+          <p className="text-xl lg:text-2xl text-zinc-500 mt-5 max-w-2xl leading-relaxed">
+            {sub}
+          </p>
+        )}
+        {children}
+      </div>
+    );
+  }
 
   return (
     <div className="flex-1 flex flex-col justify-center px-6 py-8 lg:px-12">
@@ -121,7 +147,7 @@ function RecentStrip({ recentJobs }: { recentJobs: KioskJob[] }) {
 
 // ── Main component ──────────────────────────────────────────────────────────
 
-export function KioskStatus({ activeJob, recentJobs, liveActivity }: KioskStatusProps) {
+export function KioskStatus({ activeJob, recentJobs, liveActivity, centered }: KioskStatusProps) {
   // ── Live upload / checkout (before the DB job exists or catches up) ──────
   if (liveActivity?.kind === "uploading") {
     return (
@@ -135,6 +161,7 @@ export function KioskStatus({ activeJob, recentJobs, liveActivity }: KioskStatus
               ? `Sending ${liveActivity.fileCount} files from your phone`
               : "Sending from your phone"
           }
+          centered={centered}
         >
           <div className="mt-8 max-w-lg">
             <div className="h-2.5 bg-zinc-100 rounded-full overflow-hidden">
@@ -168,6 +195,7 @@ export function KioskStatus({ activeJob, recentJobs, liveActivity }: KioskStatus
           icon={<CreditCard className="w-14 h-14" />}
           headline="Waiting for payment…"
           sub="Customer is completing payment on their phone."
+          centered={centered}
         >
           <div className="mt-6 flex items-baseline gap-3">
             <span className="text-5xl font-black tabular-nums text-zinc-900">
@@ -194,6 +222,7 @@ export function KioskStatus({ activeJob, recentJobs, liveActivity }: KioskStatus
           icon={<Printer className="w-14 h-14" />}
           headline="Ready when you are"
           sub="Scan the QR to start your print"
+          centered={centered}
         >
           <div className="mt-6 flex items-center gap-2.5">
             <span className="relative flex h-3 w-3">
@@ -289,7 +318,7 @@ export function KioskStatus({ activeJob, recentJobs, liveActivity }: KioskStatus
 
   return (
     <div className="flex flex-col h-full w-full">
-      <HeroFrame tone={tone} icon={iconNode} headline={headline} sub={sub}>
+      <HeroFrame tone={tone} icon={iconNode} headline={headline} sub={sub} centered={centered}>
         {activeJob.price_paise !== undefined && (
           <div className="mt-6 flex items-center gap-2 text-sm text-zinc-500">
             <span className="font-medium text-zinc-700">{formatPaise(activeJob.price_paise)}</span>
