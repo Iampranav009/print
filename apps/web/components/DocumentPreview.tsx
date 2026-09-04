@@ -38,6 +38,8 @@ interface DocumentPreviewProps {
   files: FileItem[];
   onRemove?: (index: number) => void;
   className?: string;
+  orientation?: "portrait" | "landscape";
+  grayscale?: boolean;
 }
 
 // Which physical page corresponds to a virtual page index.
@@ -46,7 +48,7 @@ interface PageIndex {
   pageInFile: number;
 }
 
-export function DocumentPreview({ files, className = "" }: DocumentPreviewProps) {
+export function DocumentPreview({ files, className = "", orientation = "portrait", grayscale = false }: DocumentPreviewProps) {
   const [current, setCurrent] = useState(0);
   const [pdfDocs, setPdfDocs] = useState<Record<number, PdfDocProxy | null>>({});
   const [pageCounts, setPageCounts] = useState<number[]>([]);
@@ -207,9 +209,14 @@ export function DocumentPreview({ files, className = "" }: DocumentPreviewProps)
   const prev = () => setCurrent((c) => Math.max(0, c - 1));
   const next = () => setCurrent((c) => Math.min(pages.length - 1, c + 1));
 
+  const isLandscape = orientation === "landscape";
+
   if (loading) {
     return (
-      <div className={`w-full aspect-[3/4] max-h-[400px] bg-gray-50 rounded-2xl flex flex-col items-center justify-center gap-3 ${className}`}>
+      <div
+        className={`w-full bg-gray-50 rounded-2xl flex flex-col items-center justify-center gap-3 ${className}`}
+        style={{ aspectRatio: isLandscape ? "4/3" : "3/4", maxHeight: isLandscape ? 300 : 400 }}
+      >
         <Loader2 className="w-6 h-6 text-blue-500 animate-spin" />
         <p className="text-xs text-gray-500">Preparing preview…</p>
       </div>
@@ -218,7 +225,10 @@ export function DocumentPreview({ files, className = "" }: DocumentPreviewProps)
 
   if (error || pages.length === 0) {
     return (
-      <div className={`w-full aspect-[3/4] max-h-[400px] bg-gray-50 rounded-2xl flex flex-col items-center justify-center gap-3 text-center px-4 ${className}`}>
+      <div
+        className={`w-full bg-gray-50 rounded-2xl flex flex-col items-center justify-center gap-3 text-center px-4 ${className}`}
+        style={{ aspectRatio: isLandscape ? "4/3" : "3/4", maxHeight: isLandscape ? 300 : 400 }}
+      >
         <FileText className="w-10 h-10 text-gray-300" />
         <p className="text-xs text-gray-500">{error ?? "No pages to preview"}</p>
       </div>
@@ -234,17 +244,31 @@ export function DocumentPreview({ files, className = "" }: DocumentPreviewProps)
     <div className={`w-full ${className}`}>
       <div
         className="relative w-full bg-gray-50 rounded-2xl overflow-hidden select-none"
+        style={{ transition: "all 0.3s ease" }}
         onTouchStart={onTouchStart}
         onTouchEnd={onTouchEnd}
       >
-        {/* Preview surface */}
-        <div className="w-full aspect-[3/4] max-h-[400px] flex items-center justify-center p-4">
+        {/* Preview surface — aspect ratio and image transform both react to orientation */}
+        <div
+          className="w-full flex items-center justify-center p-4"
+          style={{
+            aspectRatio: isLandscape ? "4/3" : "3/4",
+            maxHeight: isLandscape ? 300 : 400,
+          }}
+        >
           {currentUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img
               src={currentUrl}
               alt={`${currentFile.name} — page ${currentPage.pageInFile}`}
-              className="max-w-full max-h-full object-contain shadow-md rounded"
+              className="object-contain shadow-md rounded"
+              style={{
+                maxWidth: "100%",
+                maxHeight: "100%",
+                transform: isLandscape ? "rotate(90deg)" : "none",
+                filter: grayscale ? "grayscale(100%)" : "none",
+                transition: "transform 0.3s ease, filter 0.25s ease",
+              }}
             />
           ) : (
             <Loader2 className="w-5 h-5 text-gray-400 animate-spin" />

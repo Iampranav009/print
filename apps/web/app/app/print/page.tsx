@@ -254,6 +254,95 @@ function OptionPair<T extends string>({
   );
 }
 
+// ── Chip Strip — horizontal row of selectable chips ─────────────────────────
+
+function ChipStrip<T extends string | number>({
+  label,
+  options,
+  value,
+  onChange,
+  disabled,
+  format,
+}: {
+  label: string;
+  options: T[];
+  value: T;
+  onChange: (v: T) => void;
+  disabled?: boolean;
+  format?: (v: T) => string;
+}) {
+  return (
+    <div>
+      <p className="text-sm font-bold text-gray-900 mb-2">{label}</p>
+      <div className="flex flex-wrap gap-2">
+        {options.map((opt) => {
+          const active = opt === value;
+          const label = format ? format(opt) : String(opt);
+          return (
+            <button
+              key={String(opt)}
+              type="button"
+              onClick={() => !disabled && onChange(opt)}
+              disabled={disabled}
+              style={{ touchAction: "manipulation" }}
+              className={`px-3.5 py-1.5 rounded-full text-sm font-semibold border-2 transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 ${
+                active
+                  ? "border-blue-700 bg-blue-50 text-blue-800"
+                  : "border-gray-200 bg-gray-50 text-gray-600 hover:border-gray-300"
+              } ${disabled ? "opacity-40 cursor-not-allowed" : "cursor-pointer"}`}
+              aria-pressed={active}
+            >
+              {label}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+// ── Toggle Row ────────────────────────────────────────────────────────────────
+
+function ToggleOption({
+  label,
+  subtitle,
+  value,
+  onChange,
+  disabled,
+}: {
+  label: string;
+  subtitle?: string;
+  value: boolean;
+  onChange: (v: boolean) => void;
+  disabled?: boolean;
+}) {
+  return (
+    <div className="flex items-center justify-between">
+      <div>
+        <p className="text-sm font-bold text-gray-900">{label}</p>
+        {subtitle && <p className="text-xs text-gray-400 mt-0.5">{subtitle}</p>}
+      </div>
+      <button
+        type="button"
+        onClick={() => !disabled && onChange(!value)}
+        disabled={disabled}
+        style={{ touchAction: "manipulation" }}
+        className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-green-500 ${
+          value ? "bg-green-500" : "bg-gray-200"
+        } ${disabled ? "opacity-40 cursor-not-allowed" : ""}`}
+        role="switch"
+        aria-checked={value}
+      >
+        <span
+          className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${
+            value ? "translate-x-6" : "translate-x-1"
+          }`}
+        />
+      </button>
+    </div>
+  );
+}
+
 // ── Print Content ─────────────────────────────────────────────────────────────
 
 function PrintContent() {
@@ -555,6 +644,11 @@ function PrintContent() {
             range: config.useCustomRange ? config.pageRange : null,
             number_up: config.numberUp,
             collate: config.collate,
+            quality: config.quality,
+            media_type: config.mediaType,
+            reverse: config.reverse,
+            scaling: config.scaling,
+            finishings: config.finishings,
           },
         }),
       });
@@ -692,7 +786,11 @@ function PrintContent() {
                 <X className="w-3.5 h-3.5 text-gray-600" />
               </button>
 
-              <DocumentPreview files={rawFiles.length > 0 ? rawFiles : [{ file: fileState.file, name: fileState.file.name, mime: fileState.mime }]} />
+              <DocumentPreview
+                files={rawFiles.length > 0 ? rawFiles : [{ file: fileState.file, name: fileState.file.name, mime: fileState.mime }]}
+                orientation={config?.orientation ?? "portrait"}
+                grayscale={config ? !config.color : false}
+              />
 
               {rawFiles.length > 1 && (
                 <p className="text-[11px] text-gray-500 mt-2 text-center">
@@ -803,25 +901,90 @@ function PrintContent() {
 
             {/* Duplex (if supported) */}
             {caps?.sides && caps.sides.some(s => s.startsWith("two-sided")) && (
-              <div className="flex items-center justify-between">
-                <p className="text-sm font-bold text-gray-900">Double-sided</p>
-                <button
-                  type="button"
-                  onClick={() => setConfig((c) => c ? { ...c, duplex: !c.duplex } : c)}
-                  style={{ touchAction: "manipulation" }}
-                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-green-500 ${
-                    config.duplex ? "bg-green-500" : "bg-gray-200"
-                  }`}
-                  role="switch"
-                  aria-checked={config.duplex}
-                >
-                  <span
-                    className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${
-                      config.duplex ? "translate-x-6" : "translate-x-1"
-                    }`}
-                  />
-                </button>
-              </div>
+              <ToggleOption
+                label="Double-sided"
+                value={config.duplex}
+                onChange={(v) => setConfig((c) => c ? { ...c, duplex: v } : c)}
+              />
+            )}
+
+            {/* Paper size */}
+            {caps?.media && caps.media.length > 1 && (
+              <ChipStrip
+                label="Paper size"
+                options={caps.media as string[]}
+                value={config.paper}
+                onChange={(v) => setConfig((c) => c ? { ...c, paper: v } : c)}
+              />
+            )}
+
+            {/* Pages per sheet */}
+            {caps?.number_up && caps.number_up.some(n => n > 1) && (
+              <ChipStrip
+                label="Pages per sheet"
+                options={caps.number_up}
+                value={config.numberUp}
+                onChange={(v) => setConfig((c) => c ? { ...c, numberUp: v } : c)}
+                format={(v) => v === 1 ? "1 page" : `${v} pages`}
+              />
+            )}
+
+            {/* Print quality */}
+            {caps?.quality && caps.quality.length > 1 && (
+              <ChipStrip
+                label="Print quality"
+                options={caps.quality as string[]}
+                value={config.quality}
+                onChange={(v) => setConfig((c) => c ? { ...c, quality: v as Config["quality"] } : c)}
+                format={(v) => v.charAt(0).toUpperCase() + v.slice(1)}
+              />
+            )}
+
+            {/* Scaling */}
+            {caps?.scaling && caps.scaling.length > 1 && (
+              <ChipStrip
+                label="Page scaling"
+                options={caps.scaling as string[]}
+                value={config.scaling}
+                onChange={(v) => setConfig((c) => c ? { ...c, scaling: v as Config["scaling"] } : c)}
+                format={(v) => {
+                  if (v === "none") return "None";
+                  if (v === "fit-to-page") return "Fit to page";
+                  if (v === "shrink-to-fit") return "Shrink to fit";
+                  return v;
+                }}
+              />
+            )}
+
+            {/* Media type */}
+            {caps?.media_types && caps.media_types.length > 1 && (
+              <ChipStrip
+                label="Media type"
+                options={caps.media_types}
+                value={config.mediaType}
+                onChange={(v) => setConfig((c) => c ? { ...c, mediaType: v } : c)}
+                format={(v) => v.charAt(0).toUpperCase() + v.slice(1)}
+              />
+            )}
+
+            {/* Collate — only relevant when printing multiple copies */}
+            {config.copies > 1 && caps?.collate && (
+              <ToggleOption
+                label="Collate copies"
+                subtitle="Print pages in order per copy"
+                value={config.collate}
+                onChange={(v) => setConfig((c) => c ? { ...c, collate: v } : c)}
+              />
+            )}
+
+            {/* Reverse order */}
+            {caps?.reverse && (
+              <ToggleOption
+                label="Reverse page order"
+                subtitle="Print last page first"
+                value={config.reverse}
+                onChange={(v) => setConfig((c) => c ? { ...c, reverse: v } : c)}
+              />
             )}
           </div>
         )}

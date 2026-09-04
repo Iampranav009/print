@@ -196,10 +196,99 @@ function Navbar() {
 
 // ─── Hero ──────────────────────────────────────────────────────────────────────
 
+function HeroVisual() {
+  return (
+    <div className="relative w-full max-w-[420px] xl:max-w-[460px]">
+      {/* Step cards */}
+      <div className="space-y-3">
+        {/* Step 1 — Done */}
+        <div className="bg-white/[0.04] border border-white/[0.08] rounded-2xl p-4 flex items-center gap-3.5">
+          <div className="w-11 h-11 rounded-xl bg-[#0C831F]/15 border border-[#0C831F]/20 flex items-center justify-center shrink-0">
+            <QrCode className="w-5 h-5 text-[#4ade80]" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className={cn(manrope.className, "text-sm font-semibold text-white leading-tight")}>
+              QR scanned
+            </p>
+            <p className={cn(jakarta.className, "text-xs text-zinc-500 mt-0.5")}>
+              Linked to print shop · No app needed
+            </p>
+          </div>
+          <div className="w-6 h-6 rounded-full bg-[#0C831F] flex items-center justify-center shrink-0">
+            <CheckCircle2 className="w-3.5 h-3.5 text-white" />
+          </div>
+        </div>
+
+        {/* Step 2 — Done */}
+        <div className="bg-white/[0.04] border border-white/[0.08] rounded-2xl p-4 flex items-center gap-3.5">
+          <div className="w-11 h-11 rounded-xl bg-blue-500/15 border border-blue-500/20 flex items-center justify-center shrink-0">
+            <Upload className="w-5 h-5 text-blue-400" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className={cn(manrope.className, "text-sm font-semibold text-white leading-tight")}>
+              File uploaded
+            </p>
+            <p className={cn(jakarta.className, "text-xs text-zinc-500 mt-0.5")}>
+              PDF · B&amp;W · Double-sided
+            </p>
+          </div>
+          <div className="w-6 h-6 rounded-full bg-[#0C831F] flex items-center justify-center shrink-0">
+            <CheckCircle2 className="w-3.5 h-3.5 text-white" />
+          </div>
+        </div>
+
+        {/* Step 3 — Active */}
+        <div className="bg-[#0C831F]/10 border border-[#0C831F]/30 rounded-2xl p-4 flex items-center gap-3.5">
+          <div className="w-11 h-11 rounded-xl bg-[#0C831F]/20 border border-[#0C831F]/30 flex items-center justify-center shrink-0">
+            <IndianRupee className="w-5 h-5 text-[#4ade80]" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className={cn(manrope.className, "text-sm font-semibold text-white leading-tight")}>
+              Paid via UPI
+            </p>
+            <p className={cn(jakarta.className, "text-xs text-[#4ade80] font-medium mt-0.5")}>
+              Exact locked price · Settling…
+            </p>
+          </div>
+          <span className="flex items-center gap-1.5 bg-[#0C831F] rounded-full px-2.5 py-1 shrink-0">
+            <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
+            <span className={cn(jakarta.className, "text-white text-[10px] font-semibold")}>
+              Printing
+            </span>
+          </span>
+        </div>
+      </div>
+
+      {/* Floating printer badge */}
+      <div className="absolute -bottom-5 -left-5 bg-white rounded-xl shadow-2xl px-3.5 py-2.5 flex items-center gap-2.5 border border-gray-100">
+        <div className="w-8 h-8 rounded-lg bg-[#0C831F]/10 flex items-center justify-center shrink-0">
+          <Printer className="w-4 h-4 text-[#0C831F]" />
+        </div>
+        <div>
+          <p className={cn(manrope.className, "text-xs font-bold text-gray-900")}>
+            Auto-printing
+          </p>
+          <p className={cn(jakarta.className, "text-[10px] text-gray-400")}>
+            Enter 4-digit code to collect
+          </p>
+        </div>
+      </div>
+
+      {/* Top-right floating stat */}
+      <div className="absolute -top-4 -right-4 bg-[#0E1117] border border-white/[0.1] rounded-xl px-3 py-2 flex items-center gap-2">
+        <span className="w-1.5 h-1.5 rounded-full bg-[#4ade80] animate-pulse" />
+        <span className={cn(jakarta.className, "text-[11px] font-semibold text-zinc-300")}>
+          Live · Realtime updates
+        </span>
+      </div>
+    </div>
+  );
+}
+
 function HeroSection() {
   return (
     <section
-      className="relative bg-[#0E1117] pt-[108px] pb-20 overflow-hidden"
+      className="relative bg-[#0E1117] pt-[108px] pb-16 overflow-hidden"
       style={{
         backgroundImage:
           "radial-gradient(circle, rgba(255,255,255,0.025) 1px, transparent 1px)",
@@ -215,86 +304,97 @@ function HeroSection() {
         }}
       />
       <div
-        className="absolute bottom-0 right-0 w-[500px] h-[400px] pointer-events-none"
+        className="absolute bottom-0 right-0 w-[600px] h-[500px] pointer-events-none"
         style={{
           background:
-            "radial-gradient(ellipse at 70% 70%, rgba(12,131,31,0.06) 0%, transparent 60%)",
+            "radial-gradient(ellipse at 70% 60%, rgba(12,131,31,0.07) 0%, transparent 60%)",
         }}
       />
 
       <div className="max-w-[1200px] mx-auto px-5 sm:px-8 relative z-10">
-        {/* Beta pill */}
-        <div className="flex items-center gap-2.5 mb-10">
-          <span className="w-1.5 h-1.5 rounded-full bg-[#4ade80] animate-pulse shrink-0" />
-          <span
-            className={cn(
-              jakarta.className,
-              "text-xs font-semibold text-zinc-500 tracking-[0.1em] uppercase"
-            )}
-          >
-            Early Access · Now in Beta
-          </span>
-        </div>
+        {/* Two-column layout on desktop */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-x-12 xl:gap-x-20 items-center">
 
-        {/* Signature headline */}
-        <h1
-          className={cn(
-            manrope.className,
-            "font-extrabold leading-[0.88] tracking-[-0.045em] mb-10"
-          )}
-          style={{ fontSize: "clamp(72px, 11vw, 130px)" }}
-        >
-          <span className="block text-white">Scan.</span>
-          <span className="block text-white">Pay.</span>
-          <span className="block text-[#0C831F]">Print.</span>
-        </h1>
+          {/* Left: content */}
+          <div>
+            {/* Beta pill */}
+            <div className="flex items-center gap-2.5 mb-8 lg:mb-10">
+              <span className="w-1.5 h-1.5 rounded-full bg-[#4ade80] animate-pulse shrink-0" />
+              <span
+                className={cn(
+                  jakarta.className,
+                  "text-xs font-semibold text-zinc-500 tracking-[0.1em] uppercase"
+                )}
+              >
+                Early Access · Now in Beta
+              </span>
+            </div>
 
-        <div className="max-w-lg">
-          <p
-            className={cn(
-              jakarta.className,
-              "text-[17px] text-zinc-400 leading-[1.7] mb-10"
-            )}
-          >
-            PrintBuddy connects your existing printer to a digital payment flow. Customers
-            upload from their phone, pay via UPI, and collect their print.{" "}
-            <span className="text-zinc-200 font-medium">
-              No new hardware. No manual intervention.
-            </span>
-          </p>
-
-          <div className="flex flex-wrap gap-3 mb-7">
-            <Link
-              href="/vendor/login"
+            {/* Signature headline */}
+            <h1
               className={cn(
                 manrope.className,
-                "inline-flex items-center gap-2.5 px-7 py-3.5 bg-[#0C831F] text-white text-[15px] font-bold rounded-2xl hover:bg-[#086618] transition-colors shadow-xl shadow-[#0C831F]/30"
+                "font-extrabold leading-[0.88] tracking-[-0.045em] mb-8 lg:mb-10"
               )}
+              style={{ fontSize: "clamp(64px, 9vw, 108px)" }}
             >
-              <Store className="w-4 h-4 shrink-0" />
-              Set Up My Shop
-              <ArrowRight className="w-4 h-4 shrink-0" />
-            </Link>
-            <Link
-              href="/login"
+              <span className="block text-white">Scan.</span>
+              <span className="block text-white">Pay.</span>
+              <span className="block text-[#0C831F]">Print.</span>
+            </h1>
+
+            <p
               className={cn(
                 jakarta.className,
-                "inline-flex items-center gap-2.5 px-7 py-3.5 border border-white/[0.12] text-zinc-300 text-sm font-medium rounded-2xl hover:border-white/25 hover:text-white transition-all"
+                "text-[17px] text-zinc-400 leading-[1.7] mb-9 max-w-lg"
               )}
             >
-              <Smartphone className="w-4 h-4 shrink-0" />
-              Open Customer App
-            </Link>
+              PrintBuddy connects your existing printer to a digital payment flow. Customers
+              upload from their phone, pay via UPI, and collect their print.{" "}
+              <span className="text-zinc-200 font-medium">
+                No new hardware. No manual intervention.
+              </span>
+            </p>
+
+            <div className="flex flex-wrap gap-3 mb-6">
+              <Link
+                href="/vendor/login"
+                className={cn(
+                  manrope.className,
+                  "inline-flex items-center gap-2.5 px-7 py-3.5 bg-[#0C831F] text-white text-[15px] font-bold rounded-2xl hover:bg-[#086618] transition-colors shadow-xl shadow-[#0C831F]/30"
+                )}
+              >
+                <Store className="w-4 h-4 shrink-0" />
+                Set Up My Shop
+                <ArrowRight className="w-4 h-4 shrink-0" />
+              </Link>
+              <Link
+                href="/login"
+                className={cn(
+                  jakarta.className,
+                  "inline-flex items-center gap-2.5 px-7 py-3.5 border border-white/[0.12] text-zinc-300 text-sm font-medium rounded-2xl hover:border-white/25 hover:text-white transition-all"
+                )}
+              >
+                <Smartphone className="w-4 h-4 shrink-0" />
+                Open Customer App
+              </Link>
+            </div>
+
+            <p className={cn(jakarta.className, "text-xs text-zinc-600")}>
+              Works on your existing Windows PC and printer · Live in under 5 minutes
+            </p>
           </div>
 
-          <p className={cn(jakarta.className, "text-xs text-zinc-600")}>
-            Works on your existing Windows PC and printer · Live in under 5 minutes
-          </p>
+          {/* Right: product visual — desktop only */}
+          <div className="hidden lg:flex justify-end items-center pt-8">
+            <HeroVisual />
+          </div>
+
         </div>
       </div>
 
-      {/* Flow strip */}
-      <div className="max-w-[1200px] mx-auto px-5 sm:px-8 mt-20 relative z-10">
+      {/* Flow strip — full width below the two columns */}
+      <div className="max-w-[1200px] mx-auto px-5 sm:px-8 mt-16 lg:mt-24 relative z-10">
         <FlowStrip />
       </div>
     </section>
