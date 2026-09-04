@@ -1,4 +1,5 @@
 import { getSupabase } from "@/lib/supabase";
+import { DEFAULT_CAPABILITIES } from "@printbuddy/shared";
 import { NextRequest } from "next/server";
 
 export async function GET(
@@ -49,10 +50,15 @@ export async function GET(
     capabilities_updated_at: p.capabilities_updated_at ?? null,
   }));
 
+  // Fall back to the default capability set when a shop has no registered
+  // printer yet — virtual/demo shops don't need a real printer to accept
+  // orders, and the print UI needs *something* to render controls against.
+  const capabilities = printerList[0]?.capabilities ?? DEFAULT_CAPABILITIES;
+
   return Response.json({
     shop,
     pricing,
     printers: printerList,
-    capabilities: printerList[0]?.capabilities ?? null,
+    capabilities,
   });
 }

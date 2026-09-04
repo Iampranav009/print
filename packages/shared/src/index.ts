@@ -72,6 +72,23 @@ export interface PrinterCapabilities {
   max_copies: number;
 }
 
+// Sensible default capability set for shops that don't have a registered
+// printer yet — used by virtual/demo shops and as a fallback so the print
+// UI always has something to render.
+export const DEFAULT_CAPABILITIES: PrinterCapabilities = {
+  color: true,
+  sides: ["one-sided", "two-sided-long-edge", "two-sided-short-edge"],
+  media: ["A4", "A3", "Letter"],
+  number_up: [1, 2, 4],
+  quality: ["draft", "normal", "high"],
+  media_types: ["plain"],
+  finishings: [],
+  collate: true,
+  reverse: false,
+  scaling: ["none", "fit-to-page", "shrink-to-fit"],
+  max_copies: 99,
+};
+
 export type CapabilitiesSource = "default" | "discovered" | "manual";
 
 export interface PrinterInfo {
