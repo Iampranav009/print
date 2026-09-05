@@ -99,7 +99,7 @@ function defaultConfig(caps: PrinterCapabilities | null): Config {
     quality: "normal",
     mediaType: "plain",
     reverse: false,
-    scaling: "fit",
+    scaling: "none",
     finishings: [],
   };
 }
@@ -359,6 +359,8 @@ function PrintContent() {
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [fileState, setFileState] = useState<FileState | null>(null);
   const [rawFiles, setRawFiles] = useState<RawFile[]>([]);
+  const rawFilesRef = useRef<RawFile[]>([]);
+  useEffect(() => { rawFilesRef.current = rawFiles; }, [rawFiles]);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [showUploadSheet, setShowUploadSheet] = useState(false);
 
@@ -505,7 +507,8 @@ function PrintContent() {
     return new File([buf], suggestedName, { type: "application/pdf" });
   }, []);
 
-  const handleFilesSelect = useCallback(async (rawInputs: File[]) => {
+  // append=true: add new files to the existing set and re-merge/re-upload.
+  const handleFilesSelect = useCallback(async (rawInputs: File[], append = false) => {
     if (rawInputs.length === 0) return;
 
     const ACCEPTED = new Set([
@@ -519,41 +522,42 @@ function PrintContent() {
       setUploadError(`Unsupported file type: ${rejected.map((r) => r.name).join(", ")}`);
       return;
     }
-    const totalSize = rawInputs.reduce((s, f) => s + f.size, 0);
+
+    // Combine with existing files when appending
+    const existingFiles = append ? rawFilesRef.current.map((r) => r.file) : [];
+    const allFiles = [...existingFiles, ...rawInputs];
+
+    const totalSize = allFiles.reduce((s, f) => s + f.size, 0);
     if (totalSize > 50 * 1024 * 1024) {
       setUploadError("Total size too large (max 50 MB across all files)");
       return;
     }
 
     setUploadError(null);
-    setRawFiles(
-      rawInputs.map((f) => ({ file: f, name: f.name, mime: f.type }))
-    );
+    setRawFiles(allFiles.map((f) => ({ file: f, name: f.name, mime: f.type })));
     setUploadState("uploading");
     setUploadProgress(0);
     setShowUploadSheet(true);
 
-    // New upload = new customer session on the kiosk view.
     sessionIdRef.current = newSessionId();
     lastProgressBroadcastRef.current = 0;
     broadcast({
       type: "upload:start",
       sessionId: sessionIdRef.current,
-      fileName: rawInputs[0].name,
-      fileCount: rawInputs.length,
+      fileName: allFiles[0].name,
+      fileCount: allFiles.length,
       sentAt: new Date().toISOString(),
     });
 
     try {
-      // If more than one file OR the single file is an image, produce a
-      // merged PDF so the server sees a single, printable document.
+      // Always merge when there are multiple files or any image
       const needsMerge =
-        rawInputs.length > 1 ||
-        (rawInputs[0].type !== "application/pdf");
+        allFiles.length > 1 ||
+        (allFiles[0].type !== "application/pdf");
 
       const uploadableFile = needsMerge
-        ? await mergeFilesIntoPdf(rawInputs)
-        : rawInputs[0];
+        ? await mergeFilesIntoPdf(allFiles)
+        : allFiles[0];
 
       // Get signed upload URL for the (possibly merged) file
       const res = await fetch("/api/uploads", {
@@ -751,7 +755,18 @@ function PrintContent() {
       <div className="flex-1 overflow-y-auto pb-36">
         {/* Upload zone / File preview */}
         <div className="px-4 pt-4">
-          {!hasFile ? (
+          {!shopId ? (
+            /* Locked — must scan QR first */
+            <div className="w-full flex flex-col items-center justify-center gap-3 border-2 border-dashed border-gray-200 rounded-2xl bg-gray-50 p-10 text-center">
+              <div className="w-14 h-14 rounded-2xl bg-blue-50 flex items-center justify-center">
+                <QrCode className="w-7 h-7 text-blue-400" />
+              </div>
+              <div>
+                <p className="text-sm font-semibold text-gray-900">Scan a kiosk QR code first</p>
+                <p className="text-xs text-gray-500 mt-1">The QR code sets the print pricing before you upload</p>
+              </div>
+            </div>
+          ) : !hasFile ? (
             /* Upload Drop Zone */
             <button
               type="button"
@@ -791,6 +806,9 @@ function PrintContent() {
                 files={rawFiles.length > 0 ? rawFiles : [{ file: fileState.file, name: fileState.file.name, mime: fileState.mime }]}
                 orientation={config?.orientation ?? "portrait"}
                 grayscale={config ? !config.color : false}
+                numberUp={config?.numberUp ?? 1}
+                paperSize={config?.paper ?? "A4"}
+                scaling={config?.scaling ?? "none"}
               />
 
               {rawFiles.length > 1 && (
@@ -900,12 +918,14 @@ function PrintContent() {
               ]}
             />
 
-            {/* Duplex (if supported) */}
+            {/* Duplex (if supported and document has > 1 page) */}
             {caps?.sides && caps.sides.some(s => s.startsWith("two-sided")) && (
               <ToggleOption
                 label="Double-sided"
+                subtitle={fileState && fileState.totalPages <= 1 ? "Need at least 2 pages" : undefined}
                 value={config.duplex}
                 onChange={(v) => setConfig((c) => c ? { ...c, duplex: v } : c)}
+                disabled={fileState !== null && fileState.totalPages <= 1}
               />
             )}
 
@@ -919,7 +939,7 @@ function PrintContent() {
               />
             )}
 
-            {/* Pages per sheet */}
+            {/* Pages per sheet — disabled for single-page documents */}
             {caps?.number_up && caps.number_up.some(n => n > 1) && (
               <ChipStrip
                 label="Pages per sheet"
@@ -927,6 +947,7 @@ function PrintContent() {
                 value={config.numberUp}
                 onChange={(v) => setConfig((c) => c ? { ...c, numberUp: v } : c)}
                 format={(v) => v === 1 ? "1 page" : `${v} pages`}
+                disabled={fileState !== null && fileState.totalPages <= 1}
               />
             )}
 
@@ -957,17 +978,6 @@ function PrintContent() {
               />
             )}
 
-            {/* Media type */}
-            {caps?.media_types && caps.media_types.length > 1 && (
-              <ChipStrip
-                label="Media type"
-                options={caps.media_types}
-                value={config.mediaType}
-                onChange={(v) => setConfig((c) => c ? { ...c, mediaType: v } : c)}
-                format={(v) => v.charAt(0).toUpperCase() + v.slice(1)}
-              />
-            )}
-
             {/* Collate — only relevant when printing multiple copies */}
             {config.copies > 1 && caps?.collate && (
               <ToggleOption
@@ -975,16 +985,6 @@ function PrintContent() {
                 subtitle="Print pages in order per copy"
                 value={config.collate}
                 onChange={(v) => setConfig((c) => c ? { ...c, collate: v } : c)}
-              />
-            )}
-
-            {/* Reverse order */}
-            {caps?.reverse && (
-              <ToggleOption
-                label="Reverse page order"
-                subtitle="Print last page first"
-                value={config.reverse}
-                onChange={(v) => setConfig((c) => c ? { ...c, reverse: v } : c)}
               />
             )}
           </div>
@@ -1060,7 +1060,8 @@ function PrintContent() {
         aria-hidden
         onChange={(e) => {
           const files = Array.from(e.target.files ?? []);
-          if (files.length > 0) void handleFilesSelect(files);
+          // append=true when the user already has a document loaded
+          if (files.length > 0) void handleFilesSelect(files, fileState !== null);
           e.target.value = "";
         }}
       />

@@ -33,8 +33,8 @@ function VendorLoginContent() {
   return (
     <AuthComponent
       logo={<VendorLogo />}
-      brandName="PrintBuddy Vendor"
-      title="Vendor Portal"
+      brandName="PrintBuddy Partner"
+      title="Partner Portal"
       subtitle="Manage your shop, live queue, and earnings"
       nextUrl={nextParam}
       initialMode="signin"

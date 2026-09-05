@@ -113,11 +113,11 @@ export function PrinterClient({ initialData }: PrinterClientProps) {
 
   // Pricing
   const [pricing, setPricing] = useState<PricingFields>({
-    bw_page_paise: 100,
-    color_page_paise: 500,
-    duplex_factor: 90,
-    a3_multiplier: 200,
-    min_charge_paise: 200,
+    bw_page_paise: 200,
+    color_page_paise: 1000,
+    duplex_factor: 1.0,
+    a3_multiplier: 2.0,
+    min_charge_paise: 300,
   });
   const [pricingLoading, setPricingLoading] = useState(true);
   const [pricingSaving, setPricingSaving] = useState(false);
@@ -128,9 +128,10 @@ export function PrinterClient({ initialData }: PrinterClientProps) {
   useEffect(() => {
     fetch("/api/vendor/pricing")
       .then((r) => r.json())
-      .then((d: PricingFields) => {
-        setPricing(d);
-        savedPricingRef.current = d;
+      .then((d: { pricing: PricingFields }) => {
+        const p = d.pricing ?? d; // unwrap nested .pricing key
+        setPricing(p);
+        savedPricingRef.current = p;
       })
       .catch(() => {})
       .finally(() => setPricingLoading(false));
@@ -294,10 +295,13 @@ export function PrinterClient({ initialData }: PrinterClientProps) {
   const handlePricingChange = (field: keyof PricingFields, rawValue: string) => {
     const value = parseFloat(rawValue);
     if (isNaN(value) || value < 0) return;
-    const paise = Math.round(
-      field === "duplex_factor" || field === "a3_multiplier" ? value : value * 100
-    );
-    setPricing((prev) => ({ ...prev, [field]: paise }));
+    // duplex_factor and a3_multiplier are stored as decimals (e.g. 0.9, 2.0)
+    // bw/color/min are stored as paise integers
+    const stored =
+      field === "duplex_factor" || field === "a3_multiplier"
+        ? value
+        : Math.round(value * 100);
+    setPricing((prev) => ({ ...prev, [field]: stored }));
     setPricingDirty(true);
   };
 
@@ -634,34 +638,35 @@ export function PrinterClient({ initialData }: PrinterClientProps) {
                 {/* Duplex factor */}
                 <div className="space-y-1.5">
                   <label className="block text-xs font-semibold text-zinc-700">
-                    Duplex discount (% of single-side)
+                    Duplex factor (multiplier)
                   </label>
                   <input
                     type="number"
-                    step="1"
-                    min="1"
-                    max="100"
-                    value={pricing.duplex_factor}
+                    step="0.05"
+                    min="0.1"
+                    max="2"
+                    value={pricing.duplex_factor.toFixed(2)}
                     onChange={(e) => handlePricingChange("duplex_factor", e.target.value)}
                     className="w-full px-3.5 py-2.5 rounded-xl border border-zinc-200 bg-white text-sm text-zinc-900 focus:outline-none focus:ring-2 focus:ring-indigo-600 font-mono text-xs"
                   />
-                  <p className="text-[11px] text-zinc-400">e.g. 90 means each side costs 90% of simplex rate</p>
+                  <p className="text-[11px] text-zinc-400">0.9 = 10% cheaper per side; 1.0 = no discount</p>
                 </div>
 
                 {/* A3 multiplier */}
                 <div className="space-y-1.5">
                   <label className="block text-xs font-semibold text-zinc-700">
-                    A3 price multiplier (%)
+                    A3 multiplier
                   </label>
                   <input
                     type="number"
-                    step="1"
-                    min="100"
-                    value={pricing.a3_multiplier}
+                    step="0.5"
+                    min="1"
+                    max="10"
+                    value={pricing.a3_multiplier.toFixed(2)}
                     onChange={(e) => handlePricingChange("a3_multiplier", e.target.value)}
                     className="w-full px-3.5 py-2.5 rounded-xl border border-zinc-200 bg-white text-sm text-zinc-900 focus:outline-none focus:ring-2 focus:ring-indigo-600 font-mono text-xs"
                   />
-                  <p className="text-[11px] text-zinc-400">e.g. 200 means A3 costs 2× the A4 rate</p>
+                  <p className="text-[11px] text-zinc-400">e.g. 2.0 means A3 costs 2× the A4 rate</p>
                 </div>
 
                 {/* Min charge */}

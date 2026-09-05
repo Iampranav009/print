@@ -226,12 +226,12 @@ export default function VendorProfilePage() {
         {/* Sign out */}
         <div className="bg-white rounded-2xl shadow-sm border border-zinc-100 p-6">
           <h2 className="text-lg font-semibold text-zinc-900 mb-2">Session</h2>
-          <p className="text-sm text-zinc-400 mb-4">Sign out of the vendor portal on this device.</p>
+          <p className="text-sm text-zinc-400 mb-4">Sign out of the partner portal on this device.</p>
           <button
             onClick={handleSignOut}
             disabled={signingOut}
             className="flex items-center gap-2 px-5 py-2.5 rounded-xl border border-zinc-200 hover:border-red-300 hover:text-red-600 text-sm font-medium text-zinc-700 transition-colors disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500"
-            aria-label="Sign out of vendor portal"
+            aria-label="Sign out of partner portal"
           >
             <LogOut className="w-4 h-4" />
             {signingOut ? "Signing out…" : "Sign out"}
