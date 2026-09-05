@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { X, ChevronRight, AlertCircle, Wifi, Usb, Globe, Copy, Check } from "lucide-react";
+import { X, ChevronRight, AlertCircle, Wifi, Usb, Globe, Copy, Check, Clock } from "lucide-react";
 
 export type ConnectionType = "wifi" | "usb" | "network";
 
@@ -14,10 +14,18 @@ export interface PrinterSavedConfig {
   os_printer_name?: string | null;
 }
 
+export interface DiscoveredPrinter {
+  name: string;
+  driver?: string;
+  is_default?: boolean;
+}
+
 interface PrinterConfigModalProps {
   open: boolean;
   onClose: () => void;
   savedConfig?: PrinterSavedConfig | null;
+  discoveredPrinters?: DiscoveredPrinter[];
+  discoveredAt?: string | null;
   agentToken?: string | null;
   shopId?: string | null;
   onSaved: () => Promise<void>;
@@ -27,6 +35,8 @@ export function PrinterConfigModal({
   open,
   onClose,
   savedConfig,
+  discoveredPrinters = [],
+  discoveredAt,
   agentToken,
   shopId,
   onSaved,
@@ -44,6 +54,7 @@ export function PrinterConfigModal({
 
   // USB fields
   const [osPrinterName, setOsPrinterName] = useState("");
+  const [manualEntry, setManualEntry] = useState(false);
 
   // Network fields
   const [networkHost, setNetworkHost] = useState("");
@@ -61,6 +72,7 @@ export function PrinterConfigModal({
     if (open) {
       setError(null);
       setAccordionOpen(false);
+      setManualEntry(false);
 
       const conn = savedConfig?.connection_type;
       if (conn === "usb" || conn === "network" || conn === "wifi") {
@@ -377,22 +389,73 @@ export function PrinterConfigModal({
                 For a printer plugged into a PC or Raspberry Pi over USB. You&apos;ll need to run the PrintBuddy Agent app on that machine — it forwards jobs to the printer over your OS&apos;s print system.
               </p>
 
+              {/* Printer name input — dropdown or manual */}
               <div className="space-y-1.5">
-                <label htmlFor="os-printer-name" className="block text-xs font-semibold text-zinc-700">
-                  OS printer name <span className="text-red-500">*</span>
-                </label>
-                <input
-                  id="os-printer-name"
-                  type="text"
-                  required
-                  value={osPrinterName}
-                  onChange={(e) => setOsPrinterName(e.target.value)}
-                  placeholder="HP_LaserJet_Pro_MFP_M148fw"
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-zinc-200 bg-white text-sm text-zinc-900 placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-indigo-600 font-mono text-xs"
-                />
-                <p className="text-[11px] text-zinc-400 leading-normal">
-                  The exact name your operating system uses for the printer. Windows: Control Panel ? Devices and Printers. macOS: System Settings ? Printers &amp; Scanners. Linux: <code className="bg-zinc-100 px-1 py-0.5 rounded">lpstat -p</code>.
-                </p>
+                <div className="flex items-center justify-between">
+                  <label htmlFor="os-printer-name" className="block text-xs font-semibold text-zinc-700">
+                    OS printer name <span className="text-red-500">*</span>
+                  </label>
+                  {discoveredPrinters.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => setManualEntry((v) => !v)}
+                      className="text-xs text-indigo-600 hover:text-indigo-800 font-medium transition-colors"
+                    >
+                      {manualEntry ? "← Back to list" : "Type manually"}
+                    </button>
+                  )}
+                </div>
+
+                {/* Discovered printers dropdown */}
+                {discoveredPrinters.length > 0 && !manualEntry ? (
+                  <div className="space-y-1">
+                    <select
+                      id="os-printer-name"
+                      required
+                      value={osPrinterName}
+                      onChange={(e) => setOsPrinterName(e.target.value)}
+                      className="w-full px-3.5 py-2.5 rounded-xl border border-zinc-200 bg-white text-sm text-zinc-900 focus:outline-none focus:ring-2 focus:ring-indigo-600 font-mono text-xs"
+                    >
+                      <option value="">Select a printer…</option>
+                      {discoveredPrinters.map((p) => (
+                        <option key={p.name} value={p.name}>
+                          {p.name}{p.is_default ? " (Default)" : ""}
+                          {p.driver ? ` — ${p.driver}` : ""}
+                        </option>
+                      ))}
+                    </select>
+                    {discoveredAt && (
+                      <p className="text-[11px] text-zinc-400 flex items-center gap-1">
+                        <Clock className="w-3 h-3" />
+                        Discovered {new Date(discoveredAt).toLocaleString()}
+                      </p>
+                    )}
+                  </div>
+                ) : (
+                  /* No discovered printers — amber warning + manual input */
+                  <div className="space-y-3">
+                    {discoveredPrinters.length === 0 && (
+                      <div className="flex items-start gap-2.5 p-3 rounded-xl bg-amber-50 border border-amber-200 text-xs text-amber-800">
+                        <AlertCircle className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
+                        <span>
+                          No printers detected by the agent yet. Make sure the PrintBuddy Agent is running on the same PC as the printer, then come back here. You can still enter the name manually below.
+                        </span>
+                      </div>
+                    )}
+                    <input
+                      id="os-printer-name"
+                      type="text"
+                      required
+                      value={osPrinterName}
+                      onChange={(e) => setOsPrinterName(e.target.value)}
+                      placeholder="HP_LaserJet_Pro_MFP_M148fw"
+                      className="w-full px-3.5 py-2.5 rounded-xl border border-zinc-200 bg-white text-sm text-zinc-900 placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-indigo-600 font-mono text-xs"
+                    />
+                    <p className="text-[11px] text-zinc-400 leading-normal">
+                      The exact name your operating system uses for the printer. Windows: Control Panel → Devices and Printers. macOS: System Settings → Printers &amp; Scanners. Linux: <code className="bg-zinc-100 px-1 py-0.5 rounded">lpstat -p</code>.
+                    </p>
+                  </div>
+                )}
               </div>
 
               {/* USB Instructions Block */}

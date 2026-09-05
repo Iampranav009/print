@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
 import {
   Printer as PrinterIcon,
   CheckCircle2,
@@ -11,6 +11,10 @@ import {
   Settings2,
   RefreshCw,
   HelpCircle,
+  Palette,
+  Copy as CopyIcon,
+  RotateCcw,
+  IndianRupee,
 } from "lucide-react";
 import { PrinterModeToggle } from "@/components/vendor/PrinterModeToggle";
 import { PrinterConfigModal } from "@/components/vendor/PrinterConfigModal";
@@ -31,6 +35,10 @@ export interface PrinterClientProps {
       setup_notes: string | null;
       last_seen_at: string | null;
       online: boolean;
+      color_enabled?: boolean;
+      duplex_enabled?: boolean;
+      discovered_printers?: Array<{ name: string; driver?: string; is_default?: boolean }>;
+      discovered_at?: string | null;
     } | null;
     agent?: {
       id: string;
@@ -53,6 +61,36 @@ interface VerifyResult {
   message: string;
 }
 
+interface PricingFields {
+  bw_page_paise: number;
+  color_page_paise: number;
+  duplex_factor: number;
+  a3_multiplier: number;
+  min_charge_paise: number;
+}
+
+// Debounce helper
+function useDebounce<T>(value: T, delay: number): T {
+  const [debounced, setDebounced] = useState<T>(value);
+  useEffect(() => {
+    const t = setTimeout(() => setDebounced(value), delay);
+    return () => clearTimeout(t);
+  }, [value, delay]);
+  return debounced;
+}
+
+// Live example price preview for 5-page A4 B&W simplex job
+function pricePreview(pricing: PricingFields): string {
+  const pages = 5;
+  const raw = pages * pricing.bw_page_paise;
+  const total = Math.max(raw, pricing.min_charge_paise);
+  return new Intl.NumberFormat("en-IN", {
+    style: "currency",
+    currency: "INR",
+    minimumFractionDigits: 2,
+  }).format(total / 100);
+}
+
 export function PrinterClient({ initialData }: PrinterClientProps) {
   const [data, setData] = useState(initialData);
   const [mode, setMode] = useState<"test" | "real">(
@@ -62,6 +100,41 @@ export function PrinterClient({ initialData }: PrinterClientProps) {
   const [verifying, setVerifying] = useState(false);
   const [verifyResult, setVerifyResult] = useState<VerifyResult | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+
+  // Feature toggles
+  const [colorEnabled, setColorEnabled] = useState<boolean>(
+    data.printer?.color_enabled ?? false
+  );
+  const [duplexEnabled, setDuplexEnabled] = useState<boolean>(
+    data.printer?.duplex_enabled ?? false
+  );
+  const [togglingColor, setTogglingColor] = useState(false);
+  const [togglingDuplex, setTogglingDuplex] = useState(false);
+
+  // Pricing
+  const [pricing, setPricing] = useState<PricingFields>({
+    bw_page_paise: 100,
+    color_page_paise: 500,
+    duplex_factor: 90,
+    a3_multiplier: 200,
+    min_charge_paise: 200,
+  });
+  const [pricingLoading, setPricingLoading] = useState(true);
+  const [pricingSaving, setPricingSaving] = useState(false);
+  const [pricingDirty, setPricingDirty] = useState(false);
+  const savedPricingRef = useRef<PricingFields>(pricing);
+
+  // Fetch pricing on mount
+  useEffect(() => {
+    fetch("/api/vendor/pricing")
+      .then((r) => r.json())
+      .then((d: PricingFields) => {
+        setPricing(d);
+        savedPricingRef.current = d;
+      })
+      .catch(() => {})
+      .finally(() => setPricingLoading(false));
+  }, []);
 
   const showToast = useCallback((msg: string) => {
     setToastMessage(msg);
@@ -78,6 +151,8 @@ export function PrinterClient({ initialData }: PrinterClientProps) {
         const json = await res.json();
         setData(json);
         setMode(json.status?.mode ?? (json.shop?.virtual_mode ? "test" : "real"));
+        setColorEnabled(json.printer?.color_enabled ?? false);
+        setDuplexEnabled(json.printer?.duplex_enabled ?? false);
       }
     } catch {
       // ignore
@@ -88,7 +163,6 @@ export function PrinterClient({ initialData }: PrinterClientProps) {
   const handleModeChange = async (newMode: "test" | "real") => {
     if (newMode === mode) return;
 
-    // Optimistic update
     const previousMode = mode;
     setMode(newMode);
     setData((prev) => ({
@@ -109,16 +183,10 @@ export function PrinterClient({ initialData }: PrinterClientProps) {
         body: JSON.stringify({ mode: newMode }),
       });
       const json = await res.json().catch(() => ({}));
-      if (!res.ok) {
-        throw new Error(json.error || `HTTP ${res.status}`);
-      }
-      // Success — refresh from the server so status.mode reflects reality.
-      // Any partial-schema warning bubbles up as a soft toast so the vendor
-      // knows to run migration 0016 if it hasn't been applied yet.
+      if (!res.ok) throw new Error(json.error || `HTTP ${res.status}`);
       if (json.warning) showToast(json.warning);
       await refreshData();
     } catch (err) {
-      // Revert
       setMode(previousMode);
       await refreshData();
       const msg = err instanceof Error ? err.message : "Please try again.";
@@ -126,19 +194,63 @@ export function PrinterClient({ initialData }: PrinterClientProps) {
     }
   };
 
+  // Feature toggle handler (debounced 400ms)
+  const featureDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const handleFeatureToggle = useCallback(
+    (field: "color_enabled" | "duplex_enabled", value: boolean) => {
+      if (field === "color_enabled") {
+        setColorEnabled(value);
+        setTogglingColor(true);
+      } else {
+        setDuplexEnabled(value);
+        setTogglingDuplex(true);
+      }
+
+      if (featureDebounceRef.current) clearTimeout(featureDebounceRef.current);
+      featureDebounceRef.current = setTimeout(async () => {
+        try {
+          const res = await fetch("/api/vendor/printer", {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ [field]: value }),
+          });
+          const json = await res.json().catch(() => ({}));
+          if (!res.ok) throw new Error(json.error || `HTTP ${res.status}`);
+          showToast(
+            field === "color_enabled"
+              ? value
+                ? "Colour printing enabled"
+                : "Colour printing disabled"
+              : value
+                ? "Double-sided printing enabled"
+                : "Double-sided printing disabled"
+          );
+        } catch (err) {
+          // Revert
+          if (field === "color_enabled") setColorEnabled(!value);
+          else setDuplexEnabled(!value);
+          showToast(err instanceof Error ? err.message : "Could not update feature toggle.");
+        } finally {
+          if (field === "color_enabled") setTogglingColor(false);
+          else setTogglingDuplex(false);
+        }
+      }, 400);
+    },
+    [showToast]
+  );
+
   // Verify connectivity handler
   const handleVerify = useCallback(async () => {
     setVerifying(true);
     setVerifyResult(null);
 
     try {
-      const res = await fetch("/api/vendor/printer/verify", {
-        method: "POST",
-      });
+      const res = await fetch("/api/vendor/printer/verify", { method: "POST" });
       const json = await res.json();
       setVerifyResult({
         ok: !!json.ok,
-        message: json.message ?? (json.ok ? "Printer is reachable." : (json.error ?? "Could not connect to printer.")),
+        message:
+          json.message ?? (json.ok ? "Printer is reachable." : (json.error ?? "Could not connect to printer.")),
       });
       await refreshData();
     } catch {
@@ -155,15 +267,44 @@ export function PrinterClient({ initialData }: PrinterClientProps) {
   const handleModalSaved = async () => {
     await refreshData();
     showToast("Printer configuration saved");
-    // Auto-trigger verify call
     void handleVerify();
+  };
+
+  // Pricing save handler
+  const handleSavePricing = async () => {
+    setPricingSaving(true);
+    try {
+      const res = await fetch("/api/vendor/pricing", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(pricing),
+      });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(json.error || `HTTP ${res.status}`);
+      savedPricingRef.current = pricing;
+      setPricingDirty(false);
+      showToast("Pricing saved");
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : "Could not save pricing.");
+    } finally {
+      setPricingSaving(false);
+    }
+  };
+
+  const handlePricingChange = (field: keyof PricingFields, rawValue: string) => {
+    const value = parseFloat(rawValue);
+    if (isNaN(value) || value < 0) return;
+    const paise = Math.round(
+      field === "duplex_factor" || field === "a3_multiplier" ? value : value * 100
+    );
+    setPricing((prev) => ({ ...prev, [field]: paise }));
+    setPricingDirty(true);
   };
 
   const printer = data.printer;
   const isConfigured = Boolean(printer?.connection_type);
   const isOnline = Boolean(data.status?.online);
 
-  // Derived pill status
   const currentStatusData: PrinterStatusData = {
     mode,
     online: isOnline,
@@ -171,7 +312,6 @@ export function PrinterClient({ initialData }: PrinterClientProps) {
     last_seen_at: data.status?.last_seen_at ?? null,
   };
 
-  // Connectivity card subtitle
   let connectivitySub = "";
   if (!isConfigured) {
     connectivitySub = "No connection details saved. Configure the printer to start receiving jobs.";
@@ -183,6 +323,8 @@ export function PrinterClient({ initialData }: PrinterClientProps) {
   } else {
     connectivitySub = "Printer isn't responding. Check power, cable and network, then retry.";
   }
+
+  const discoveredPrinters = printer?.discovered_printers ?? [];
 
   return (
     <div className="max-w-3xl mx-auto space-y-6 pb-12">
@@ -205,7 +347,98 @@ export function PrinterClient({ initialData }: PrinterClientProps) {
         onModeChange={handleModeChange}
       />
 
-      {/* 2. Connectivity Card (Shown ONLY when mode === "real") */}
+      {/* 2. What customers can print (feature toggles) — shown when mode === "real" */}
+      {mode === "real" && (
+        <div className="bg-white rounded-2xl border border-zinc-100 p-6 shadow-sm space-y-4">
+          <div>
+            <h2 className="text-lg font-semibold text-zinc-900">What customers can print</h2>
+            <p className="text-sm text-zinc-500 mt-1">
+              Control which print capabilities are offered to customers.
+            </p>
+          </div>
+
+          <div className="space-y-3">
+            {/* B&W — always on */}
+            <div className="flex items-center justify-between py-3 px-4 rounded-xl bg-zinc-50 border border-zinc-100">
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-lg bg-zinc-200 flex items-center justify-center">
+                  <CopyIcon className="w-4 h-4 text-zinc-600" />
+                </div>
+                <div>
+                  <p className="text-sm font-semibold text-zinc-900">Black &amp; White</p>
+                  <p className="text-xs text-zinc-500">Always available to customers</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-zinc-400 font-medium">Always on</span>
+                <div className="w-10 h-5 rounded-full bg-indigo-600 opacity-50 flex items-center justify-end px-0.5 cursor-not-allowed">
+                  <div className="w-4 h-4 rounded-full bg-white shadow-sm" />
+                </div>
+              </div>
+            </div>
+
+            {/* Colour */}
+            <div className="flex items-center justify-between py-3 px-4 rounded-xl bg-zinc-50 border border-zinc-100">
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-lg bg-purple-100 flex items-center justify-center">
+                  <Palette className="w-4 h-4 text-purple-600" />
+                </div>
+                <div>
+                  <p className="text-sm font-semibold text-zinc-900">Colour</p>
+                  <p className="text-xs text-zinc-500">Show colour option in the customer app</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                role="switch"
+                aria-checked={colorEnabled}
+                disabled={togglingColor}
+                onClick={() => handleFeatureToggle("color_enabled", !colorEnabled)}
+                className={`relative w-10 h-5 rounded-full transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600 disabled:opacity-60 ${
+                  colorEnabled ? "bg-indigo-600" : "bg-zinc-300"
+                }`}
+              >
+                <span
+                  className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow-sm transition-transform duration-200 ${
+                    colorEnabled ? "translate-x-5" : "translate-x-0.5"
+                  }`}
+                />
+              </button>
+            </div>
+
+            {/* Double-sided */}
+            <div className="flex items-center justify-between py-3 px-4 rounded-xl bg-zinc-50 border border-zinc-100">
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-lg bg-amber-100 flex items-center justify-center">
+                  <RotateCcw className="w-4 h-4 text-amber-600" />
+                </div>
+                <div>
+                  <p className="text-sm font-semibold text-zinc-900">Double-sided</p>
+                  <p className="text-xs text-zinc-500">Allow duplex printing for customers</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                role="switch"
+                aria-checked={duplexEnabled}
+                disabled={togglingDuplex}
+                onClick={() => handleFeatureToggle("duplex_enabled", !duplexEnabled)}
+                className={`relative w-10 h-5 rounded-full transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600 disabled:opacity-60 ${
+                  duplexEnabled ? "bg-indigo-600" : "bg-zinc-300"
+                }`}
+              >
+                <span
+                  className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow-sm transition-transform duration-200 ${
+                    duplexEnabled ? "translate-x-5" : "translate-x-0.5"
+                  }`}
+                />
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 3. Connectivity Card (shown when mode === "real") */}
       {mode === "real" && (
         <div className="bg-white rounded-2xl border border-zinc-100 p-6 shadow-sm space-y-6">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -343,7 +576,145 @@ export function PrinterClient({ initialData }: PrinterClientProps) {
         </div>
       )}
 
-      {/* 3. Setup guide (Shown ONLY when mode === "real" and no config yet) */}
+      {/* 4. Pricing Card */}
+      {mode === "real" && (
+        <div className="bg-white rounded-2xl border border-zinc-100 p-6 shadow-sm space-y-5">
+          <div>
+            <h2 className="text-lg font-semibold text-zinc-900">Pricing</h2>
+            <p className="text-sm text-zinc-500 mt-1">
+              Set per-page rates for your shop. Changes apply to all new jobs.
+            </p>
+          </div>
+
+          {pricingLoading ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {[...Array(5)].map((_, i) => (
+                <div key={i} className="h-14 rounded-xl bg-zinc-100 animate-pulse" />
+              ))}
+            </div>
+          ) : (
+            <>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {/* B&W */}
+                <div className="space-y-1.5">
+                  <label className="block text-xs font-semibold text-zinc-700">
+                    B&amp;W per page (₹)
+                  </label>
+                  <div className="relative">
+                    <IndianRupee className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-zinc-400" />
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      value={(pricing.bw_page_paise / 100).toFixed(2)}
+                      onChange={(e) => handlePricingChange("bw_page_paise", e.target.value)}
+                      className="w-full pl-8 pr-3.5 py-2.5 rounded-xl border border-zinc-200 bg-white text-sm text-zinc-900 focus:outline-none focus:ring-2 focus:ring-indigo-600 font-mono text-xs"
+                    />
+                  </div>
+                </div>
+
+                {/* Colour */}
+                <div className="space-y-1.5">
+                  <label className="block text-xs font-semibold text-zinc-700">
+                    Colour per page (₹)
+                  </label>
+                  <div className="relative">
+                    <IndianRupee className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-zinc-400" />
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      value={(pricing.color_page_paise / 100).toFixed(2)}
+                      onChange={(e) => handlePricingChange("color_page_paise", e.target.value)}
+                      className="w-full pl-8 pr-3.5 py-2.5 rounded-xl border border-zinc-200 bg-white text-sm text-zinc-900 focus:outline-none focus:ring-2 focus:ring-indigo-600 font-mono text-xs"
+                    />
+                  </div>
+                </div>
+
+                {/* Duplex factor */}
+                <div className="space-y-1.5">
+                  <label className="block text-xs font-semibold text-zinc-700">
+                    Duplex discount (% of single-side)
+                  </label>
+                  <input
+                    type="number"
+                    step="1"
+                    min="1"
+                    max="100"
+                    value={pricing.duplex_factor}
+                    onChange={(e) => handlePricingChange("duplex_factor", e.target.value)}
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-zinc-200 bg-white text-sm text-zinc-900 focus:outline-none focus:ring-2 focus:ring-indigo-600 font-mono text-xs"
+                  />
+                  <p className="text-[11px] text-zinc-400">e.g. 90 means each side costs 90% of simplex rate</p>
+                </div>
+
+                {/* A3 multiplier */}
+                <div className="space-y-1.5">
+                  <label className="block text-xs font-semibold text-zinc-700">
+                    A3 price multiplier (%)
+                  </label>
+                  <input
+                    type="number"
+                    step="1"
+                    min="100"
+                    value={pricing.a3_multiplier}
+                    onChange={(e) => handlePricingChange("a3_multiplier", e.target.value)}
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-zinc-200 bg-white text-sm text-zinc-900 focus:outline-none focus:ring-2 focus:ring-indigo-600 font-mono text-xs"
+                  />
+                  <p className="text-[11px] text-zinc-400">e.g. 200 means A3 costs 2× the A4 rate</p>
+                </div>
+
+                {/* Min charge */}
+                <div className="space-y-1.5 sm:col-span-2">
+                  <label className="block text-xs font-semibold text-zinc-700">
+                    Minimum charge per job (₹)
+                  </label>
+                  <div className="relative sm:max-w-xs">
+                    <IndianRupee className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-zinc-400" />
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      value={(pricing.min_charge_paise / 100).toFixed(2)}
+                      onChange={(e) => handlePricingChange("min_charge_paise", e.target.value)}
+                      className="w-full pl-8 pr-3.5 py-2.5 rounded-xl border border-zinc-200 bg-white text-sm text-zinc-900 focus:outline-none focus:ring-2 focus:ring-indigo-600 font-mono text-xs"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Live price preview */}
+              <div className="flex items-center justify-between gap-4 px-4 py-3 rounded-xl bg-zinc-50 border border-zinc-100">
+                <p className="text-xs text-zinc-500">
+                  Example: 5-page A4 B&amp;W simplex job →{" "}
+                  <span className="font-semibold text-zinc-800">{pricePreview(pricing)}</span>
+                </p>
+              </div>
+
+              {/* Save button */}
+              <div className="flex justify-end pt-1">
+                <button
+                  type="button"
+                  disabled={pricingSaving || !pricingDirty}
+                  onClick={handleSavePricing}
+                  className="px-6 py-2.5 rounded-xl bg-indigo-600 text-white text-sm font-medium hover:bg-indigo-700 active:bg-indigo-800 transition-colors shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600 disabled:opacity-50 flex items-center gap-2"
+                >
+                  {pricingSaving ? (
+                    <>
+                      <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                      <span>Saving...</span>
+                    </>
+                  ) : (
+                    "Save pricing"
+                  )}
+                </button>
+              </div>
+            </>
+          )}
+        </div>
+      )}
+
+      {/* 5. Setup guide (shown when mode === "real" and no config yet) */}
       {mode === "real" && !isConfigured && (
         <div className="bg-white rounded-2xl border border-zinc-100 p-6 shadow-sm space-y-4">
           <div className="flex items-center gap-2.5">
@@ -401,6 +772,8 @@ export function PrinterClient({ initialData }: PrinterClientProps) {
           wifi_ssid: printer?.wifi_ssid,
           os_printer_name: printer?.os_printer_name,
         }}
+        discoveredPrinters={discoveredPrinters}
+        discoveredAt={printer?.discovered_at ?? null}
         agentToken={data.agent?.agent_token}
         shopId={data.shop?.id}
         onSaved={handleModalSaved}

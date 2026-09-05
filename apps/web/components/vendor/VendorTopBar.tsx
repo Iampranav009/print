@@ -2,6 +2,7 @@
 
 import { usePathname } from "next/navigation";
 import { PrinterStatusPill } from "./PrinterStatusPill";
+import { WalletChip } from "./WalletChip";
 
 interface ShopBadgeProps {
   shopName: string | null;
@@ -11,11 +12,11 @@ interface ShopBadgeProps {
 const PAGE_TITLES: Record<string, string> = {
   "/vendor": "Overview",
   "/vendor/analytics": "Analytics",
+  "/vendor/payouts": "Wallet",
   "/vendor/shop": "Shop",
   "/vendor/printer": "Printer",
   "/vendor/location": "Printer Location",
   "/vendor/bank": "Bank Details",
-  "/vendor/payouts": "Request Payout",
   "/vendor/profile": "Profile",
   "/vendor/onboarding": "Onboarding",
 };
@@ -42,7 +43,7 @@ export function VendorTopBar({ shopName, shopStatus }: ShopBadgeProps) {
   const title =
     Object.entries(PAGE_TITLES)
       .filter(([path]) => pathname === path || pathname.startsWith(path + "/"))
-      .sort((a, b) => b[0].length - a[0].length)[0]?.[1] ?? "Vendor Portal";
+      .sort((a, b) => b[0].length - a[0].length)[0]?.[1] ?? "Partner Portal";
 
   return (
     <header className="h-16 flex items-center justify-between px-6 lg:px-8 bg-white border-b border-zinc-100 shrink-0">
@@ -51,6 +52,7 @@ export function VendorTopBar({ shopName, shopStatus }: ShopBadgeProps) {
 
       {/* Right side items */}
       <div className="flex items-center gap-3">
+        <WalletChip />
         <PrinterStatusPill isLink={true} />
 
         {shopName && (

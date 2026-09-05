@@ -8,7 +8,6 @@ import {
   BarChart3,
   Store,
   Printer,
-  MapPin,
   Landmark,
   User,
   LogOut,
@@ -38,11 +37,10 @@ interface NavItem {
 const NAV_ITEMS: NavItem[] = [
   { href: "/vendor", label: "Overview", icon: LayoutDashboard, exact: true },
   { href: "/vendor/analytics", label: "Analytics", icon: BarChart3 },
+  { href: "/vendor/payouts", label: "Wallet", icon: Wallet },
   { href: "/vendor/shop", label: "Shop", icon: Store },
   { href: "/vendor/printer", label: "Printer", icon: Printer },
-  { href: "/vendor/location", label: "Printer location", icon: MapPin },
   { href: "/vendor/bank", label: "Bank details", icon: Landmark },
-  { href: "/vendor/payouts", label: "Request payout", icon: Wallet, requiresBankVerified: true },
   { href: "/vendor/profile", label: "Profile", icon: User },
 ];
 
@@ -120,7 +118,7 @@ function SidebarContent({
         <div className="flex items-center gap-2">
           <span className="text-xl font-bold text-zinc-900 tracking-tight">PrintBuddy</span>
           <span className="text-[10px] font-semibold uppercase tracking-widest bg-indigo-50 text-indigo-600 px-1.5 py-0.5 rounded-md">
-            Seller
+            Partner
           </span>
         </div>
       </div>
@@ -171,7 +169,7 @@ function SidebarContent({
               </div>
             )}
             <div className="flex-1 min-w-0 text-left">
-              <p className="text-sm font-medium text-zinc-900 truncate">{userName ?? "Vendor"}</p>
+              <p className="text-sm font-medium text-zinc-900 truncate">{userName ?? "Partner"}</p>
               <p className="text-xs text-zinc-500 truncate">{userEmail ?? ""}</p>
             </div>
             <ChevronDown
