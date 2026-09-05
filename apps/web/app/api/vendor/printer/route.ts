@@ -35,6 +35,12 @@ interface PrinterConfigBody {
   wifi_ssid?: string | null;
   os_printer_name?: string | null;
   setup_notes?: string | null;
+  // Partner-controlled feature toggles (migration 0018). B&W is always
+  // on — customers can always print in mono. Color and duplex can be
+  // switched off if the printer doesn't support them or the partner
+  // just doesn't want to offer them.
+  color_enabled?: boolean;
+  duplex_enabled?: boolean;
 }
 
 export async function GET(_req: NextRequest) {
@@ -45,11 +51,15 @@ export async function GET(_req: NextRequest) {
   const supabase = getSupabase();
 
   const [{ data: shop }, { data: printer }, { data: agents }] = await Promise.all([
-    supabase.from("shops").select("id, name, virtual_mode").eq("id", shopId).single(),
+    supabase
+      .from("shops")
+      .select("id, name, virtual_mode, discovered_printers, discovered_at")
+      .eq("id", shopId)
+      .single(),
     supabase
       .from("printers")
       .select(
-        "id, os_printer_name, status, capabilities_source, make_and_model, capabilities_updated_at, mode, connection_type, host, port, wifi_ssid, setup_notes, last_seen_at, online"
+        "id, os_printer_name, status, capabilities_source, make_and_model, capabilities_updated_at, mode, connection_type, host, port, wifi_ssid, setup_notes, last_seen_at, online, color_enabled, duplex_enabled"
       )
       .eq("shop_id", shopId)
       .order("id", { ascending: true })
@@ -104,6 +114,11 @@ export async function GET(_req: NextRequest) {
       last_seen_at: printer?.last_seen_at ?? agents?.[0]?.last_heartbeat ?? null,
       heartbeat_window_seconds: HEARTBEAT_WINDOW_MS / 1000,
     },
+    // OS printer names auto-discovered by the local agent. The partner
+    // UI reads this to populate a dropdown so they don't have to type
+    // the exact CUPS/Windows printer name by hand.
+    discovered_printers: (shop?.discovered_printers as unknown[] | undefined) ?? [],
+    discovered_at: shop?.discovered_at ?? null,
   });
 }
 
@@ -156,6 +171,8 @@ export async function PUT(req: NextRequest) {
   if (body.os_printer_name !== undefined)
     patch.os_printer_name = body.os_printer_name?.trim() || null;
   if (body.setup_notes !== undefined) patch.setup_notes = body.setup_notes;
+  if (body.color_enabled !== undefined) patch.color_enabled = body.color_enabled;
+  if (body.duplex_enabled !== undefined) patch.duplex_enabled = body.duplex_enabled;
 
   let printerId: string | undefined;
   let schemaWarning: string | undefined;
