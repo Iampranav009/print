@@ -277,6 +277,12 @@ function InvitesSection() {
   // New invite form
   const [inviteShopId, setInviteShopId] = useState("");
   const [inviteEmail, setInviteEmail] = useState("");
+  // "new" (default) creates a fresh shop AND the invite in one step.
+  // "existing" picks an unclaimed shop from the dropdown — kept for
+  // completeness but the admin usually just wants to invite by email.
+  const [inviteMode, setInviteMode] = useState<"new" | "existing">("new");
+  const [inviteShopName, setInviteShopName] = useState("");
+  const [inviteShopLocation, setInviteShopLocation] = useState("");
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -308,13 +314,26 @@ function InvitesSection() {
     setCreateError(null);
     setGeneratedLink(null);
     try {
+      // Two shapes based on the mode toggle. Note the field name is
+      // `email` (the API's canonical name) not `intended_email`.
+      const payload: Record<string, unknown> =
+        inviteMode === "new"
+          ? {
+              new_shop: {
+                name: inviteShopName.trim(),
+                location: inviteShopLocation.trim() || undefined,
+              },
+              email: inviteEmail.trim() || undefined,
+            }
+          : {
+              shop_id: inviteShopId,
+              email: inviteEmail.trim() || undefined,
+            };
+
       const res = await fetch("/api/admin/invites", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          shop_id: inviteShopId,
-          intended_email: inviteEmail.trim() || null,
-        }),
+        body: JSON.stringify(payload),
       });
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
@@ -322,11 +341,15 @@ function InvitesSection() {
       }
       const data = await res.json();
       const origin = window.location.origin;
-      const link = `${origin}/vendor/claim?token=${data.invite?.token ?? data.token}`;
+      const link =
+        data.claimUrl ??
+        `${origin}/vendor/claim?token=${data.invite?.token ?? data.token}`;
       setGeneratedLink(link);
       await fetchData();
       setInviteShopId("");
       setInviteEmail("");
+      setInviteShopName("");
+      setInviteShopLocation("");
     } catch (err: unknown) {
       setCreateError(err instanceof Error ? err.message : "Failed to generate");
     } finally {
@@ -345,33 +368,100 @@ function InvitesSection() {
       >
         {!generatedLink ? (
           <form onSubmit={handleCreate} className="space-y-4">
-            <div>
-              <label htmlFor="inv-shop" className="block text-sm font-medium text-zinc-700 mb-1">
-                Shop <span className="text-red-500" aria-hidden="true">*</span>
-              </label>
-              <select
-                id="inv-shop"
-                required
-                value={inviteShopId}
-                onChange={(e) => setInviteShopId(e.target.value)}
-                className="w-full px-3 py-2 rounded-xl border border-zinc-200 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600 bg-white"
-                aria-required="true"
+            {/* Mode toggle: create fresh or pick existing */}
+            <div
+              role="tablist"
+              aria-label="Invite mode"
+              className="flex items-center gap-1 p-1 bg-zinc-100 rounded-xl w-full"
+            >
+              <button
+                type="button"
+                role="tab"
+                aria-selected={inviteMode === "new"}
+                onClick={() => setInviteMode("new")}
+                className={`flex-1 py-2 text-sm font-medium rounded-lg transition-colors ${
+                  inviteMode === "new"
+                    ? "bg-white text-zinc-900 shadow-sm"
+                    : "text-zinc-600 hover:text-zinc-900"
+                }`}
               >
-                <option value="">Select an unclaimed shop…</option>
-                {shops
-                  .filter((s) => !s.owner_email)
-                  .map((s) => (
-                    <option key={s.id} value={s.id}>
-                      {s.name} {s.location ? `(${s.location})` : ""}
-                    </option>
-                  ))}
-              </select>
-              {shops.filter((s) => !s.owner_email).length === 0 && (
-                <p className="mt-1 text-xs text-amber-600">
-                  All current shops are already claimed. Create a new shop first.
-                </p>
-              )}
+                Create new shop + invite
+              </button>
+              <button
+                type="button"
+                role="tab"
+                aria-selected={inviteMode === "existing"}
+                onClick={() => setInviteMode("existing")}
+                className={`flex-1 py-2 text-sm font-medium rounded-lg transition-colors ${
+                  inviteMode === "existing"
+                    ? "bg-white text-zinc-900 shadow-sm"
+                    : "text-zinc-600 hover:text-zinc-900"
+                }`}
+              >
+                Existing shop
+              </button>
             </div>
+
+            {inviteMode === "new" ? (
+              <>
+                <div>
+                  <label htmlFor="inv-shop-name" className="block text-sm font-medium text-zinc-700 mb-1">
+                    Shop name <span className="text-red-500" aria-hidden="true">*</span>
+                  </label>
+                  <input
+                    id="inv-shop-name"
+                    type="text"
+                    required
+                    value={inviteShopName}
+                    onChange={(e) => setInviteShopName(e.target.value)}
+                    placeholder="e.g. Xerox Point, Andheri"
+                    className="w-full px-3 py-2 rounded-xl border border-zinc-200 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600"
+                  />
+                </div>
+                <div>
+                  <label htmlFor="inv-shop-location" className="block text-sm font-medium text-zinc-700 mb-1">
+                    Location <span className="text-xs font-normal text-zinc-400">(optional — visible to customers)</span>
+                  </label>
+                  <input
+                    id="inv-shop-location"
+                    type="text"
+                    value={inviteShopLocation}
+                    onChange={(e) => setInviteShopLocation(e.target.value)}
+                    placeholder="Building / area"
+                    className="w-full px-3 py-2 rounded-xl border border-zinc-200 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600"
+                  />
+                </div>
+              </>
+            ) : (
+              <div>
+                <label htmlFor="inv-shop" className="block text-sm font-medium text-zinc-700 mb-1">
+                  Unclaimed shop <span className="text-red-500" aria-hidden="true">*</span>
+                </label>
+                <select
+                  id="inv-shop"
+                  required={inviteMode === "existing"}
+                  value={inviteShopId}
+                  onChange={(e) => setInviteShopId(e.target.value)}
+                  className="w-full px-3 py-2 rounded-xl border border-zinc-200 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600 bg-white"
+                  aria-required="true"
+                >
+                  <option value="">Select an unclaimed shop…</option>
+                  {shops
+                    .filter((s) => !s.owner_email)
+                    .map((s) => (
+                      <option key={s.id} value={s.id}>
+                        {s.name} {s.location ? `(${s.location})` : ""}
+                      </option>
+                    ))}
+                </select>
+                {shops.filter((s) => !s.owner_email).length === 0 && (
+                  <p className="mt-1 text-xs text-amber-600">
+                    No unclaimed shops. Switch to &quot;Create new shop + invite&quot; above.
+                  </p>
+                )}
+              </div>
+            )}
+
             <div>
               <label htmlFor="inv-email" className="block text-sm font-medium text-zinc-700 mb-1">
                 Vendor email <span className="text-xs font-normal text-zinc-400">(optional — restricts claim to this email)</span>
@@ -384,6 +474,11 @@ function InvitesSection() {
                 placeholder="vendor@example.com"
                 className="w-full px-3 py-2 rounded-xl border border-zinc-200 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600"
               />
+              {inviteEmail.trim() && (
+                <p className="mt-1 text-xs text-zinc-500">
+                  Only this Google account can claim the invite.
+                </p>
+              )}
             </div>
 
             {createError && (
@@ -393,7 +488,12 @@ function InvitesSection() {
             <div className="flex gap-3 pt-1">
               <button
                 type="submit"
-                disabled={creating || !inviteShopId}
+                disabled={
+                  creating ||
+                  (inviteMode === "new"
+                    ? !inviteShopName.trim()
+                    : !inviteShopId)
+                }
                 className="flex-1 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600"
               >
                 {creating ? "Generating…" : "Generate invite"}

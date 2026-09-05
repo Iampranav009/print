@@ -1,6 +1,12 @@
 // Admin: list and create vendor invite tokens.
-// The response of POST includes the full claim URL so the admin can copy
-// and send it to the vendor over email/WhatsApp/whatever.
+//
+// POST accepts two shapes:
+//   { shop_id, email? }              — invite for an existing unclaimed shop
+//   { new_shop: { name, location? }, email? } — create a fresh shop AND
+//                                                the invite in one call
+//
+// The response includes the full claim URL so the admin can copy and send
+// it to the vendor over email / WhatsApp / whatever.
 
 import { NextRequest } from "next/server";
 import { randomBytes } from "crypto";
@@ -40,7 +46,11 @@ export async function GET(req: NextRequest) {
 }
 
 interface CreateBody {
-  shop_id: string;
+  shop_id?: string;
+  new_shop?: {
+    name: string;
+    location?: string;
+  };
   email?: string;
 }
 
@@ -49,26 +59,66 @@ export async function POST(req: NextRequest) {
   if (gate.error) return Response.json({ error: gate.error }, { status: gate.status });
 
   const body = (await req.json()) as CreateBody;
-  if (!body.shop_id) {
-    return Response.json({ error: "shop_id is required" }, { status: 400 });
+
+  if (!body.shop_id && !body.new_shop?.name?.trim()) {
+    return Response.json(
+      { error: "Either shop_id or new_shop.name is required" },
+      { status: 400 }
+    );
   }
 
   const supabase = getSupabase();
+  let shopId: string;
 
-  const { data: shop } = await supabase
-    .from("shops")
-    .select("id, owner_id")
-    .eq("id", body.shop_id)
-    .maybeSingle();
-  if (!shop) return Response.json({ error: "Shop not found" }, { status: 404 });
-  if (shop.owner_id) {
-    return Response.json({ error: "Shop already has an owner" }, { status: 409 });
+  if (body.shop_id) {
+    // ── Use an existing unclaimed shop ─────────────────────────────────
+    const { data: shop } = await supabase
+      .from("shops")
+      .select("id, owner_id")
+      .eq("id", body.shop_id)
+      .maybeSingle();
+    if (!shop) return Response.json({ error: "Shop not found" }, { status: 404 });
+    if (shop.owner_id) {
+      return Response.json({ error: "Shop already has an owner" }, { status: 409 });
+    }
+    shopId = shop.id;
+  } else {
+    // ── Create a fresh shop first, then invite the vendor to claim it ──
+    const name = body.new_shop!.name.trim();
+    const location = body.new_shop!.location?.trim() || null;
+
+    const { data: created, error: shopErr } = await supabase
+      .from("shops")
+      .insert({
+        name,
+        location,
+        status: "active",
+        virtual_mode: false,
+      })
+      .select("id")
+      .single();
+
+    if (shopErr || !created) {
+      return Response.json(
+        { error: `Could not create shop: ${shopErr?.message ?? "unknown error"}` },
+        { status: 500 }
+      );
+    }
+    shopId = created.id;
+
+    // Seed a default pricing row so the shop is immediately usable once
+    // the vendor claims it. If it exists (shouldn't), just ignore.
+    await supabase.from("pricing").insert({ shop_id: shopId }).select();
   }
 
   const token = generateToken();
   const { data: invite, error } = await supabase
     .from("vendor_invites")
-    .insert({ token, shop_id: body.shop_id, email: body.email?.trim().toLowerCase() ?? null })
+    .insert({
+      token,
+      shop_id: shopId,
+      email: body.email?.trim().toLowerCase() || null,
+    })
     .select()
     .single();
   if (error) return Response.json({ error: error.message }, { status: 500 });
@@ -76,5 +126,5 @@ export async function POST(req: NextRequest) {
   const origin = req.nextUrl.origin;
   const claimUrl = `${origin}/vendor/claim?token=${encodeURIComponent(token)}`;
 
-  return Response.json({ invite, claimUrl });
+  return Response.json({ invite, claimUrl, shop_id: shopId });
 }
