@@ -3,6 +3,7 @@
 import React, { Suspense, useState, useEffect, useRef, useCallback } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import type { PrinterCapabilities, PriceBreakdown } from "@printbuddy/shared";
+import { DEFAULT_CAPABILITIES } from "@printbuddy/shared";
 import { PDFDocument } from "pdf-lib";
 import type { RealtimeChannel } from "@supabase/supabase-js";
 import { DocumentPreview } from "@/components/DocumentPreview";
@@ -703,7 +704,7 @@ function PrintContent() {
     }
   }, [fileState, config, rawPriceResult, shopId, shopData, router, broadcast]);
 
-  const caps = shopData?.capabilities ?? null;
+  const caps = shopData?.capabilities ?? DEFAULT_CAPABILITIES;
   const hasFile = fileState !== null;
 
   // ── Render ─────────────────────────────────────────────────────────────────
