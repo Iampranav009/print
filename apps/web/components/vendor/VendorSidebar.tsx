@@ -82,6 +82,7 @@ function NavLink({
     <Link
       href={href}
       onClick={onClick}
+      suppressHydrationWarning
       className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600 ${
         isActive
           ? "bg-indigo-600 text-white"
@@ -124,7 +125,11 @@ function SidebarContent({
       </div>
 
       {/* Nav */}
-      <nav className="flex-1 px-3 space-y-0.5 overflow-y-auto [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden overscroll-contain" aria-label="Vendor navigation">
+      <nav
+        suppressHydrationWarning
+        className="flex-1 px-3 space-y-0.5 overflow-y-auto [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden overscroll-contain"
+        aria-label="Vendor navigation"
+      >
         {NAV_ITEMS.map((item) => {
           const locked = !!item.requiresBankVerified && !payoutsUnlocked;
           return (
