@@ -15,7 +15,6 @@ const PAGE_TITLES: Record<string, string> = {
   "/vendor/payouts": "Wallet",
   "/vendor/shop": "Shop",
   "/vendor/printer": "Printer",
-  "/vendor/location": "Printer Location",
   "/vendor/bank": "Bank Details",
   "/vendor/profile": "Profile",
   "/vendor/onboarding": "Onboarding",
