@@ -32,6 +32,7 @@ export default function LocationPage() {
   const [saved, setSaved] = useState<ShopData>({ latitude: null, longitude: null, google_place_id: null });
   const [lat, setLat] = useState("");
   const [lng, setLng] = useState("");
+  const [locationDesc, setLocationDesc] = useState("");
   const [placeId, setPlaceId] = useState("");
   const [geoLoading, setGeoLoading] = useState(false);
   const [geoError, setGeoError] = useState<string | null>(null);
@@ -53,6 +54,7 @@ export default function LocationPage() {
             });
             setLat(data.shop.latitude?.toString() ?? "");
             setLng(data.shop.longitude?.toString() ?? "");
+            setLocationDesc(data.shop.location ?? "");
             setPlaceId(data.shop.google_place_id ?? "");
           }
         }
@@ -100,6 +102,7 @@ export default function LocationPage() {
         body: JSON.stringify({
           latitude,
           longitude,
+          location: locationDesc.trim() || null,
           google_place_id: placeId.trim() || null,
         }),
       });
@@ -202,6 +205,24 @@ export default function LocationPage() {
                     aria-label="Longitude"
                   />
                 </div>
+              </div>
+
+              {/* Where printer is situated */}
+              <div>
+                <label htmlFor="printer-placement" className="block text-sm font-medium text-zinc-700 mb-1.5">
+                  Where the printer is situated (Indoor placement / Landmark)
+                </label>
+                <input
+                  id="printer-placement"
+                  type="text"
+                  value={locationDesc}
+                  onChange={(e) => setLocationDesc(e.target.value)}
+                  placeholder="e.g. Ground Floor, Xerox Counter 1 near entrance"
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-zinc-200 text-sm text-zinc-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600"
+                />
+                <p className="mt-1 text-xs text-zinc-400">
+                  Helps customers find the exact physical printer inside or at your shop.
+                </p>
               </div>
 
               {/* Place ID */}
