@@ -102,6 +102,12 @@ def print_windows(
         log.info("[%s] Windows command: %s", str(job.get("id", "?"))[:8], " ".join(cmd))
         result = subprocess.run(cmd, capture_output=True, timeout=120)
         if result.returncode != 0:
+            stderr = result.stderr.decode("utf-8", errors="replace").strip()
+            stdout = result.stdout.decode("utf-8", errors="replace").strip()
+            err_msg = stderr or stdout
+            if err_msg:
+                log.error("[%s] SumatraPDF error output: %s", str(job.get("id", "?"))[:8], err_msg)
+                return False, f"SumatraPDF exit code {result.returncode}: {err_msg}"
             return False, f"SumatraPDF exit code {result.returncode}"
         return True, None
     except Exception as e:

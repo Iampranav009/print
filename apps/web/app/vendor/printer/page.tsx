@@ -29,14 +29,20 @@ export default async function VendorPrinterPage() {
       const data = await res.json();
       initialData = {
         shop: data.shop ?? initialData.shop,
-        printer: data.printer ?? null,
+        printer: {
+          ...(data.printer ?? null),
+          discovered_printers: data.discovered_printers ?? [],
+          discovered_at: data.discovered_at ?? null,
+        },
         status: {
           mode: data.status?.mode ?? (data.shop?.virtual_mode ? "test" : "real"),
           online: !!data.status?.online,
           last_seen_at: data.status?.last_seen_at ?? null,
           heartbeat_window_seconds: data.status?.heartbeat_window_seconds ?? 90,
         },
-      };
+        soundSettings: data.soundSettings ?? { enabled: false, language: "en", volume: 80 },
+        agent: data.agent ?? null,
+      } as typeof initialData;
     }
   } catch {
     // Network / build fallback

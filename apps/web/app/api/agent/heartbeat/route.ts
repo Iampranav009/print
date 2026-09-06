@@ -3,10 +3,8 @@
 //   printerStatus:       "online" | "offline" | ...   (string, optional)
 //   discoveredPrinters:  Array<{name, driver?, isDefault?}> (optional)
 //
-// discoveredPrinters is cached on shops.discovered_printers so the
-// partner dashboard can populate the "Which printer to use" dropdown
-// without the partner having to type the CUPS/Windows printer name
-// by hand.
+// Response includes soundSettings so the agent can pick up operator changes
+// within one heartbeat cycle without restarting.
 
 import { getSupabase } from "@/lib/supabase";
 import { resolveAgentToken } from "@/lib/agent-auth";
@@ -37,9 +35,6 @@ export async function POST(req: NextRequest) {
     .update({ last_heartbeat: now, status: "online" })
     .eq("id", agent.agentId);
 
-  // Mark the shop's printer online + timestamped so the vendor dashboard
-  // status pill and kiosk offline banner flip immediately — no separate
-  // probe needed.
   await supabase
     .from("printers")
     .update({
@@ -50,8 +45,6 @@ export async function POST(req: NextRequest) {
     .eq("shop_id", agent.shopId);
 
   if (Array.isArray(body.discoveredPrinters)) {
-    // De-dupe by name, trim, cap at 50 so the row stays cheap to read
-    // on every dashboard load.
     const seen = new Set<string>();
     const cleaned = body.discoveredPrinters
       .filter(
@@ -80,5 +73,19 @@ export async function POST(req: NextRequest) {
       .eq("id", agent.shopId);
   }
 
-  return Response.json({ ok: true });
+  // Read sound settings so the agent can pick up operator toggle changes.
+  const { data: shop } = await supabase
+    .from("shops")
+    .select("sound_enabled, sound_language, sound_volume")
+    .eq("id", agent.shopId)
+    .maybeSingle();
+
+  return Response.json({
+    ok: true,
+    soundSettings: {
+      enabled: shop?.sound_enabled ?? false,
+      language: shop?.sound_language ?? "en",
+      volume: shop?.sound_volume ?? 80,
+    },
+  });
 }

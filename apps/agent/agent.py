@@ -6,11 +6,13 @@ Supports three print modes (PRINTBUDDY_PRINT_MODE):
   real     — send to a physical printer via CUPS (Linux) or SumatraPDF (Windows)
 """
 
-import os
-import sys
-import time
-import tempfile
+import json
 import logging
+import os
+import subprocess
+import sys
+import tempfile
+import time
 import requests
 
 from config import (
@@ -23,10 +25,12 @@ from config import (
     SIMULATE_PRINT_SECONDS,
     SIMULATE_FAIL,
     CAPABILITY_REFRESH_MINUTES,
+    AGENT_SOUND_ENABLED,
 )
 from printing.capabilities import discover_capabilities, FULL_DEFAULT
 from printing.cups_printer import build_cups_options, format_cups_command, print_cups
 from printing.windows_printer import print_windows
+from audio import announcer as audio
 
 logging.basicConfig(
     level=logging.INFO,
@@ -38,21 +42,62 @@ HEADERS = {"Authorization": f"Bearer {AGENT_TOKEN}"}
 
 _last_known_caps: dict | None = None
 
+
+# ── Discovered printers ──────────────────────────────────
+
+
+def get_discovered_printers() -> list[dict]:
+    """Query OS for currently available local printers."""
+    if sys.platform == "win32":
+        try:
+            res = subprocess.run(
+                ["powershell", "-NoProfile", "-Command", "Get-Printer | Select-Object Name, DriverName | ConvertTo-Json -Compress"],
+                capture_output=True,
+                text=True,
+                timeout=5,
+            )
+            if res.returncode == 0 and res.stdout.strip():
+                data = json.loads(res.stdout)
+                if isinstance(data, dict):
+                    data = [data]
+                return [{"name": p.get("Name", ""), "driver": p.get("DriverName")} for p in data if p.get("Name")]
+        except Exception as e:
+            log.debug("Failed to discover Windows printers: %s", e)
+    elif sys.platform == "linux":
+        try:
+            import cups  # type: ignore
+            conn = cups.Connection()
+            printers = conn.getPrinters()
+            default_p = conn.getDefault()
+            return [{"name": name, "driver": p.get("printer-make-and-model"), "isDefault": name == default_p} for name, p in printers.items()]
+        except Exception as e:
+            log.debug("Failed to discover CUPS printers: %s", e)
+    return []
+
+
 # ── API helpers ──────────────────────────────────────────
 
 
-def heartbeat(printer_status: str = "online") -> None:
+def heartbeat(printer_status: str = "online") -> dict:
     try:
+        payload: dict = {"printerStatus": printer_status}
+        discovered = get_discovered_printers()
+        if discovered:
+            payload["discoveredPrinters"] = discovered
+
         resp = requests.post(
             f"{API_BASE}/api/agent/heartbeat",
-            json={"printerStatus": printer_status},
+            json=payload,
             headers=HEADERS,
             timeout=10,
         )
         resp.raise_for_status()
+        data = resp.json()
         log.info("Heartbeat sent to server (printer_status=%s)", printer_status)
+        return data
     except Exception as e:
         log.warning("Heartbeat failed: %s", e)
+        return {}
 
 
 def update_status(job_id: str, status: str, reason: str | None = None) -> None:
@@ -102,6 +147,22 @@ def download_file(url: str) -> str | None:
     except Exception as e:
         log.error("Download failed: %s", e)
         return None
+
+
+def ack_announcements(ids: list[str]) -> None:
+    if not ids:
+        return
+    try:
+        resp = requests.post(
+            f"{API_BASE}/api/agent/announcements/ack",
+            json={"ids": ids},
+            headers=HEADERS,
+            timeout=10,
+        )
+        resp.raise_for_status()
+        log.debug("Acked %d announcement(s)", len(ids))
+    except Exception as e:
+        log.warning("Failed to ack announcements: %s", e)
 
 
 # ── Forced failure logic ─────────────────────────────────
@@ -205,6 +266,23 @@ def detect_capabilities() -> tuple[dict, str | None]:
         return dict(FULL_DEFAULT), None
 
 
+# ── Sound settings helpers ───────────────────────────────
+
+
+def _apply_sound_settings(hb_data: dict) -> None:
+    """Update audio module from heartbeat response. Local env override wins."""
+    remote = hb_data.get("soundSettings", {})
+    remote_enabled = bool(remote.get("enabled", False))
+    effective_enabled = (
+        AGENT_SOUND_ENABLED if AGENT_SOUND_ENABLED is not None else remote_enabled
+    )
+    audio.configure(
+        enabled=effective_enabled,
+        volume=int(remote.get("volume", 80)),
+        language=str(remote.get("language", "en")),
+    )
+
+
 # ── Main loop ────────────────────────────────────────────
 
 
@@ -224,6 +302,19 @@ def poll_and_print() -> None:
         log.warning("Poll failed: %s", e)
         return
 
+    # Process server-pushed announcements (e.g. payment_failed events).
+    pending_announcements = data.get("announcements", [])
+    if pending_announcements:
+        ids_to_ack = []
+        for ann in pending_announcements:
+            ann_id = ann.get("id")
+            kind = ann.get("kind")
+            if kind == "payment_failed":
+                audio.announce_payment_failed()
+            if ann_id:
+                ids_to_ack.append(ann_id)
+        ack_announcements(ids_to_ack)
+
     job = data.get("job")
     if not job:
         return
@@ -233,14 +324,23 @@ def poll_and_print() -> None:
 
     if status in ("dispatched", "released", "awaiting_release"):
         log.info("[%s] Job ready (%s) — auto-printing now...", job_id[:8], status)
+
+        # Announce payment received immediately when a paid job arrives.
+        audio.announce_payment_received(
+            amount_paise=job.get("pricePaise", 0),
+            copies=job.get("copies", 1),
+        )
+
         download_url = job.get("downloadUrl")
         if not download_url:
             update_status(job_id, "print_failed", "No download URL")
+            audio.announce_print_failed()
             return
 
         file_path = download_file(download_url)
         if not file_path:
             update_status(job_id, "print_failed", "File download failed")
+            audio.announce_print_failed()
             return
 
         update_status(job_id, "printing")
@@ -250,9 +350,11 @@ def poll_and_print() -> None:
             if success:
                 update_status(job_id, "printed")
                 log.info("[%s] Successfully printed!", job_id[:8])
+                audio.announce_print_complete()
             else:
                 update_status(job_id, "print_failed", reason or "Printer error")
                 log.error("[%s] Print failed: %s", job_id[:8], reason)
+                audio.announce_print_failed()
         finally:
             try:
                 os.unlink(file_path)
@@ -277,7 +379,20 @@ def main() -> None:
         caps, make_and_model = detect_capabilities()
         _last_known_caps = caps
         post_capabilities(caps, make_and_model)
-        heartbeat()
+
+        hb_data = heartbeat()
+
+        # Initialise audio using the first heartbeat's settings.
+        remote = hb_data.get("soundSettings", {})
+        remote_enabled = bool(remote.get("enabled", False))
+        effective_enabled = (
+            AGENT_SOUND_ENABLED if AGENT_SOUND_ENABLED is not None else remote_enabled
+        )
+        audio.init(
+            enabled=effective_enabled,
+            volume=int(remote.get("volume", 80)),
+            language=str(remote.get("language", "en")),
+        )
 
         heartbeat_counter = 0
         last_cap_time = time.monotonic()
@@ -288,7 +403,8 @@ def main() -> None:
 
             heartbeat_counter += 1
             if heartbeat_counter >= 10:
-                heartbeat()
+                hb_data = heartbeat()
+                _apply_sound_settings(hb_data)
                 heartbeat_counter = 0
 
             now = time.monotonic()

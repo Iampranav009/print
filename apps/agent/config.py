@@ -26,3 +26,12 @@ SIMULATE_FAIL = os.environ.get("SIMULATE_FAIL", "none")
 # How often (in minutes) to re-run capability discovery in virtual/real mode
 CAPABILITY_REFRESH_MINUTES = int(os.environ.get("CAPABILITY_REFRESH_MINUTES", "30"))
 
+# Sound-box: local override for voice announcements.
+# None  → use the remote shop setting (toggled from the dashboard).
+# True  → always enabled regardless of dashboard toggle.
+# False → always disabled regardless of dashboard toggle.
+_sound_env = os.environ.get("AGENT_SOUND_ENABLED")
+AGENT_SOUND_ENABLED: "bool | None" = (
+    _sound_env.lower() in ("1", "true", "yes") if _sound_env is not None else None
+)
+

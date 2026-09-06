@@ -1,0 +1,12 @@
+{
+  "projectId": "08ca51ec-dc39-4e6f-8ff3-043cd3f3021d",
+  "shape": "package",
+  "pkg": "web",
+  "globalName": "PrintBuddy",
+  "srcDir": ".ds-src-mirror",
+  "tsconfig": "tsconfig.ds-bundle.json",
+  "cssEntry": ".ds-compiled-tailwind.css",
+  "componentSrcMap": {
+    "CustomAuthDemo": null
+  }
+}

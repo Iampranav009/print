@@ -15,15 +15,23 @@ import {
   Copy as CopyIcon,
   RotateCcw,
   IndianRupee,
+  Volume2,
 } from "lucide-react";
 import { PrinterModeToggle } from "@/components/vendor/PrinterModeToggle";
 import { PrinterConfigModal } from "@/components/vendor/PrinterConfigModal";
 import { type PrinterStatusData } from "@/components/vendor/PrinterStatusPill";
 import { formatRelativeTime } from "@/lib/date-utils";
 
+interface SoundSettings {
+  enabled: boolean;
+  language: string;
+  volume: number;
+}
+
 export interface PrinterClientProps {
   initialData: {
     shop: { id: string; name: string; virtual_mode: boolean };
+    soundSettings?: SoundSettings;
     printer: {
       id: string;
       os_printer_name: string | null;
@@ -110,6 +118,18 @@ export function PrinterClient({ initialData }: PrinterClientProps) {
   );
   const [togglingColor, setTogglingColor] = useState(false);
   const [togglingDuplex, setTogglingDuplex] = useState(false);
+
+  // Sound settings
+  const [soundEnabled, setSoundEnabled] = useState<boolean>(
+    data.soundSettings?.enabled ?? false
+  );
+  const [soundVolume, setSoundVolume] = useState<number>(
+    data.soundSettings?.volume ?? 80
+  );
+  const [soundLanguage, setSoundLanguage] = useState<string>(
+    data.soundSettings?.language ?? "en"
+  );
+  const [savingSound, setSavingSound] = useState(false);
 
   // Pricing
   const [pricing, setPricing] = useState<PricingFields>({
@@ -289,6 +309,41 @@ export function PrinterClient({ initialData }: PrinterClientProps) {
       showToast(err instanceof Error ? err.message : "Could not save pricing.");
     } finally {
       setPricingSaving(false);
+    }
+  };
+
+  const handleSoundToggle = async (value: boolean) => {
+    const previous = soundEnabled;
+    setSoundEnabled(value);
+    setSavingSound(true);
+    try {
+      const res = await fetch("/api/vendor/printer", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sound_enabled: value }),
+      });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(json.error || `HTTP ${res.status}`);
+      showToast(value ? "Voice announcements enabled" : "Voice announcements disabled");
+    } catch (err) {
+      setSoundEnabled(previous);
+      showToast(err instanceof Error ? err.message : "Could not update sound setting.");
+    } finally {
+      setSavingSound(false);
+    }
+  };
+
+  const handleSoundSettings = async (patch: Partial<{ sound_volume: number; sound_language: string }>) => {
+    if (patch.sound_volume !== undefined) setSoundVolume(patch.sound_volume);
+    if (patch.sound_language !== undefined) setSoundLanguage(patch.sound_language);
+    try {
+      await fetch("/api/vendor/printer", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(patch),
+      });
+    } catch {
+      // best effort; the operator can retry
     }
   };
 
@@ -719,7 +774,89 @@ export function PrinterClient({ initialData }: PrinterClientProps) {
         </div>
       )}
 
-      {/* 5. Setup guide (shown when mode === "real" and no config yet) */}
+      {/* 5. Voice Announcements Card */}
+      {mode === "real" && (
+        <div className="bg-white rounded-2xl border border-zinc-100 p-6 shadow-sm space-y-5">
+          <div className="flex items-start justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 rounded-lg bg-indigo-50 flex items-center justify-center">
+                <Volume2 className="w-4 h-4 text-indigo-600" />
+              </div>
+              <div>
+                <h2 className="text-lg font-semibold text-zinc-900">Voice announcements</h2>
+                <p className="text-sm text-zinc-500 mt-0.5">
+                  A speaker plugged into the agent PC announces payments and print events aloud.
+                </p>
+              </div>
+            </div>
+            <button
+              type="button"
+              role="switch"
+              aria-checked={soundEnabled}
+              disabled={savingSound}
+              onClick={() => handleSoundToggle(!soundEnabled)}
+              className={`relative shrink-0 w-10 h-5 rounded-full transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600 disabled:opacity-60 ${
+                soundEnabled ? "bg-indigo-600" : "bg-zinc-300"
+              }`}
+            >
+              <span
+                className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow-sm transition-transform duration-200 ${
+                  soundEnabled ? "translate-x-5" : "translate-x-0.5"
+                }`}
+              />
+            </button>
+          </div>
+
+          {soundEnabled && (
+            <div className="space-y-4 pt-1 border-t border-zinc-100">
+              {/* Volume */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-semibold text-zinc-700">Volume</label>
+                  <span className="text-xs font-mono text-zinc-500">{soundVolume}%</span>
+                </div>
+                <input
+                  type="range"
+                  min={0}
+                  max={100}
+                  step={5}
+                  value={soundVolume}
+                  onChange={(e) => setSoundVolume(Number(e.target.value))}
+                  onMouseUp={(e) =>
+                    void handleSoundSettings({ sound_volume: Number((e.target as HTMLInputElement).value) })
+                  }
+                  onTouchEnd={(e) =>
+                    void handleSoundSettings({ sound_volume: Number((e.target as HTMLInputElement).value) })
+                  }
+                  className="w-full accent-indigo-600"
+                />
+              </div>
+
+              {/* Language */}
+              <div className="space-y-1.5">
+                <label className="text-xs font-semibold text-zinc-700">Language</label>
+                <select
+                  value={soundLanguage}
+                  onChange={(e) => {
+                    setSoundLanguage(e.target.value);
+                    void handleSoundSettings({ sound_language: e.target.value });
+                  }}
+                  className="w-full sm:max-w-xs px-3.5 py-2.5 rounded-xl border border-zinc-200 bg-white text-sm text-zinc-900 focus:outline-none focus:ring-2 focus:ring-indigo-600"
+                >
+                  <option value="en">English</option>
+                  <option value="hi" disabled>Hindi (coming soon)</option>
+                </select>
+              </div>
+
+              <p className="text-xs text-zinc-400">
+                Announcements are picked up by the agent within 30 seconds of toggling — no restart needed.
+              </p>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* 6. Setup guide (shown when mode === "real" and no config yet) */}
       {mode === "real" && !isConfigured && (
         <div className="bg-white rounded-2xl border border-zinc-100 p-6 shadow-sm space-y-4">
           <div className="flex items-center gap-2.5">

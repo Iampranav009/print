@@ -1,0 +1,14 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noEmit": false,
+    "declaration": true,
+    "emitDeclarationOnly": true,
+    "outDir": "./types",
+    "incremental": false,
+    "skipLibCheck": true,
+    "strict": false,
+    "isolatedModules": false
+  },
+  "include": ["components/**/*.tsx", "components/**/*.ts"]
+}

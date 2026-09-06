@@ -35,12 +35,13 @@ interface PrinterConfigBody {
   wifi_ssid?: string | null;
   os_printer_name?: string | null;
   setup_notes?: string | null;
-  // Partner-controlled feature toggles (migration 0018). B&W is always
-  // on — customers can always print in mono. Color and duplex can be
-  // switched off if the printer doesn't support them or the partner
-  // just doesn't want to offer them.
+  // Partner-controlled feature toggles (migration 0018).
   color_enabled?: boolean;
   duplex_enabled?: boolean;
+  // Sound-box settings (migration 0019).
+  sound_enabled?: boolean;
+  sound_language?: string;
+  sound_volume?: number;
 }
 
 export async function GET(_req: NextRequest) {
@@ -53,7 +54,7 @@ export async function GET(_req: NextRequest) {
   const [{ data: shop }, { data: printer }, { data: agents }] = await Promise.all([
     supabase
       .from("shops")
-      .select("id, name, virtual_mode, discovered_printers, discovered_at")
+      .select("id, name, virtual_mode, discovered_printers, discovered_at, sound_enabled, sound_language, sound_volume")
       .eq("id", shopId)
       .single(),
     supabase
@@ -106,6 +107,11 @@ export async function GET(_req: NextRequest) {
       name: shop?.name,
       virtual_mode: shop?.virtual_mode ?? false,
     },
+    soundSettings: {
+      enabled: shop?.sound_enabled ?? false,
+      language: shop?.sound_language ?? "en",
+      volume: shop?.sound_volume ?? 80,
+    },
     printer: printer ?? null,
     agent: agent ?? null,
     status: {
@@ -130,25 +136,37 @@ export async function PUT(req: NextRequest) {
   const body = (await req.json()) as PrinterConfigBody;
   const supabase = getSupabase();
 
-  // 1. Source of truth for the auto-print pipeline is shops.virtual_mode.
-  // Update this FIRST so a mode toggle succeeds even if the printer table
-  // is missing migration 0016's new columns. This unblocks the vendor
-  // even when the schema is only partially migrated.
-  if (body.mode !== undefined) {
+  // 1. Update shop-level fields (virtual_mode + optional sound settings).
+  // Do this FIRST so a mode toggle succeeds even if the printer table is
+  // missing migration 0016's new columns.
+  const shopPatch: Record<string, unknown> = {};
+  if (body.mode !== undefined) shopPatch.virtual_mode = body.mode === "test";
+  if (body.sound_enabled !== undefined) shopPatch.sound_enabled = body.sound_enabled;
+  if (body.sound_language !== undefined) shopPatch.sound_language = body.sound_language;
+  if (body.sound_volume !== undefined) {
+    const vol = Math.round(body.sound_volume);
+    if (vol >= 0 && vol <= 100) shopPatch.sound_volume = vol;
+  }
+
+  if (Object.keys(shopPatch).length > 0) {
     const { error: shopErr } = await supabase
       .from("shops")
-      .update({ virtual_mode: body.mode === "test" })
+      .update(shopPatch)
       .eq("id", shopId);
     if (shopErr) {
-      console.error("[vendor/printer] shops.virtual_mode update failed", shopErr);
+      console.error("[vendor/printer] shops update failed", shopErr);
       return Response.json(
-        {
-          error: `Could not update shop mode: ${shopErr.message}`,
-          detail: shopErr,
-        },
+        { error: `Could not update shop settings: ${shopErr.message}`, detail: shopErr },
         { status: 500 }
       );
     }
+  }
+
+  // Early return if only sound settings were updated (no printer row changes needed).
+  if (body.mode === undefined && Object.keys(body).every(
+    (k) => ["sound_enabled", "sound_language", "sound_volume"].includes(k)
+  )) {
+    return Response.json({ ok: true });
   }
 
   // 2. Try to sync printer-level fields. If migration 0016 hasn't been
