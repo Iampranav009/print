@@ -9,11 +9,12 @@ module-level announce_*() functions from any thread and return immediately
 Phrase templates live in PHRASES_EN so they are easy to edit and translate.
 To add Hindi (via Piper later), add PHRASES_HI and route via _phrases().
 
-TTS is behind a small TtsEngine interface. Default: pyttsx3 (offline, no
-network). Swap engines by subclassing TtsEngine and passing it to Announcer.
+TTS uses native Windows speech on Windows and pyttsx3 on Linux.
+Both run offline on the shop computer; the dashboard does not need to stay open.
 """
 
 import logging
+import json
 import os
 import queue
 import subprocess
@@ -58,6 +59,33 @@ class TtsEngine:
 
     def speak(self, text: str) -> None:
         raise NotImplementedError
+
+    def set_volume(self, volume: int) -> None:
+        self._volume = max(0, min(100, volume)) / 100.0
+
+
+class WindowsSpeechEngine(TtsEngine):
+    """Run Windows speech in an isolated process, avoiding cross-thread COM loops."""
+
+    def __init__(self, volume: int = 80) -> None:
+        self.set_volume(volume)
+
+    def speak(self, text: str) -> None:
+        script = (
+            "$ErrorActionPreference='Stop'; Add-Type -AssemblyName System.Speech; "
+            "$p=[Console]::In.ReadToEnd() | ConvertFrom-Json; "
+            "$s=New-Object System.Speech.Synthesis.SpeechSynthesizer; "
+            "try { $s.SetOutputToDefaultAudioDevice(); $s.Volume=$p.volume; "
+            "$s.Speak([string]$p.text) } finally { $s.Dispose() }"
+        )
+        result = subprocess.run(
+            ["powershell.exe", "-NoProfile", "-NonInteractive", "-Command", script],
+            input=json.dumps({"text": text, "volume": round(self._volume * 100)}),
+            text=True, capture_output=True, timeout=30,
+            creationflags=subprocess.CREATE_NO_WINDOW,
+        )
+        if result.returncode:
+            raise RuntimeError(f"Windows speech failed: {result.stderr.strip()}")
 
 
 class Pyttsx3Engine(TtsEngine):
@@ -107,7 +135,7 @@ class Pyttsx3Engine(TtsEngine):
             eng.runAndWait()
             eng.stop()
         except Exception as exc:
-            log.warning("Audio: TTS speak failed: %s", exc)
+            raise RuntimeError(f"TTS speak failed: {exc}") from exc
 
 
 # ── Chime playback ───────────────────────────────────────────────────────────
@@ -150,13 +178,13 @@ class Announcer:
     """Thread-safe announcement queue backed by a single daemon worker thread.
 
     Instantiate once at agent startup. Call enqueue() from any thread.
-    Errors in playback degrade silently after a single warning log.
+    Playback errors are logged and the next announcement is retried.
     """
 
     def __init__(self, tts: Optional[TtsEngine] = None, volume: int = 80) -> None:
         self._q: "queue.Queue[Optional[Announcement]]" = queue.Queue()
-        self._tts = tts or Pyttsx3Engine(volume=volume / 100.0)
-        self._audio_ok = True
+        self._tts = tts
+        self._volume = max(0, min(100, volume))
         self._warned = False
         self._thread = threading.Thread(
             target=self._worker, name="audio-worker", daemon=True
@@ -171,7 +199,14 @@ class Announcer:
         self._q.put(_STOP)
         self._thread.join(timeout=5)
 
+    def set_volume(self, volume: int) -> None:
+        self._volume = max(0, min(100, volume))
+
     def _worker(self) -> None:
+        # Create and use the engine on the same thread (required by COM drivers).
+        if self._tts is None:
+            self._tts = (WindowsSpeechEngine(self._volume) if sys.platform == "win32"
+                         else Pyttsx3Engine(volume=self._volume / 100.0))
         while True:
             item = self._q.get()
             if item is _STOP:
@@ -179,21 +214,19 @@ class Announcer:
             self._play(item)  # type: ignore[arg-type]
 
     def _play(self, ann: Announcement) -> None:
-        if not self._audio_ok:
+        if self._volume == 0:
             return
         try:
-            if ann.play_chime:
-                _play_chime()
-            if not self._tts.available:
-                return
+            if self._tts is None or not self._tts.available:
+                raise RuntimeError("Speech engine unavailable; install an OS speech voice")
+            self._tts.set_volume(self._volume)
             self._tts.speak(ann.phrase)
         except Exception as exc:
             if not self._warned:
                 log.warning(
-                    "Audio: playback error (silencing future announcements): %s", exc
+                    "Audio: speech failed (will retry next announcement): %s", exc
                 )
                 self._warned = True
-            self._audio_ok = False
 
 
 # ── Audio device check ───────────────────────────────────────────────────────
@@ -249,17 +282,32 @@ def init(*, enabled: bool, volume: int = 80, language: str = "en") -> None:
     global _instance, _enabled, _language
     _enabled = enabled
     _language = language
+    log.info(
+        "Audio: init — enabled=%s volume=%d language=%s",
+        enabled, volume, language,
+    )
     if _instance is None and enabled:
         _instance = _make_announcer(volume)
+    elif not enabled:
+        log.info(
+            "Audio: announcements disabled. Enable via the dashboard 'Voice announcements' "
+            "toggle, or set AGENT_SOUND_ENABLED=true in .env to override locally."
+        )
 
 
 def configure(*, enabled: bool, volume: int = 80, language: str = "en") -> None:
     """Update settings mid-run (called each heartbeat cycle)."""
     global _instance, _enabled, _language
+    changed = (enabled != _enabled)
     _enabled = enabled
     _language = language
     if enabled and _instance is None:
+        log.info("Audio: enabling announcements (volume=%d, language=%s)", volume, language)
         _instance = _make_announcer(volume)
+    elif changed and not enabled:
+        log.info("Audio: announcements disabled by operator toggle.")
+    if _instance is not None:
+        _instance.set_volume(volume if enabled else 0)
 
 
 def _announce(key: str, **kwargs: object) -> None:
@@ -279,7 +327,7 @@ def _announce(key: str, **kwargs: object) -> None:
 
 
 def announce_payment_received(amount_paise: int, copies: int) -> None:
-    amount_rupees = amount_paise // 100
+    amount_rupees = f"{amount_paise / 100:.2f}".rstrip("0").rstrip(".")
     if copies > 1:
         _announce("payment_received_copies", amount=amount_rupees, copies=copies)
     else:

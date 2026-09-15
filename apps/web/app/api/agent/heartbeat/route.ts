@@ -9,6 +9,7 @@
 import { getSupabase } from "@/lib/supabase";
 import { resolveAgentToken } from "@/lib/agent-auth";
 import { NextRequest } from "next/server";
+import { printerForJob } from "@/lib/printer-routing";
 
 interface DiscoveredPrinter {
   name: string;
@@ -25,10 +26,24 @@ export async function POST(req: NextRequest) {
   const body = (await req.json().catch(() => ({}))) as {
     printerStatus?: string;
     discoveredPrinters?: DiscoveredPrinter[];
+    printerName?: string;
   };
 
   const now = new Date().toISOString();
   const supabase = getSupabase();
+  const { data: printer, error: printerError } = await supabase
+    .from("printers")
+    .select("id, os_printer_name, bw_os_printer_name, color_os_printer_name, color_enabled")
+    .eq("shop_id", agent.shopId)
+    .order("id", { ascending: true })
+    .limit(1)
+    .maybeSingle();
+  if (printerError) return Response.json({ error: "Could not load printer configuration" }, { status: 503 });
+  const discoveredNames = new Set((Array.isArray(body.discoveredPrinters) ? body.discoveredPrinters : []).filter(p => p && typeof p.name === "string").map(p => p.name.trim()));
+  const bwPrinter = printerForJob(printer, false);
+  const colorPrinter = printerForJob(printer, true);
+  const printerOnline = !!bwPrinter && discoveredNames.has(bwPrinter) &&
+    (!printer?.color_enabled || (!!colorPrinter && discoveredNames.has(colorPrinter)));
 
   await supabase
     .from("agents")
@@ -38,11 +53,11 @@ export async function POST(req: NextRequest) {
   await supabase
     .from("printers")
     .update({
-      online: true,
+      online: printerOnline,
       last_seen_at: now,
-      ...(body.printerStatus ? { status: body.printerStatus } : {}),
+      status: printerOnline ? "online" : "offline",
     })
-    .eq("shop_id", agent.shopId);
+    .eq("id", printer?.id ?? "00000000-0000-0000-0000-000000000000");
 
   if (Array.isArray(body.discoveredPrinters)) {
     const seen = new Set<string>();
@@ -60,7 +75,7 @@ export async function POST(req: NextRequest) {
       .slice(0, 50)
       .map((p) => ({
         name: p.name.trim(),
-        driver: p.driver?.trim() || null,
+        driver: typeof p.driver === "string" ? p.driver.trim() : null,
         isDefault: !!p.isDefault,
       }));
 
@@ -74,14 +89,23 @@ export async function POST(req: NextRequest) {
   }
 
   // Read sound settings so the agent can pick up operator toggle changes.
-  const { data: shop } = await supabase
+  const { data: shop, error: shopErr } = await supabase
     .from("shops")
     .select("sound_enabled, sound_language, sound_volume")
     .eq("id", agent.shopId)
     .maybeSingle();
 
+  if (shopErr) {
+    // Migration 0019 likely not applied yet — columns don't exist.
+    console.warn(
+      "[agent/heartbeat] Could not read sound settings (run migration 0019):",
+      shopErr.message
+    );
+  }
+
   return Response.json({
     ok: true,
+    printerConfig: printer ?? { os_printer_name: null },
     soundSettings: {
       enabled: shop?.sound_enabled ?? false,
       language: shop?.sound_language ?? "en",

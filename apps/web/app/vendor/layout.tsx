@@ -10,7 +10,7 @@ type VendorMeResponse = {
   user: { id: string; email: string | null; name: string | null; avatar_url: string | null };
   profile: { user_id: string; full_name: string; phone: string; address: string | null; created_at: string; updated_at: string } | null;
   shop: { id: string; name: string; location: string | null; latitude: number | null; longitude: number | null; google_place_id: string | null; contact_email: string | null; contact_phone: string | null; status: string; virtual_mode: boolean } | null;
-  bank: { shop_id: string; account_holder_name: string; account_number: string; ifsc_code: string; bank_name: string | null; branch: string | null; upi_id: string | null; verified: boolean; created_at: string; updated_at: string } | null;
+  bank: { shop_id: string; account_holder_name: string | null; account_number: string | null; ifsc_code: string | null; bank_name: string | null; branch: string | null; upi_id: string | null; verified: boolean; created_at: string; updated_at: string } | null;
 };
 
 export default async function VendorLayout({

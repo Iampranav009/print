@@ -1,6 +1,7 @@
 import { getSupabase } from "@/lib/supabase";
 import { resolveAgentToken } from "@/lib/agent-auth";
 import { NextRequest } from "next/server";
+import { printerForJob } from "@/lib/printer-routing";
 
 export async function GET(req: NextRequest) {
   const agent = await resolveAgentToken(req.headers.get("authorization"));
@@ -10,7 +11,7 @@ export async function GET(req: NextRequest) {
 
   const supabase = getSupabase();
 
-  const [{ data: job }, { data: announcements }] = await Promise.all([
+  const [{ data: job }, { data: announcements }, { data: printer, error: printerError }] = await Promise.all([
     supabase
       .from("print_jobs")
       .select(
@@ -31,7 +32,10 @@ export async function GET(req: NextRequest) {
       .is("sound_ack_at", null)
       .gte("created_at", new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString())
       .limit(20),
+    supabase.from("printers").select("os_printer_name, bw_os_printer_name, color_os_printer_name")
+      .eq("shop_id", agent.shopId).order("id").limit(1).maybeSingle(),
   ]);
+  if (printerError) return Response.json({ error: "Printer routing unavailable" }, { status: 503 });
 
   if (!job) {
     return Response.json({
@@ -51,6 +55,7 @@ export async function GET(req: NextRequest) {
   return Response.json({
     job: {
       id: job.id,
+      osPrinterName: printerForJob(printer, job.color),
       status: job.status,
       downloadUrl: signedUrl?.signedUrl || null,
       fileMime: job.file_mime,

@@ -34,6 +34,8 @@ interface PrinterConfigBody {
   port?: number | null;
   wifi_ssid?: string | null;
   os_printer_name?: string | null;
+  bw_os_printer_name?: string | null;
+  color_os_printer_name?: string | null;
   setup_notes?: string | null;
   // Partner-controlled feature toggles (migration 0018).
   color_enabled?: boolean;
@@ -60,7 +62,7 @@ export async function GET(_req: NextRequest) {
     supabase
       .from("printers")
       .select(
-        "id, os_printer_name, status, capabilities_source, make_and_model, capabilities_updated_at, mode, connection_type, host, port, wifi_ssid, setup_notes, last_seen_at, online, color_enabled, duplex_enabled"
+        "id, os_printer_name, bw_os_printer_name, color_os_printer_name, status, capabilities_source, make_and_model, capabilities_updated_at, mode, connection_type, host, port, wifi_ssid, setup_notes, last_seen_at, online, color_enabled, duplex_enabled"
       )
       .eq("shop_id", shopId)
       .order("id", { ascending: true })
@@ -99,7 +101,7 @@ export async function GET(_req: NextRequest) {
 
   const isTestMode = printer?.mode === "test" || shop?.virtual_mode === true;
   const online =
-    isTestMode || (lastSeenMs > 0 && nowMs - lastSeenMs < HEARTBEAT_WINDOW_MS);
+    isTestMode || (printer?.online === true && lastSeenMs > 0 && nowMs - lastSeenMs < HEARTBEAT_WINDOW_MS);
 
   return Response.json({
     shop: {
@@ -113,7 +115,7 @@ export async function GET(_req: NextRequest) {
       volume: shop?.sound_volume ?? 80,
     },
     printer: printer ?? null,
-    agent: agent ?? null,
+    agent: agent ? { id: agent.id, status: agent.status, platform: agent.platform, last_heartbeat: agent.last_heartbeat } : null,
     status: {
       mode: printer?.mode ?? (shop?.virtual_mode ? "test" : "real"),
       online,
@@ -134,7 +136,23 @@ export async function PUT(req: NextRequest) {
   if (!shopId) return Response.json({ error: "No shop assigned" }, { status: 404 });
 
   const body = (await req.json()) as PrinterConfigBody;
+  if (body.connection_type && !body.os_printer_name?.trim()) {
+    return Response.json({ error: "Select an installed printer on the shop computer." }, { status: 400 });
+  }
   const supabase = getSupabase();
+  const routingChanged = body.bw_os_printer_name !== undefined || body.color_os_printer_name !== undefined;
+  if (routingChanged) {
+    if (typeof body.bw_os_printer_name !== "string" || !body.bw_os_printer_name.trim() ||
+        typeof body.color_os_printer_name !== "string" || !body.color_os_printer_name.trim()) {
+      return Response.json({ error: "Choose a printer for both black-and-white and color. You can use the same printer." }, { status: 400 });
+    }
+    const { data: discovery } = await supabase.from("shops").select("discovered_printers, discovered_at").eq("id", shopId).single();
+    const names = new Set((discovery?.discovered_printers ?? []).map((p: { name: string }) => p.name));
+    if (!names.has(body.bw_os_printer_name) || !names.has(body.color_os_printer_name)) {
+      return Response.json({ error: "Select a printer detected by the PrintBuddy app. Wait for discovery to refresh." }, { status: 400 });
+    }
+    body.os_printer_name = body.bw_os_printer_name;
+  }
 
   // 1. Update shop-level fields (virtual_mode + optional sound settings).
   // Do this FIRST so a mode toggle succeeds even if the printer table is
@@ -177,10 +195,19 @@ export async function PUT(req: NextRequest) {
     .from("printers")
     .select("id")
     .eq("shop_id", shopId)
+    .order("id")
     .limit(1)
     .maybeSingle();
 
   const patch: Record<string, unknown> = {};
+  if (routingChanged) {
+    patch.bw_os_printer_name = body.bw_os_printer_name;
+    patch.color_os_printer_name = body.color_os_printer_name;
+  } else if (body.os_printer_name !== undefined) {
+    // The legacy single-printer editor explicitly assigns the same printer to both.
+    patch.bw_os_printer_name = body.os_printer_name;
+    patch.color_os_printer_name = body.os_printer_name;
+  }
   if (body.mode !== undefined) patch.mode = body.mode;
   if (body.connection_type !== undefined) patch.connection_type = body.connection_type;
   if (body.host !== undefined) patch.host = body.host?.trim() || null;
@@ -191,6 +218,11 @@ export async function PUT(req: NextRequest) {
   if (body.setup_notes !== undefined) patch.setup_notes = body.setup_notes;
   if (body.color_enabled !== undefined) patch.color_enabled = body.color_enabled;
   if (body.duplex_enabled !== undefined) patch.duplex_enabled = body.duplex_enabled;
+
+  if (body.os_printer_name !== undefined) {
+    patch.online = false;
+    patch.last_seen_at = null;
+  }
 
   let printerId: string | undefined;
   let schemaWarning: string | undefined;
@@ -221,7 +253,7 @@ export async function PUT(req: NextRequest) {
 
   if (existing) {
     let result = await tryUpdate(patch);
-    if (result.error && isMissingColumnErr(result.error.message)) {
+    if (result.error && isMissingColumnErr(result.error.message) && !routingChanged && body.os_printer_name === undefined) {
       // Retry with only the columns that shipped in the original schema —
       // i.e. drop the mode/connection_type/host/... fields.
       const legacyPatch: Record<string, unknown> = {};
@@ -253,9 +285,11 @@ export async function PUT(req: NextRequest) {
       port: body.port ?? null,
       wifi_ssid: body.wifi_ssid?.trim() || null,
       setup_notes: body.setup_notes ?? null,
+      bw_os_printer_name: body.bw_os_printer_name ?? body.os_printer_name ?? null,
+      color_os_printer_name: body.color_os_printer_name ?? body.os_printer_name ?? null,
     };
     let result = await tryInsert(insertRow);
-    if (result.error && isMissingColumnErr(result.error.message)) {
+    if (result.error && isMissingColumnErr(result.error.message) && !routingChanged && body.os_printer_name === undefined) {
       result = await tryInsert({
         shop_id: shopId,
         os_printer_name: insertRow.os_printer_name,

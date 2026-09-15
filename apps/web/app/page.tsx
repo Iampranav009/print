@@ -28,6 +28,9 @@ import {
   AlertTriangle,
   Clock,
   Database,
+  MapPin,
+  Sparkles,
+  Cpu,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -48,34 +51,48 @@ const jakarta = Plus_Jakarta_Sans({
 // ─── SEO ───────────────────────────────────────────────────────────────────────
 
 export const metadata: Metadata = {
-  title: "PrintBuddy — Digital Print Platform for Shops Across India",
+  title:
+    "PrintBuddy — Best Digital Software & Print Software | Wireless Printing ATM Machine in Yotmal & India",
   description:
-    "PrintBuddy turns your existing printer into a 24/7 digital print point. Customers scan a QR, upload, and pay via UPI — you just print. No new hardware. Commission-only pricing.",
+    "PrintBuddy is India's premier digital software and print software platform. Convert any Xerox printer into a self-service wireless printing machine, printing ATM machine, and printing vending machine. Scan QR, upload, pay via UPI, and print. Serving Yotmal and shops nationwide.",
   keywords: [
+    "Yotmal",
+    "Yotmal xerox shop",
+    "Yotmal digital print service",
+    "Yotmal college xerox centre",
+    "Yavatmal printing software",
+    "digital software",
+    "Print Buddy",
+    "Print Software",
+    "wireless printing machine",
+    "printing ATM machine",
+    "printing vending machine",
+    "self-serve printing kiosk",
     "print shop software India",
     "xerox shop management",
-    "self-serve printing",
     "vendor print dashboard",
     "UPI print payment",
     "automatic print agent",
-    "digital print shop India",
-    "PrintBuddy vendor",
+    "touchless printing solution",
+    "cloud print agent India",
     "online print order system",
   ],
   authors: [{ name: "PrintBuddy" }],
   creator: "PrintBuddy",
   openGraph: {
-    title: "PrintBuddy — Digital Print Platform for Shops Across India",
+    title:
+      "PrintBuddy — Smart Print Software & Wireless Printing ATM Machine",
     description:
-      "Turn your existing printer into a connected print node. Customers scan, upload, pay via UPI — you print. Zero hardware cost.",
+      "Convert any printer into a wireless printing machine and automated printing vending machine with Print Buddy digital software. Zero new hardware cost. Serving Yotmal and pan-India.",
     type: "website",
     locale: "en_IN",
     siteName: "PrintBuddy",
   },
   twitter: {
     card: "summary_large_image",
-    title: "PrintBuddy — Smart Print Shop Software",
-    description: "Scan. Pay. Print. Automate your print shop with zero new hardware.",
+    title: "PrintBuddy — Smart Print Software & Wireless Printing ATM Machine",
+    description:
+      "Scan. Pay. Print. Turn standard printers into a self-service printing ATM machine with Print Buddy digital software.",
   },
   robots: { index: true, follow: true },
 };
@@ -323,10 +340,10 @@ function HeroSection() {
               <span
                 className={cn(
                   jakarta.className,
-                  "text-xs font-semibold text-zinc-500 tracking-[0.1em] uppercase"
+                  "text-xs font-semibold text-zinc-400 tracking-[0.1em] uppercase"
                 )}
               >
-                Early Access · Now in Beta
+                Smart Digital Software · Active in Yotmal &amp; Nationwide
               </span>
             </div>
 
@@ -349,10 +366,13 @@ function HeroSection() {
                 "text-[17px] text-zinc-400 leading-[1.7] mb-9 max-w-lg"
               )}
             >
-              PrintBuddy connects your existing printer to a digital payment flow. Customers
-              upload from their phone, pay via UPI, and collect their print.{" "}
+              <strong className="text-white font-semibold">Print Buddy</strong> is the leading{" "}
+              <strong className="text-white font-semibold">digital software</strong> and{" "}
+              <strong className="text-white font-semibold">print software</strong> transforming any Xerox printer into an unattended{" "}
+              <strong className="text-[#4ade80] font-semibold">wireless printing machine</strong> and{" "}
+              <strong className="text-[#4ade80] font-semibold">printing ATM machine</strong>. Customers upload from their phone, pay via UPI, and collect with a secure 4-digit code.{" "}
               <span className="text-zinc-200 font-medium">
-                No new hardware. No manual intervention.
+                No new hardware. Zero manual queues.
               </span>
             </p>
 
@@ -380,8 +400,8 @@ function HeroSection() {
               </Link>
             </div>
 
-            <p className={cn(jakarta.className, "text-xs text-zinc-600")}>
-              Works on your existing Windows PC and printer · Live in under 5 minutes
+            <p className={cn(jakarta.className, "text-xs text-zinc-500")}>
+              Works on your existing Windows PC and printer · Powers self-service printing vending machines in Yotmal &amp; across India
             </p>
           </div>
 
@@ -636,6 +656,161 @@ function ProblemSection() {
   );
 }
 
+// ─── Wireless Printing ATM & Vending Section ──────────────────────────────────
+
+function PrintingAtmSection() {
+  const cards = [
+    {
+      icon: Wifi,
+      badge: "Wireless Freedom",
+      title: "Universal Wireless Printing Machine",
+      subtitle: "Zero cables, zero drivers, zero WhatsApp sharing",
+      desc: "Transform any desktop or Xerox printer into an instant wireless printing machine. Customers never need to plug in flash drives or transfer files over WhatsApp. They simply scan the shop QR code, select their document, and transmit it wirelessly straight to the print agent.",
+      bullets: [
+        "Eliminates USB malware & virus threats",
+        "Supports PDF, Word, PowerPoint, & Images",
+        "Automatic duplex & color separation",
+      ],
+      tag: "Wireless Printing",
+    },
+    {
+      icon: Lock,
+      badge: "PIN-Protected Release",
+      title: "Secure Printing ATM Machine",
+      subtitle: "Bank-grade privacy with 4-digit release code",
+      desc: "Operate your counter just like a financial ATM machine. Once paid, jobs remain encrypted and paused until the customer physically arrives at your printer and enters their 4-digit release code. No stranger can ever grab another customer's Aadhaar card, exam paper, or confidential document.",
+      bullets: [
+        "Unattended output tray protection",
+        "4-digit release code on customer's phone",
+        "Instant document shredding after print",
+      ],
+      tag: "Printing ATM",
+    },
+    {
+      icon: Cpu,
+      badge: "24/7 Self-Service",
+      title: "Autonomous Printing Vending Machine",
+      subtitle: "Instant UPI payments with automatic queue dispatch",
+      desc: "Turn your counter into an automated printing vending machine. Customers scan, preview exact page counts and locked prices, pay in 2 seconds using Google Pay, PhonePe, or BHIM, and receive their prints immediately. Your shop stays productive even during peak exam rush.",
+      bullets: [
+        "Razorpay UPI intent checkout",
+        "100% locked & deterministic pricing",
+        "Automatic refunds on printer paper jam",
+      ],
+      tag: "Printing Vending",
+    },
+  ];
+
+  return (
+    <section className="py-24 bg-[#0E1117] relative overflow-hidden border-t border-b border-white/[0.06]">
+      <div
+        className="absolute top-0 right-1/4 w-[500px] h-[500px] pointer-events-none"
+        style={{
+          background:
+            "radial-gradient(ellipse at center, rgba(12,131,31,0.09) 0%, transparent 70%)",
+        }}
+      />
+      <div className="max-w-[1200px] mx-auto px-5 sm:px-8 relative z-10">
+        <div className="text-center max-w-3xl mx-auto mb-16">
+          <p
+            className={cn(
+              jakarta.className,
+              "text-[11px] font-semibold tracking-[0.12em] uppercase text-[#4ade80] mb-4"
+            )}
+          >
+            Digital Software Revolution
+          </p>
+          <h2
+            className={cn(
+              manrope.className,
+              "text-3xl sm:text-5xl font-extrabold text-white leading-tight tracking-[-0.03em] mb-6"
+            )}
+            style={{ textWrap: "balance" } as React.CSSProperties}
+          >
+            The Wireless Printing ATM Machine &amp; Vending Solution
+          </h2>
+          <p
+            className={cn(
+              jakarta.className,
+              "text-zinc-400 text-base sm:text-lg leading-relaxed"
+            )}
+          >
+            <strong className="text-zinc-200">Print Buddy</strong> is specialized{" "}
+            <strong className="text-zinc-200">print software</strong> and{" "}
+            <strong className="text-zinc-200">digital software</strong> that upgrades ordinary
+            shop hardware into a connected <strong className="text-[#4ade80]">wireless printing machine</strong>,
+            a secure <strong className="text-[#4ade80]">printing ATM machine</strong>, and a self-serve{" "}
+            <strong className="text-[#4ade80]">printing vending machine</strong> — all without buying new kiosks.
+          </p>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {cards.map((c) => (
+            <div
+              key={c.title}
+              className="bg-white/[0.03] border border-white/[0.08] hover:border-[#0C831F]/40 rounded-2xl p-7 flex flex-col justify-between transition-all duration-300 hover:shadow-2xl hover:shadow-[#0C831F]/10 group"
+            >
+              <div>
+                <div className="flex items-center justify-between mb-5">
+                  <div className="w-12 h-12 rounded-xl bg-[#0C831F]/15 border border-[#0C831F]/25 flex items-center justify-center group-hover:scale-105 transition-transform">
+                    <c.icon className="w-6 h-6 text-[#4ade80]" />
+                  </div>
+                  <span
+                    className={cn(
+                      jakarta.className,
+                      "text-[11px] font-semibold bg-[#0C831F]/20 text-[#4ade80] border border-[#0C831F]/30 rounded-full px-3 py-1"
+                    )}
+                  >
+                    {c.badge}
+                  </span>
+                </div>
+
+                <h3
+                  className={cn(
+                    manrope.className,
+                    "text-xl font-bold text-white mb-1.5"
+                  )}
+                >
+                  {c.title}
+                </h3>
+                <p
+                  className={cn(
+                    jakarta.className,
+                    "text-xs text-[#4ade80] font-medium mb-4"
+                  )}
+                >
+                  {c.subtitle}
+                </p>
+                <p
+                  className={cn(
+                    jakarta.className,
+                    "text-sm text-zinc-400 leading-relaxed mb-6"
+                  )}
+                >
+                  {c.desc}
+                </p>
+              </div>
+
+              <div>
+                <div className="border-t border-white/[0.06] pt-5 space-y-2.5">
+                  {c.bullets.map((b) => (
+                    <div key={b} className="flex items-center gap-2.5">
+                      <CheckCircle2 className="w-4 h-4 text-[#4ade80] shrink-0" />
+                      <span className={cn(jakarta.className, "text-xs text-zinc-300")}>
+                        {b}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
 // ─── Features ──────────────────────────────────────────────────────────────────
 
 function FeaturesSection() {
@@ -740,6 +915,124 @@ function FeaturesSection() {
               </p>
             </div>
           ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+// ─── Regional Hub: Yotmal & Nationwide ────────────────────────────────────────
+
+function YotmalNetworkSection() {
+  const hubs = [
+    {
+      name: "Yotmal College Campus Points",
+      desc: "Engineered for student rush near engineering colleges, polytechnics, and coaching centres across Yotmal.",
+    },
+    {
+      name: "Market Xerox & Cyber Centers",
+      desc: "Empowering local Xerox vendors in main markets with contactless UPI document processing and zero line bottlenecks.",
+    },
+    {
+      name: "Government & Legal Document Hubs",
+      desc: "PIN-secured printing for sensitive court documents, affidavits, and identity verifications with zero data retention.",
+    },
+    {
+      name: "Tier-2 & Tier-3 City Expansion",
+      desc: "Bringing world-class automated print software to grassroots business hubs across Maharashtra and India.",
+    },
+  ];
+
+  return (
+    <section className="py-20 bg-gradient-to-b from-[#F7F7F5] to-white border-b border-[#E5E5E2]">
+      <div className="max-w-[1200px] mx-auto px-5 sm:px-8">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
+          <div className="lg:col-span-6">
+            <div className="inline-flex items-center gap-2 bg-[#0C831F]/10 border border-[#0C831F]/20 rounded-full px-3.5 py-1 mb-5">
+              <MapPin className="w-3.5 h-3.5 text-[#0C831F]" />
+              <span
+                className={cn(
+                  jakarta.className,
+                  "text-xs font-bold uppercase tracking-wider text-[#0C831F]"
+                )}
+              >
+                Local Network Spotlight
+              </span>
+            </div>
+            <h2
+              className={cn(
+                manrope.className,
+                "text-3xl sm:text-4xl font-extrabold text-[#0E1117] leading-tight tracking-[-0.03em] mb-5"
+              )}
+            >
+              Powering Print Shops in{" "}
+              <span className="text-[#0C831F]">Yotmal</span> &amp; Across Maharashtra
+            </h2>
+            <p
+              className={cn(
+                jakarta.className,
+                "text-zinc-600 text-base leading-relaxed mb-8"
+              )}
+            >
+              Whether you run a high-volume Xerox centre near educational institutes in{" "}
+              <strong className="text-zinc-900 font-semibold">Yotmal</strong>, a cyber café, or a busy commercial
+              stationery shop, <strong className="text-[#0C831F] font-semibold">Print Buddy digital software</strong> gives you an unfair advantage. Eliminate
+              WhatsApp bottlenecks, stop handling dirty cash, and turn every printer into an automated{" "}
+              <strong className="text-zinc-900 font-semibold">wireless printing machine</strong> in less than 5 minutes.
+            </p>
+            <div className="flex flex-wrap items-center gap-3">
+              <Link
+                href="/vendor/login"
+                className={cn(
+                  manrope.className,
+                  "inline-flex items-center gap-2 px-6 py-3.5 bg-[#0C831F] text-white text-sm font-bold rounded-xl hover:bg-[#086618] transition-colors shadow-lg shadow-[#0C831F]/25"
+                )}
+              >
+                <Store className="w-4 h-4" />
+                Register Your Yotmal Shop
+                <ArrowRight className="w-4 h-4" />
+              </Link>
+              <Link
+                href="/app/nearby"
+                className={cn(
+                  jakarta.className,
+                  "inline-flex items-center gap-2 px-6 py-3.5 border border-gray-300 text-zinc-700 text-sm font-semibold rounded-xl hover:bg-gray-50 transition-colors"
+                )}
+              >
+                <MapPin className="w-4 h-4 text-[#0C831F]" />
+                Find Nearby Printers
+              </Link>
+            </div>
+          </div>
+
+          <div className="lg:col-span-6 grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {hubs.map((hub) => (
+              <div
+                key={hub.name}
+                className="bg-white border border-[#E5E5E2] rounded-2xl p-5 shadow-sm hover:border-[#0C831F]/30 hover:shadow-md transition-all"
+              >
+                <div className="w-8 h-8 rounded-lg bg-[#0C831F]/10 flex items-center justify-center mb-3">
+                  <Sparkles className="w-4 h-4 text-[#0C831F]" />
+                </div>
+                <h3
+                  className={cn(
+                    manrope.className,
+                    "text-sm font-bold text-[#0E1117] mb-1.5"
+                  )}
+                >
+                  {hub.name}
+                </h3>
+                <p
+                  className={cn(
+                    jakarta.className,
+                    "text-xs text-zinc-500 leading-relaxed"
+                  )}
+                >
+                  {hub.desc}
+                </p>
+              </div>
+            ))}
+          </div>
         </div>
       </div>
     </section>
@@ -1344,36 +1637,52 @@ function PricingSection() {
 function FAQSection() {
   const faqs = [
     {
-      q: "Do I need to buy new hardware?",
-      a: "No. PrintBuddy works with your existing Windows PC and printer. Download the Print Agent, log in, and you're live.",
+      q: "What is Print Buddy digital software?",
+      a: "Print Buddy is advanced digital software and print software that transforms any existing printer into an autonomous wireless printing machine. It allows customers to upload documents, pay via UPI, and print directly without passing through WhatsApp, USB drives, or shopkeeper queues.",
     },
     {
-      q: "Which printers are supported?",
-      a: "Any printer that works with Windows Print Spooler or CUPS on Linux. No vendor-specific drivers or SDKs needed.",
+      q: "How does Print Buddy function as a printing ATM machine?",
+      a: "Just like a cash ATM machine dispenses currency only after you enter a confidential ATM PIN, Print Buddy functions as a secure printing ATM machine. After paying online, the customer receives a 4-digit release code. The print job is held securely and only starts printing when the customer enters this code at the physical counter.",
     },
     {
-      q: "What happens if my printer fails mid-job?",
-      a: "If a job can't complete, Razorpay refunds are triggered automatically — keeping the customer happy and your reputation intact.",
+      q: "Can Print Buddy turn my shop counter into a 24/7 printing vending machine?",
+      a: "Yes! Print Buddy's digital software acts as a virtual self-service printing vending machine. Customers scan the QR sticker, configure simplex/duplex or color options, review the locked live rate, pay using any UPI app, and automatically release their prints without any manual counter work.",
     },
     {
-      q: "Is the customer's document stored permanently?",
-      a: "No. Documents are deleted immediately after printing. Privacy is a core design principle, not an afterthought.",
+      q: "Is Print Buddy print software available for Xerox shops in Yotmal?",
+      a: "Yes. Print Buddy is actively deployed across student xerox centres, coaching institutes, and cyber shops in Yotmal (Yavatmal) and across Maharashtra. Shop owners in Yotmal can sign up for free, download the Windows agent, and start receiving automated online print jobs immediately.",
     },
     {
-      q: "What if my internet drops mid-shift?",
-      a: "The Print Agent holds already-paid jobs in a local SQLite queue. They print automatically when connectivity returns.",
+      q: "Do I need to buy a dedicated wireless printing machine to use Print Buddy?",
+      a: "No. You do not need to buy any new hardware or expensive kiosks. Print Buddy's print software runs seamlessly on your current Windows PC connected to your existing USB or network printer, converting it into a cloud-connected wireless printing machine.",
     },
     {
-      q: "How and when do I get paid?",
-      a: "Earnings are deposited directly to your registered bank account. Every job and payout is visible in your Vendor Dashboard.",
+      q: "Which printers and file formats are supported?",
+      a: "Print Buddy supports any printer compatible with Windows Print Spooler or CUPS on Linux (HP, Canon, Epson, Brother, Ricoh, Xerox, Konica Minolta). Our server-side digital software automatically normalizes PDFs, Word (.docx), PowerPoint (.pptx), and images into print-ready files.",
     },
     {
-      q: "What is the commission rate exactly?",
-      a: "The commission is in the 5–8% range per completed job, agreed at onboarding. There are no monthly fees, no setup costs, and no charges on refunded jobs.",
+      q: "What happens if my printer fails mid-job or runs out of paper?",
+      a: "If a job cannot complete due to a paper jam or power outage, automated Razorpay refunds are triggered directly to the customer's UPI account — protecting your shop reputation and preventing customer disputes.",
     },
     {
-      q: "Can customers use any UPI app?",
-      a: "Yes. PrintBuddy uses Razorpay under the hood, so customers can pay with GPay, PhonePe, BHIM, Paytm, or any UPI-compatible app.",
+      q: "Are customer documents stored securely or deleted?",
+      a: "Customer privacy is strictly protected. Uploaded documents are encrypted, accessible only via short-lived temporary URLs, and automatically shredded and deleted from the server and local printer cache immediately after printing.",
+    },
+    {
+      q: "What if the internet drops at my shop?",
+      a: "The Print Buddy agent includes an offline-resilient local SQLite queue. Already-paid jobs remain securely queued and resume printing automatically the instant internet connectivity is restored.",
+    },
+    {
+      q: "How and when do shop owners receive payouts?",
+      a: "Earnings are deposited directly to your registered Indian bank account on an automated daily settlement cycle. You can track all job counts, revenue, and payout records live inside your Vendor Dashboard.",
+    },
+    {
+      q: "What is the commission rate for vendors?",
+      a: "Print Buddy charges a low 5–8% commission only on successfully completed and paid jobs. There are zero monthly software subscriptions, zero onboarding fees, and zero charges on refunded jobs.",
+    },
+    {
+      q: "Can customers pay with any UPI app?",
+      a: "Yes. Customers can pay using Google Pay (GPay), PhonePe, Paytm, BHIM, Amazon Pay, or any bank UPI application via Razorpay.",
     },
   ];
 
@@ -1647,27 +1956,111 @@ function Footer() {
 // ─── Page ──────────────────────────────────────────────────────────────────────
 
 export default function LandingPage() {
+  const jsonLd = {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "SoftwareApplication",
+        "@id": "https://printbuddy.in/#software",
+        name: "Print Buddy",
+        alternateName: [
+          "PrintBuddy",
+          "Print Buddy Digital Software",
+          "Print Software",
+          "Wireless Printing Machine Platform",
+        ],
+        applicationCategory: "BusinessApplication",
+        operatingSystem: "Windows 10, Windows 11, Linux, Raspberry Pi",
+        description:
+          "Print Buddy is cutting-edge digital software and print software turning any Xerox printer into an unattended wireless printing machine, printing ATM machine, and printing vending machine with instant UPI payments.",
+        offers: {
+          "@type": "Offer",
+          price: "0",
+          priceCurrency: "INR",
+          description: "Commission-only model — zero upfront hardware cost",
+        },
+        featureList: [
+          "Universal wireless printing machine capability without cables or drivers",
+          "Secure printing ATM machine PIN protection for confidential documents",
+          "Self-service printing vending machine workflow with instant UPI payments",
+          "Digital software running on existing shop Windows PC or Raspberry Pi",
+          "Active print shop network in Yotmal and throughout Maharashtra & India",
+        ],
+        provider: {
+          "@type": "Organization",
+          name: "PrintBuddy",
+          url: "https://printbuddy.in",
+        },
+      },
+      {
+        "@type": "LocalBusiness",
+        "@id": "https://printbuddy.in/#localbusiness",
+        name: "Print Buddy — Wireless Printing Network Yotmal",
+        description:
+          "Self-serve wireless printing machine and automated digital software network empowering Xerox centres and student hubs in Yotmal, Maharashtra, and India.",
+        url: "https://printbuddy.in",
+        areaServed: [
+          { "@type": "City", name: "Yotmal" },
+          { "@type": "AdministrativeArea", name: "Maharashtra" },
+          { "@type": "Country", name: "India" },
+        ],
+        serviceType: "Wireless Printing ATM Machine & Xerox Print Software",
+      },
+      {
+        "@type": "FAQPage",
+        "@id": "https://printbuddy.in/#faq",
+        mainEntity: [
+          {
+            "@type": "Question",
+            name: "What is Print Buddy digital software?",
+            acceptedAnswer: {
+              "@type": "Answer",
+              text: "Print Buddy is advanced digital software and print software that transforms any existing printer into an autonomous wireless printing machine. It allows customers to upload documents, pay via UPI, and print directly without passing through WhatsApp, USB drives, or shopkeeper queues.",
+            },
+          },
+          {
+            "@type": "Question",
+            name: "How does Print Buddy function as a printing ATM machine?",
+            acceptedAnswer: {
+              "@type": "Answer",
+              text: "Just like a cash ATM machine dispenses currency only after you enter a confidential ATM PIN, Print Buddy functions as a secure printing ATM machine. After paying online, the customer receives a 4-digit release code. The print job is held securely and only starts printing when the customer enters this code at the physical counter.",
+            },
+          },
+          {
+            "@type": "Question",
+            name: "Can Print Buddy turn my shop counter into a 24/7 printing vending machine?",
+            acceptedAnswer: {
+              "@type": "Answer",
+              text: "Yes! Print Buddy's digital software acts as a virtual self-service printing vending machine. Customers scan the QR sticker, configure simplex/duplex or color options, review the locked live rate, pay using any UPI app, and automatically release their prints without any manual counter work.",
+            },
+          },
+          {
+            "@type": "Question",
+            name: "Is Print Buddy print software available for Xerox shops in Yotmal?",
+            acceptedAnswer: {
+              "@type": "Answer",
+              text: "Yes. Print Buddy is actively deployed across student xerox centres, coaching institutes, and cyber shops in Yotmal (Yavatmal) and across Maharashtra. Shop owners in Yotmal can sign up for free, download the Windows agent, and start receiving automated online print jobs immediately.",
+            },
+          },
+          {
+            "@type": "Question",
+            name: "Do I need to buy a dedicated wireless printing machine to use Print Buddy?",
+            acceptedAnswer: {
+              "@type": "Answer",
+              text: "No. You do not need to buy any new hardware or expensive kiosks. Print Buddy's print software runs seamlessly on your current Windows PC connected to your existing USB or network printer, converting it into a cloud-connected wireless printing machine.",
+            },
+          },
+        ],
+      },
+    ],
+  };
+
   return (
     <>
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{
-          __html: JSON.stringify({
-            "@context": "https://schema.org",
-            "@type": "SoftwareApplication",
-            name: "PrintBuddy",
-            description:
-              "PrintBuddy connects print shops with customers through a self-serve online print ordering system with UPI payments and auto-printing.",
-            applicationCategory: "BusinessApplication",
-            operatingSystem: "Windows, Linux",
-            offers: {
-              "@type": "Offer",
-              price: "0",
-              priceCurrency: "INR",
-              description: "Commission-only model — no monthly fees",
-            },
-            provider: { "@type": "Organization", name: "PrintBuddy" },
-          }),
+          __html: JSON.stringify(jsonLd),
         }}
       />
 
@@ -1675,7 +2068,9 @@ export default function LandingPage() {
       <main>
         <HeroSection />
         <ProblemSection />
+        <PrintingAtmSection />
         <FeaturesSection />
+        <YotmalNetworkSection />
         <ForVendorsSection />
         <InstallSection />
         <PricingSection />

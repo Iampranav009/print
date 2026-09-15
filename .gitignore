@@ -5,7 +5,10 @@ node_modules/
 next-env.d.ts
 __pycache__/
 *.pyc
+printbuddy-shop.json
 .venv/
+.venv-agent-build/
+.agent-build/
 dist/
 .vercel
 .agent
@@ -20,3 +23,4 @@ ds-bundle/
 apps/web/.ds-compiled-tailwind.css
 apps/web/types/
 apps/web/.ds-src-mirror/
+supabase/.temp/

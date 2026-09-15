@@ -9,9 +9,9 @@ interface BankRow {
   shop_location: string | null;
   vendor_name: string | null;
   vendor_phone: string | null;
-  account_holder_name: string;
-  account_number: string;
-  ifsc_code: string;
+  account_holder_name: string | null;
+  account_number: string | null;
+  ifsc_code: string | null;
   bank_name: string | null;
   branch: string | null;
   upi_id: string | null;
@@ -91,7 +91,7 @@ export function AdminBankVerifications({ onCountChange }: Props) {
         <div>
           <h2 className="text-lg font-semibold text-zinc-900">Bank verifications</h2>
           <p className="text-sm text-zinc-500 mt-1">
-            Review vendor bank details before enabling their payouts.
+            Review vendor payout details before enabling their payouts.
             {pendingCount > 0 && (
               <span className="ml-2 inline-flex items-center gap-1 text-amber-700 font-semibold">
                 {pendingCount} pending
@@ -135,7 +135,7 @@ export function AdminBankVerifications({ onCountChange }: Props) {
               ? "No pending bank verifications — you're all caught up."
               : filter === "verified"
                 ? "No verified bank records yet."
-                : "No vendors have submitted bank details yet."}
+                : "No vendors have submitted payout details yet."}
           </p>
         </div>
       ) : (
@@ -187,15 +187,15 @@ export function AdminBankVerifications({ onCountChange }: Props) {
                 </div>
               )}
 
-              {/* Bank details table */}
+              {/* Payout details table */}
               <div className="rounded-xl bg-zinc-50 border border-zinc-100 p-4 text-sm space-y-2">
                 <div className="grid grid-cols-[110px_1fr] gap-x-3 gap-y-1.5">
                   <span className="text-zinc-500 text-xs">Holder</span>
-                  <span className="font-medium text-zinc-900">{r.account_holder_name}</span>
+                  <span className="font-medium text-zinc-900">{r.account_holder_name ?? "Not added"}</span>
                   <span className="text-zinc-500 text-xs">Account</span>
-                  <span className="font-mono text-zinc-900 tabular-nums select-all">{r.account_number}</span>
+                  <span className="font-mono text-zinc-900 tabular-nums select-all">{r.account_number ?? "Not added"}</span>
                   <span className="text-zinc-500 text-xs">IFSC</span>
-                  <span className="font-mono text-zinc-900 tracking-wider select-all">{r.ifsc_code}</span>
+                  <span className="font-mono text-zinc-900 tracking-wider select-all">{r.ifsc_code ?? "Not added"}</span>
                   {r.bank_name && (
                     <>
                       <span className="text-zinc-500 text-xs">Bank</span>
@@ -238,7 +238,7 @@ export function AdminBankVerifications({ onCountChange }: Props) {
                     className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white text-sm font-semibold"
                   >
                     <ShieldCheck className="w-4 h-4" />
-                    {busy === r.shop_id ? "Verifying…" : "Verify bank details"}
+                    {busy === r.shop_id ? "Verifying…" : "Verify payout details"}
                   </button>
                 )}
               </div>

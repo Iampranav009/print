@@ -46,7 +46,7 @@ type VendorMeResponse = {
   user: { id: string; email: string | null; name: string | null; avatar_url: string | null };
   profile: { user_id: string; full_name: string; phone: string; address: string | null; created_at: string; updated_at: string } | null;
   shop: { id: string; name: string; location: string | null; latitude: number | null; longitude: number | null; google_place_id: string | null; contact_email: string | null; contact_phone: string | null; status: string; virtual_mode: boolean } | null;
-  bank: { shop_id: string; account_holder_name: string; account_number: string; ifsc_code: string; bank_name: string | null; branch: string | null; upi_id: string | null; verified: boolean; created_at: string; updated_at: string } | null;
+  bank: { shop_id: string; account_holder_name: string | null; account_number: string | null; ifsc_code: string | null; bank_name: string | null; branch: string | null; upi_id: string | null; verified: boolean; created_at: string; updated_at: string } | null;
 };
 
 function formatPaise(paise: number): string {
@@ -392,7 +392,7 @@ export default function VendorOverviewPage() {
               </div>
               <p className="text-sm text-zinc-500">
                 {vendorData.bank.bank_name ? `${vendorData.bank.bank_name} · ` : ""}
-                Account ending {vendorData.bank.account_number.slice(-4)}
+                {vendorData.bank.account_number ? `Account ending ${vendorData.bank.account_number.slice(-4)}` : `UPI: ${vendorData.bank.upi_id ?? "Not added"}`}
               </p>
               {!vendorData.bank.verified && (
                 <p className="text-xs text-amber-700 bg-amber-50 rounded-xl px-3 py-2">
@@ -405,14 +405,14 @@ export default function VendorOverviewPage() {
               <div className="flex items-start gap-2 p-3 bg-amber-50 rounded-xl">
                 <AlertCircle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
                 <p className="text-sm text-amber-800">
-                  Add bank details to receive payouts.
+                  Add payout details to receive payouts.
                 </p>
               </div>
               <a
                 href="/vendor/bank"
                 className="inline-flex w-fit items-center gap-2 px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600"
               >
-                Add bank details
+                Add payout details
               </a>
             </>
           )}

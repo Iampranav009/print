@@ -100,7 +100,7 @@ export async function POST(req: NextRequest) {
 
   const supabase = getSupabase();
 
-  // Re-check bank details exist AND are verified so we don't accept a
+  // Re-check payout details exist AND are verified so we don't accept a
   // request we can't fulfil — and don't wire money to an unvetted account.
   const { data: bank } = await supabase
     .from("vendor_bank_details")
@@ -109,13 +109,13 @@ export async function POST(req: NextRequest) {
     .maybeSingle();
   if (!bank) {
     return Response.json(
-      { error: "Add bank details before requesting a payout" },
+      { error: "Add payout details before requesting a payout" },
       { status: 400 }
     );
   }
   if (!bank.verified) {
     return Response.json(
-      { error: "Bank details are pending admin verification — payouts unlock once verified" },
+      { error: "Payout details are pending admin verification — payouts unlock once verified" },
       { status: 403 }
     );
   }

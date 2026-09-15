@@ -13,6 +13,8 @@ import subprocess
 import sys
 import tempfile
 import time
+import threading
+from logging.handlers import RotatingFileHandler
 import requests
 
 from config import (
@@ -26,6 +28,7 @@ from config import (
     SIMULATE_FAIL,
     CAPABILITY_REFRESH_MINUTES,
     AGENT_SOUND_ENABLED,
+    CONFIG_DIR,
 )
 from printing.capabilities import discover_capabilities, FULL_DEFAULT
 from printing.cups_printer import build_cups_options, format_cups_command, print_cups
@@ -46,44 +49,20 @@ _last_known_caps: dict | None = None
 # ── Discovered printers ──────────────────────────────────
 
 
-def get_discovered_printers() -> list[dict]:
-    """Query OS for currently available local printers."""
-    if sys.platform == "win32":
-        try:
-            res = subprocess.run(
-                ["powershell", "-NoProfile", "-Command", "Get-Printer | Select-Object Name, DriverName | ConvertTo-Json -Compress"],
-                capture_output=True,
-                text=True,
-                timeout=5,
-            )
-            if res.returncode == 0 and res.stdout.strip():
-                data = json.loads(res.stdout)
-                if isinstance(data, dict):
-                    data = [data]
-                return [{"name": p.get("Name", ""), "driver": p.get("DriverName")} for p in data if p.get("Name")]
-        except Exception as e:
-            log.debug("Failed to discover Windows printers: %s", e)
-    elif sys.platform == "linux":
-        try:
-            import cups  # type: ignore
-            conn = cups.Connection()
-            printers = conn.getPrinters()
-            default_p = conn.getDefault()
-            return [{"name": name, "driver": p.get("printer-make-and-model"), "isDefault": name == default_p} for name, p in printers.items()]
-        except Exception as e:
-            log.debug("Failed to discover CUPS printers: %s", e)
-    return []
+from printing.discovery import get_discovered_printers
 
 
 # ── API helpers ──────────────────────────────────────────
 
 
 def heartbeat(printer_status: str = "online") -> dict:
+    global PRINTER_NAME, _last_known_caps
     try:
         payload: dict = {"printerStatus": printer_status}
         discovered = get_discovered_printers()
-        if discovered:
-            payload["discoveredPrinters"] = discovered
+        payload["discoveredPrinters"] = discovered
+        payload["printerName"] = PRINTER_NAME
+        payload["printerStatus"] = ("online" if any(p["name"] == PRINTER_NAME for p in discovered) else "offline")
 
         resp = requests.post(
             f"{API_BASE}/api/agent/heartbeat",
@@ -93,6 +72,13 @@ def heartbeat(printer_status: str = "online") -> dict:
         )
         resp.raise_for_status()
         data = resp.json()
+        config = data.get("printerConfig")
+        if config is not None:
+            selected = config.get("os_printer_name") or ""
+            if selected != PRINTER_NAME:
+                PRINTER_NAME = selected
+                _last_known_caps = None
+                log.info("Printer selection updated from dashboard: %s", selected or "not configured")
         log.info("Heartbeat sent to server (printer_status=%s)", printer_status)
         return data
     except Exception as e:
@@ -214,15 +200,18 @@ def print_virtual(file_path: str, job: dict) -> tuple[bool, str | None]:
 
 
 def print_real(file_path: str, job: dict) -> tuple[bool, str | None]:
+    printer_name = job.get("osPrinterName", PRINTER_NAME)
+    if not printer_name:
+        return False, "Select and save a printer in the shop dashboard first"
     failure = check_forced_failure(job)
     if failure:
         log.info("[%s] REAL forced failure: %s", job["id"][:8], failure)
         return False, failure
 
     if sys.platform == "linux":
-        return print_cups(PRINTER_NAME, file_path, job, _last_known_caps)
+        return print_cups(printer_name, file_path, job, _last_known_caps if printer_name == PRINTER_NAME else None)
     elif sys.platform == "win32":
-        return print_windows(PRINTER_NAME, file_path, job, _last_known_caps)
+        return print_windows(printer_name, file_path, job, _last_known_caps if printer_name == PRINTER_NAME else None)
     else:
         return False, f"Unsupported platform: {sys.platform}"
 
@@ -271,7 +260,9 @@ def detect_capabilities() -> tuple[dict, str | None]:
 
 def _apply_sound_settings(hb_data: dict) -> None:
     """Update audio module from heartbeat response. Local env override wins."""
-    remote = hb_data.get("soundSettings", {})
+    if "soundSettings" not in hb_data:
+        return  # A network failure must not turn off saved sound settings.
+    remote = hb_data["soundSettings"]
     remote_enabled = bool(remote.get("enabled", False))
     effective_enabled = (
         AGENT_SOUND_ENABLED if AGENT_SOUND_ENABLED is not None else remote_enabled
@@ -317,6 +308,9 @@ def poll_and_print() -> None:
 
     job = data.get("job")
     if not job:
+        return
+    if PRINT_MODE == "real" and not job.get("osPrinterName", PRINTER_NAME):
+        log.warning("Waiting for an installed printer to be selected in the dashboard.")
         return
 
     job_id = job["id"]
@@ -364,8 +358,32 @@ def poll_and_print() -> None:
         return
 
 
-def main() -> None:
+def main(stop_event: threading.Event | None = None) -> None:
     global _last_known_caps
+    stop_event = stop_event or threading.Event()
+
+    CONFIG_DIR.mkdir(parents=True, exist_ok=True)
+    # Hold an OS lock for the lifetime of this process, including manual launches.
+    lock = open(CONFIG_DIR / "agent.lock", "a+b")
+    lock.seek(0)
+    if not lock.read(1):
+        lock.write(b"0")
+        lock.flush()
+    lock.seek(0)
+    try:
+        if sys.platform == "win32":
+            import msvcrt
+            msvcrt.locking(lock.fileno(), msvcrt.LK_NBLCK, 1)
+        else:
+            import fcntl
+            fcntl.flock(lock.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+    except OSError:
+        log.error("PrintBuddy Agent is already running for this user.")
+        lock.close()
+        return
+    handler = RotatingFileHandler(CONFIG_DIR / "agent.log", maxBytes=1_000_000, backupCount=2, encoding="utf-8")
+    handler.setFormatter(logging.Formatter("%(asctime)s [%(levelname)s] %(message)s"))
+    logging.getLogger().addHandler(handler)
 
     log.info(
         "PrintBuddy Agent starting — mode=%s printer=%s shop_id=%s poll=%ds",
@@ -376,6 +394,8 @@ def main() -> None:
     )
 
     try:
+        # Fetch the saved printer before discovering its capabilities or polling jobs.
+        hb_data = heartbeat()
         caps, make_and_model = detect_capabilities()
         _last_known_caps = caps
         post_capabilities(caps, make_and_model)
@@ -394,18 +414,17 @@ def main() -> None:
             language=str(remote.get("language", "en")),
         )
 
-        heartbeat_counter = 0
+        # Discovery/heartbeat continues even while the print spooler is busy.
+        def report_loop():
+            while not stop_event.wait(10):
+                _apply_sound_settings(heartbeat())
+        reporter = threading.Thread(target=report_loop, name="heartbeat-worker", daemon=True)
+        reporter.start()
         last_cap_time = time.monotonic()
         cap_refresh_secs = CAPABILITY_REFRESH_MINUTES * 60
 
-        while True:
+        while not stop_event.is_set():
             poll_and_print()
-
-            heartbeat_counter += 1
-            if heartbeat_counter >= 10:
-                hb_data = heartbeat()
-                _apply_sound_settings(hb_data)
-                heartbeat_counter = 0
 
             now = time.monotonic()
             if now - last_cap_time >= cap_refresh_secs:
@@ -414,9 +433,14 @@ def main() -> None:
                 post_capabilities(caps, make_and_model)
                 last_cap_time = now
 
-            time.sleep(POLL_INTERVAL)
+            stop_event.wait(POLL_INTERVAL)
     except KeyboardInterrupt:
         log.info("PrintBuddy Agent stopped cleanly by user.")
+    finally:
+        stop_event.set()
+        if audio._instance is not None:
+            audio._instance.shutdown()
+        lock.close()
 
 
 if __name__ == "__main__":

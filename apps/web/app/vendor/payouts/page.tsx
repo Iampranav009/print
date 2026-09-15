@@ -81,7 +81,7 @@ export default function VendorPayoutsPage() {
     setError(null);
     setSuccessMsg(null);
     if (data && !data.bank_verified) {
-      setError("Bank details are pending admin verification.");
+      setError("Payout details are pending admin verification.");
       return;
     }
     const rupees = parseFloat(amount);
@@ -158,7 +158,7 @@ export default function VendorPayoutsPage() {
             <div className="bg-white rounded-2xl shadow-sm border border-amber-200 p-5 flex items-start gap-3">
               <ShieldAlert className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
               <div className="flex-1">
-                <p className="text-sm font-semibold text-zinc-900">Add bank details to request payouts</p>
+                <p className="text-sm font-semibold text-zinc-900">Add payout details to request payouts</p>
                 <p className="text-xs text-zinc-500 mt-1">
                   We need your account and UPI details to route funds. The PrintBuddy team will verify them
                   within 24 hours.
@@ -167,7 +167,7 @@ export default function VendorPayoutsPage() {
                   href="/vendor/bank"
                   className="mt-3 inline-flex items-center gap-2 px-3.5 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold"
                 >
-                  Add bank details
+                  Add payout details
                 </Link>
               </div>
             </div>
@@ -175,7 +175,7 @@ export default function VendorPayoutsPage() {
             <div className="bg-white rounded-2xl shadow-sm border border-amber-200 p-5 flex items-start gap-3">
               <ShieldAlert className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
               <div className="flex-1">
-                <p className="text-sm font-semibold text-zinc-900">Bank details pending admin verification</p>
+                <p className="text-sm font-semibold text-zinc-900">Payout details pending admin verification</p>
                 <p className="text-xs text-zinc-500 mt-1">
                   Payouts unlock once the PrintBuddy team verifies your account details — usually within 24
                   hours of submission.
@@ -185,7 +185,7 @@ export default function VendorPayoutsPage() {
           ) : (
             <div className="bg-emerald-50 rounded-2xl border border-emerald-200 p-4 flex items-center gap-2 text-sm text-emerald-800">
               <ShieldCheck className="w-4 h-4 shrink-0" />
-              <span className="font-medium">Bank details verified — you can request payouts.</span>
+              <span className="font-medium">Payout details verified — you can request payouts.</span>
             </div>
           )}
         </>
@@ -286,7 +286,7 @@ export default function VendorPayoutsPage() {
 
           {data && !data.bank_verified && (
             <p className="text-xs text-amber-700">
-              Requests are locked until your bank details are verified by the admin team.
+              Requests are locked until your payout details are verified by the admin team.
             </p>
           )}
           {data && data.bank_verified && data.available_paise <= 0 && (

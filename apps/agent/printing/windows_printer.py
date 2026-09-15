@@ -46,8 +46,7 @@ def print_windows(
         if copies > 1:
             settings_parts.append(f"x{copies}")
 
-        if not job.get("color", False):
-            settings_parts.append("monochrome")
+        settings_parts.append("color" if job.get("color", False) else "monochrome")
 
         if job.get("duplex", False):
             duplex_edge = job.get("duplexEdge") or job.get("duplex_edge") or "long"
@@ -100,7 +99,7 @@ def print_windows(
         cmd.append(file_path)
 
         log.info("[%s] Windows command: %s", str(job.get("id", "?"))[:8], " ".join(cmd))
-        result = subprocess.run(cmd, capture_output=True, timeout=120)
+        result = subprocess.run(cmd, capture_output=True, timeout=120, creationflags=subprocess.CREATE_NO_WINDOW)
         if result.returncode != 0:
             stderr = result.stderr.decode("utf-8", errors="replace").strip()
             stdout = result.stdout.decode("utf-8", errors="replace").strip()

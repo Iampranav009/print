@@ -18,9 +18,9 @@ interface PayoutRow {
   processed_at: string | null;
   shop: { id: string; name: string; location: string | null } | null;
   bank: {
-    account_holder_name: string;
-    account_number: string;
-    ifsc_code: string;
+    account_holder_name: string | null;
+    account_number: string | null;
+    ifsc_code: string | null;
     bank_name: string | null;
     upi_id: string | null;
     verified: boolean;
@@ -192,7 +192,7 @@ export function AdminPayouts({ onCountChange }: Props) {
                         </span>
                       )}
                       <span>
-                        <span className="text-zinc-500">A/C:</span> ****{r.bank.account_number.slice(-4)}
+                        <span className="text-zinc-500">A/C:</span> {r.bank.account_number ? `****${r.bank.account_number.slice(-4)}` : "Not added (UPI only)"}
                       </span>
                       <span>
                         <span className="text-zinc-500">IFSC:</span> {r.bank.ifsc_code}
@@ -209,7 +209,7 @@ export function AdminPayouts({ onCountChange }: Props) {
                       )}
                     </div>
                   ) : (
-                    <p className="mt-3 text-xs text-red-600">No bank details on file for this shop.</p>
+                    <p className="mt-3 text-xs text-red-600">No payout details on file for this shop.</p>
                   )}
 
                   {r.note && (

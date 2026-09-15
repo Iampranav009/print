@@ -12,7 +12,7 @@ function StepIndicator({ current }: { current: Step }) {
   const steps: { number: Step; label: string; sublabel?: string }[] = [
     { number: 1, label: "Profile" },
     { number: 2, label: "Shop" },
-    { number: 3, label: "Bank", sublabel: "(skippable)" },
+    { number: 3, label: "Payouts", sublabel: "(skippable)" },
   ];
 
   return (
@@ -363,6 +363,7 @@ function StepShop({
 /* ─── Step 3: Bank ─── */
 function StepBank({ onFinish }: { onFinish: () => void }) {
   const router = useRouter();
+  const [addBank, setAddBank] = useState(false);
   const [holderName, setHolderName] = useState("");
   const [accountNumber, setAccountNumber] = useState("");
   const [ifsc, setIfsc] = useState("");
@@ -375,7 +376,11 @@ function StepBank({ onFinish }: { onFinish: () => void }) {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!ifscValid) {
+    if (!/^[a-zA-Z0-9.\-_]{2,}@[a-zA-Z][a-zA-Z0-9]{1,}$/.test(upiId.trim())) {
+      setError("Enter a valid UPI ID, such as name@upi.");
+      return;
+    }
+    if (addBank && !ifscValid) {
       setError("Invalid IFSC format. Expected 4 letters, 0, then 6 alphanumeric characters.");
       return;
     }
@@ -386,20 +391,20 @@ function StepBank({ onFinish }: { onFinish: () => void }) {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          account_holder_name: holderName.trim(),
+          ...(addBank ? { account_holder_name: holderName.trim(),
           account_number: accountNumber.trim(),
           ifsc_code: ifsc.trim(),
-          bank_name: bankName.trim() || null,
+          bank_name: bankName.trim() || null } : {}),
           upi_id: upiId.trim() || null,
         }),
       });
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
-        throw new Error(err.error ?? "Failed to save bank details");
+        throw new Error(err.error ?? "Failed to save payout details");
       }
       onFinish();
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Failed to save bank details");
+      setError(err instanceof Error ? err.message : "Failed to save payout details");
     } finally {
       setLoading(false);
     }
@@ -413,12 +418,19 @@ function StepBank({ onFinish }: { onFinish: () => void }) {
   return (
     <form onSubmit={handleSubmit} className="space-y-4 text-left">
       <div>
-        <h2 className="text-xl font-bold text-zinc-900">Bank details</h2>
+        <h2 className="text-xl font-bold text-zinc-900">Payout details</h2>
         <p className="text-sm text-zinc-500 mt-1">
-          Add your bank details to receive payouts. You can also skip this and configure it later.
+          Submit your UPI ID to finish. You can add bank details later from Payout details in your dashboard.
         </p>
       </div>
 
+      <fieldset className="space-y-2">
+              <legend className="text-sm font-medium text-zinc-700 mb-2">Choose what to add</legend>
+              <label className="flex items-center gap-2 text-sm"><input type="radio" name="payout-setup" checked={!addBank} onChange={() => setAddBank(false)} /> UPI only — add bank details later</label>
+              <label className="flex items-center gap-2 text-sm"><input type="radio" name="payout-setup" checked={addBank} onChange={() => setAddBank(true)} /> UPI and bank details</label>
+              <p className="text-xs text-zinc-500">Your UPI ID is enough to submit. You can add bank details here later.</p>
+            </fieldset>
+      {addBank && <div className="space-y-4">
       <div>
         <label htmlFor="ob-holder" className="block text-sm font-medium text-zinc-700 mb-1">
           Account holder name <span className="text-red-500">*</span>
@@ -477,7 +489,7 @@ function StepBank({ onFinish }: { onFinish: () => void }) {
         )}
       </div>
 
-      <div className="grid grid-cols-2 gap-3">
+      <div>
         <div>
           <label htmlFor="ob-bank-name" className="block text-sm font-medium text-zinc-700 mb-1">
             Bank name <span className="text-xs font-normal text-zinc-400">(opt.)</span>
@@ -491,12 +503,15 @@ function StepBank({ onFinish }: { onFinish: () => void }) {
             className="w-full px-3.5 py-2.5 rounded-xl border border-zinc-200 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600"
           />
         </div>
+      </div>
+      </div>}
         <div>
           <label htmlFor="ob-upi" className="block text-sm font-medium text-zinc-700 mb-1">
-            UPI ID <span className="text-xs font-normal text-zinc-400">(opt.)</span>
+            UPI ID <span className="text-red-500">*</span>
           </label>
           <input
             id="ob-upi"
+            required
             type="text"
             value={upiId}
             onChange={(e) => setUpiId(e.target.value)}
@@ -504,14 +519,13 @@ function StepBank({ onFinish }: { onFinish: () => void }) {
             className="w-full px-3.5 py-2.5 rounded-xl border border-zinc-200 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600"
           />
         </div>
-      </div>
 
       {error && <InlineError message={error} />}
 
       <div className="pt-2 space-y-3">
         <button
           type="submit"
-          disabled={loading || !holderName.trim() || !accountNumber.trim() || !ifscValid}
+          disabled={loading || !/^[a-zA-Z0-9.\-_]{2,}@[a-zA-Z][a-zA-Z0-9]{1,}$/.test(upiId.trim()) || (addBank && (!holderName.trim() || !/^\d{6,20}$/.test(accountNumber.replace(/\s+/g, "")) || !ifscValid))}
           className="w-full py-3 rounded-xl bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600"
         >
           {loading ? "Saving…" : "Save & Finish"}

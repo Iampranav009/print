@@ -6,9 +6,9 @@ import { Modal } from "@/components/vendor/Modal";
 
 type BankData = {
   shop_id: string;
-  account_holder_name: string;
-  account_number: string;
-  ifsc_code: string;
+  account_holder_name: string | null;
+  account_number: string | null;
+  ifsc_code: string | null;
   bank_name: string | null;
   branch: string | null;
   upi_id: string | null;
@@ -49,6 +49,7 @@ export default function BankPage() {
   const [inlineError, setInlineError] = useState<string | null>(null);
 
   // Form fields
+  const [addBank, setAddBank] = useState(false);
   const [holderName, setHolderName] = useState("");
   const [accountNumber, setAccountNumber] = useState("");
   const [ifsc, setIfsc] = useState("");
@@ -67,6 +68,7 @@ export default function BankPage() {
           const data = await res.json();
           if (data.bank) {
             setBank(data.bank);
+            setAddBank(!!data.bank.account_number);
             setHolderName(data.bank.account_holder_name ?? "");
             setAccountNumber(data.bank.account_number ?? "");
             setIfsc(data.bank.ifsc_code ?? "");
@@ -91,11 +93,11 @@ export default function BankPage() {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          account_holder_name: holderName.trim(),
+          ...(addBank ? { account_holder_name: holderName.trim(),
           account_number: accountNumber.trim(),
           ifsc_code: ifsc.trim(),
           bank_name: bankName.trim() || null,
-          branch: branch.trim() || null,
+          branch: branch.trim() || null } : {}),
           upi_id: upiId.trim(),
         }),
       });
@@ -106,7 +108,7 @@ export default function BankPage() {
       const updated = await res.json();
       if (updated.bank) setBank(updated.bank);
       setShowAccount(false);
-      setToast({ message: "Bank details saved. Pending re-verification.", type: "success" });
+      setToast({ message: "Payout details saved. Pending verification.", type: "success" });
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Failed to save";
       setInlineError(msg);
@@ -117,8 +119,9 @@ export default function BankPage() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!holderName.trim() || !accountNumber.trim() || !ifscValid || !upiValid) return;
-    setConfirmOpen(true);
+    if (!upiValid || (addBank && (!holderName.trim() || !/^\d{6,20}$/.test(accountNumber.replace(/\s+/g, "")) || !ifscValid))) return;
+    if (bank?.verified) setConfirmOpen(true);
+    else void doSave();
   };
 
   if (loading) {
@@ -139,7 +142,7 @@ export default function BankPage() {
         title="Re-verification required"
       >
         <p className="text-sm text-zinc-600 mb-5">
-          Saving new bank details will require re-verification by the PrintBuddy team. Payouts will be paused until verified. Continue?
+          Saving new payout details will require re-verification by the PrintBuddy team. Payouts will be paused until verified. Continue?
         </p>
         <div className="flex gap-3">
           <button
@@ -184,7 +187,7 @@ export default function BankPage() {
 
         {/* Form */}
         <div className="bg-white rounded-2xl shadow-sm border border-zinc-100 p-6">
-          <h2 className="text-lg font-semibold text-zinc-900 mb-6">Bank details</h2>
+          <h2 className="text-lg font-semibold text-zinc-900 mb-6">Payout details</h2>
 
           {inlineError && (
             <div className="mb-4 flex items-center gap-2 p-3 bg-red-50 rounded-xl text-sm text-red-700" role="alert">
@@ -194,6 +197,13 @@ export default function BankPage() {
           )}
 
           <form onSubmit={handleSubmit} className="space-y-5">
+            <fieldset className="space-y-2">
+              <legend className="text-sm font-medium text-zinc-700 mb-2">Choose what to add</legend>
+              <label className="flex items-center gap-2 text-sm"><input type="radio" name="payout-setup" checked={!addBank} onChange={() => setAddBank(false)} /> UPI only — add bank details later</label>
+              <label className="flex items-center gap-2 text-sm"><input type="radio" name="payout-setup" checked={addBank} onChange={() => setAddBank(true)} /> UPI and bank details</label>
+              <p className="text-xs text-zinc-500">Your UPI ID is enough to submit. You can add bank details here later.</p>
+            </fieldset>
+            {addBank && <div className="space-y-5">
             {/* Account holder */}
             <div>
               <label htmlFor="holder-name" className="block text-sm font-medium text-zinc-700 mb-1.5">
@@ -312,6 +322,7 @@ export default function BankPage() {
               />
             </div>
 
+            </div>}
             {/* UPI ID */}
             <div>
               <label htmlFor="upi-id" className="block text-sm font-medium text-zinc-700 mb-1.5">
@@ -360,12 +371,12 @@ export default function BankPage() {
             <div className="pt-2">
               <button
                 type="submit"
-                disabled={saving || !holderName.trim() || !accountNumber.trim() || !ifscValid || !upiValid}
+                disabled={saving || !upiValid || (addBank && (!holderName.trim() || !/^\d{6,20}$/.test(accountNumber.replace(/\s+/g, "")) || !ifscValid))}
                 className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600"
-                aria-label="Save bank details"
+                aria-label="Save payout details"
               >
                 <Save className="w-4 h-4" />
-                {saving ? "Saving…" : "Save bank details"}
+                {saving ? "Saving…" : "Save payout details"}
               </button>
             </div>
           </form>

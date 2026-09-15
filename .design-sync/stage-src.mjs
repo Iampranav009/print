@@ -14,7 +14,14 @@ const srcDir = join(webDir, 'components');
 const outDir = join(webDir, '.ds-src-mirror');
 
 // Package-relative (from apps/web/components/) paths to drop.
-const EXCLUDE = new Set(['dashboard/AdminDashboardShell.tsx']);
+const EXCLUDE = new Set([
+  'dashboard/AdminDashboardShell.tsx',
+  // Default-only export ("export default function NearbyMap()", no named
+  // export) — the synth entry re-exports every file via `export * from`,
+  // which silently drops default exports, so it never reaches
+  // window.PrintBuddy. See .design-sync/NOTES.md "Bundle-poisoning files".
+  'NearbyMap.tsx',
+]);
 
 rmSync(outDir, { recursive: true, force: true });
 mkdirSync(outDir, { recursive: true });

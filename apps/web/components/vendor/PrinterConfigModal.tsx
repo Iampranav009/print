@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { X, ChevronRight, AlertCircle, Wifi, Usb, Globe, Copy, Check, Clock } from "lucide-react";
+import { X, ChevronRight, AlertCircle, Wifi, Usb, Globe, Clock } from "lucide-react";
 
 export type ConnectionType = "wifi" | "usb" | "network";
 
@@ -37,28 +37,25 @@ export function PrinterConfigModal({
   savedConfig,
   discoveredPrinters = [],
   discoveredAt,
-  agentToken,
-  shopId,
   onSaved,
 }: PrinterConfigModalProps) {
   const dialogRef = useRef<HTMLDivElement>(null);
-  const [copiedToken, setCopiedToken] = useState(false);
 
   // Active tab: Wi-Fi | USB | Network
-  const [activeTab, setActiveTab] = useState<ConnectionType>("wifi");
+  const [activeTab, setActiveTab] = useState<ConnectionType>(savedConfig?.connection_type ?? "usb");
 
   // Wi-Fi fields
-  const [wifiSsid, setWifiSsid] = useState("");
-  const [wifiIp, setWifiIp] = useState("");
-  const [wifiPort, setWifiPort] = useState<number>(9100);
+  const [wifiSsid, setWifiSsid] = useState(savedConfig?.wifi_ssid ?? "");
+  const [wifiIp, setWifiIp] = useState(savedConfig?.connection_type === "wifi" ? savedConfig.host ?? "" : "");
+  const [wifiPort, setWifiPort] = useState<number>(savedConfig?.port ?? 9100);
 
   // USB fields
-  const [osPrinterName, setOsPrinterName] = useState("");
+  const [osPrinterName, setOsPrinterName] = useState(savedConfig?.os_printer_name ?? "");
   const [manualEntry, setManualEntry] = useState(false);
 
   // Network fields
-  const [networkHost, setNetworkHost] = useState("");
-  const [networkPort, setNetworkPort] = useState<number>(9100);
+  const [networkHost, setNetworkHost] = useState(savedConfig?.connection_type === "network" ? savedConfig.host ?? "" : "");
+  const [networkPort, setNetworkPort] = useState<number>(savedConfig?.port ?? 9100);
 
   // Accordion state
   const [accordionOpen, setAccordionOpen] = useState(false);
@@ -66,31 +63,6 @@ export function PrinterConfigModal({
   // Submission state
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
-  // Populate from savedConfig when opened
-  useEffect(() => {
-    if (open) {
-      setError(null);
-      setAccordionOpen(false);
-      setManualEntry(false);
-
-      const conn = savedConfig?.connection_type;
-      if (conn === "usb" || conn === "network" || conn === "wifi") {
-        setActiveTab(conn);
-      } else {
-        setActiveTab("wifi");
-      }
-
-      setWifiSsid(savedConfig?.wifi_ssid ?? "");
-      setWifiIp(savedConfig?.connection_type === "wifi" ? (savedConfig?.host ?? "") : "");
-      setWifiPort(savedConfig?.connection_type === "wifi" && savedConfig?.port ? savedConfig.port : 9100);
-
-      setOsPrinterName(savedConfig?.os_printer_name ?? "");
-
-      setNetworkHost(savedConfig?.connection_type === "network" ? (savedConfig?.host ?? "") : "");
-      setNetworkPort(savedConfig?.connection_type === "network" && savedConfig?.port ? savedConfig.port : 9100);
-    }
-  }, [open, savedConfig]);
 
   // Close on Escape & trap focus
   useEffect(() => {
@@ -124,6 +96,11 @@ export function PrinterConfigModal({
       os_printer_name: string | null;
     };
 
+    if (!osPrinterName.trim()) {
+      setError("Select the installed printer on your shop computer first.");
+      return;
+    }
+
     if (activeTab === "wifi") {
       const trimmedIp = wifiIp.trim();
       if (!trimmedIp) {
@@ -135,7 +112,7 @@ export function PrinterConfigModal({
         host: trimmedIp,
         port: Number(wifiPort) || 9100,
         wifi_ssid: wifiSsid.trim() || null,
-        os_printer_name: null,
+        os_printer_name: osPrinterName.trim(),
       };
     } else if (activeTab === "usb") {
       const trimmedName = osPrinterName.trim();
@@ -161,7 +138,7 @@ export function PrinterConfigModal({
         host: trimmedHost,
         port: Number(networkPort) || 9100,
         wifi_ssid: null,
-        os_printer_name: null,
+        os_printer_name: osPrinterName.trim(),
       };
     }
 
@@ -472,34 +449,7 @@ export function PrinterConfigModal({
                     </Link>
                     ).
                   </li>
-                  <li className="space-y-1.5">
-                    <span>When it starts, use your shop&apos;s credentials:</span>
-                    {agentToken && (
-                      <div className="p-2.5 bg-white rounded-xl border border-indigo-200 shadow-xs flex items-center justify-between gap-2">
-                        <div className="font-mono text-xs text-indigo-950 truncate">
-                          <span className="text-zinc-400 select-none">AGENT_TOKEN=</span>
-                          <span className="font-semibold select-all">{agentToken}</span>
-                        </div>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            navigator.clipboard.writeText(agentToken);
-                            setCopiedToken(true);
-                            setTimeout(() => setCopiedToken(false), 2000);
-                          }}
-                          className="px-2.5 py-1 bg-indigo-50 hover:bg-indigo-100 active:bg-indigo-200 text-indigo-700 rounded-lg text-xs font-semibold shrink-0 flex items-center gap-1.5 transition-colors"
-                        >
-                          {copiedToken ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
-                          <span>{copiedToken ? "Copied!" : "Copy Token"}</span>
-                        </button>
-                      </div>
-                    )}
-                    {shopId && (
-                      <div className="text-[11px] text-zinc-500 font-mono">
-                        SHOP_ID: <span className="select-all font-semibold text-zinc-800">{shopId}</span>
-                      </div>
-                    )}
-                  </li>
+                  <li>Download the Windows app and paste your shop connection link once. Printers are detected automatically; customers never need a token.</li>
                   <li>
                     The agent runs quietly in the background, sends heartbeats every 30 seconds, and forwards paid print jobs to the OS printer above.
                   </li>
@@ -552,6 +502,14 @@ export function PrinterConfigModal({
               </p>
             </div>
           )}
+
+          {activeTab !== "usb" && <div className="space-y-2">
+            <label htmlFor="network-os-printer" className="block text-sm font-semibold">Installed printer on the shop computer</label>
+            <input id="network-os-printer" required list="installed-printers" value={osPrinterName} onChange={(e) => setOsPrinterName(e.target.value)} className="w-full rounded-xl border p-3" placeholder="Choose or enter the Windows / CUPS printer name" />
+            <datalist id="installed-printers">{discoveredPrinters.map(p => <option key={p.name} value={p.name} />)}</datalist>
+            <p className="text-xs text-zinc-500">Add this printer to Windows or CUPS first. All connections use the background agent on your shop computer.</p>
+            <Link href="/vendor/agent-download" className="text-sm text-indigo-600 underline">One-time agent setup</Link>
+          </div>}
 
           {/* Modal Footer */}
           <div className="flex items-center justify-end gap-3 pt-4 border-t border-zinc-100">

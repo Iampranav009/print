@@ -1,21 +1,14 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { Plus, Copy, Check, ExternalLink, Loader2 } from "lucide-react";
+import { Plus, Copy, Check, ExternalLink, Loader2, Mail, ChevronRight } from "lucide-react";
 import { Modal } from "@/components/vendor/Modal";
+import { ShopDetailsModal, type EnrichedShop } from "./ShopDetailsModal";
 
 /* ─── Types ─── */
 type ShopStatus = "active" | "paused" | "pending";
 
-type Shop = {
-  id: string;
-  name: string;
-  location: string | null;
-  status: ShopStatus;
-  virtual_mode: boolean;
-  owner_email: string | null;
-  created_at: string;
-};
+type Shop = EnrichedShop;
 
 type InviteStatus = "unclaimed" | "claimed" | "expired";
 
@@ -74,6 +67,7 @@ function ShopsSection() {
   const [shops, setShops] = useState<Shop[]>([]);
   const [loading, setLoading] = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
+  const [selectedShop, setSelectedShop] = useState<Shop | null>(null);
   const [creating, setCreating] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
 
@@ -224,12 +218,22 @@ function ShopsSection() {
                     <th className="px-4 py-3 text-xs font-medium text-zinc-500 uppercase tracking-wide">Virtual</th>
                     <th className="px-4 py-3 text-xs font-medium text-zinc-500 uppercase tracking-wide">Owner</th>
                     <th className="px-6 py-3 text-xs font-medium text-zinc-500 uppercase tracking-wide">Created</th>
+                    <th className="px-6 py-3 text-xs font-medium text-zinc-500 uppercase tracking-wide text-right">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
                   {shops.map((shop) => (
-                    <tr key={shop.id} className="border-b border-zinc-100 hover:bg-zinc-50 transition-colors">
-                      <td className="px-6 py-3 font-medium text-zinc-900">{shop.name}</td>
+                    <tr key={shop.id} className="border-b border-zinc-100 hover:bg-zinc-50/80 transition-colors">
+                      <td className="px-6 py-3 font-medium text-zinc-900">
+                        <button
+                          type="button"
+                          onClick={() => setSelectedShop(shop)}
+                          className="font-medium text-zinc-900 hover:text-indigo-600 transition-colors text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600 rounded cursor-pointer"
+                          title="Click to view full shop details"
+                        >
+                          {shop.name}
+                        </button>
+                      </td>
                       <td className="px-4 py-3 text-zinc-500">{shop.location ?? <span className="text-zinc-300">—</span>}</td>
                       <td className="px-4 py-3"><StatusDot status={shop.status} /></td>
                       <td className="px-4 py-3">
@@ -241,7 +245,32 @@ function ShopsSection() {
                       </td>
                       <td className="px-4 py-3">
                         {shop.owner_email ? (
-                          <span className="text-zinc-600">{shop.owner_email}</span>
+                          <div className="flex flex-col gap-0.5 max-w-[240px]">
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              {!shop.is_claimed && (
+                                <span className="inline-flex items-center px-1.5 py-0.2 rounded-full text-[10px] font-semibold bg-amber-100 text-amber-700">
+                                  Unclaimed
+                                </span>
+                              )}
+                              {shop.owner_name && (
+                                <span className="text-xs font-medium text-zinc-800 truncate">
+                                  {shop.owner_name}
+                                </span>
+                              )}
+                            </div>
+                            <div className="flex items-center gap-1.5">
+                              <a
+                                href={`mailto:${shop.owner_email}`}
+                                onClick={(e) => e.stopPropagation()}
+                                className="text-xs text-indigo-600 hover:text-indigo-800 hover:underline truncate inline-flex items-center gap-1 font-medium"
+                                title="Compose email"
+                              >
+                                <Mail className="w-3 h-3 shrink-0 text-indigo-500" />
+                                <span className="truncate">{shop.owner_email}</span>
+                              </a>
+                              <CopyButton text={shop.owner_email} label="Copy email address" />
+                            </div>
+                          </div>
                         ) : (
                           <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-amber-100 text-amber-700">
                             Unclaimed
@@ -251,6 +280,18 @@ function ShopsSection() {
                       <td className="px-6 py-3 text-zinc-400 text-xs">
                         {new Date(shop.created_at).toLocaleDateString("en-IN")}
                       </td>
+                      <td className="px-6 py-3 text-right">
+                        <button
+                          type="button"
+                          onClick={() => setSelectedShop(shop)}
+                          className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl border border-zinc-200 hover:border-indigo-300 hover:bg-indigo-50/50 text-xs font-medium text-zinc-700 hover:text-indigo-700 transition-colors shadow-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600 cursor-pointer"
+                          aria-label={`View more details for ${shop.name}`}
+                          title="View full shop details"
+                        >
+                          <span>More</span>
+                          <ChevronRight className="w-3.5 h-3.5 text-zinc-400" />
+                        </button>
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -259,6 +300,12 @@ function ShopsSection() {
           )}
         </div>
       </section>
+
+      <ShopDetailsModal
+        open={!!selectedShop}
+        onClose={() => setSelectedShop(null)}
+        shop={selectedShop}
+      />
     </>
   );
 }

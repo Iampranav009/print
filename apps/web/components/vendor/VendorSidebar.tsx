@@ -40,7 +40,7 @@ const NAV_ITEMS: NavItem[] = [
   { href: "/vendor/payouts", label: "Wallet", icon: Wallet },
   { href: "/vendor/shop", label: "Shop", icon: Store },
   { href: "/vendor/printer", label: "Printer", icon: Printer },
-  { href: "/vendor/bank", label: "Bank details", icon: Landmark },
+  { href: "/vendor/bank", label: "Payout details", icon: Landmark },
   { href: "/vendor/profile", label: "Profile", icon: User },
 ];
 
@@ -142,7 +142,7 @@ function SidebarContent({
               onClick={onNavClick}
               locked={locked}
               lockedTooltip={
-                locked ? "Unlocks once the admin verifies your bank details" : undefined
+                locked ? "Unlocks once the admin verifies your payout details" : undefined
               }
             />
           );

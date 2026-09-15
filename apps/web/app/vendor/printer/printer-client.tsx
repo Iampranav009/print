@@ -17,6 +17,7 @@ import {
   IndianRupee,
   Volume2,
 } from "lucide-react";
+import { PrinterAssignments } from "@/components/vendor/PrinterAssignments";
 import { PrinterModeToggle } from "@/components/vendor/PrinterModeToggle";
 import { PrinterConfigModal } from "@/components/vendor/PrinterConfigModal";
 import { type PrinterStatusData } from "@/components/vendor/PrinterStatusPill";
@@ -30,11 +31,15 @@ interface SoundSettings {
 
 export interface PrinterClientProps {
   initialData: {
+    discovered_printers?: Array<{ name: string; driver?: string; is_default?: boolean }>;
+    discovered_at?: string | null;
     shop: { id: string; name: string; virtual_mode: boolean };
     soundSettings?: SoundSettings;
     printer: {
       id: string;
       os_printer_name: string | null;
+      bw_os_printer_name?: string | null;
+      color_os_printer_name?: string | null;
       mode: "test" | "real";
       connection_type: "wifi" | "usb" | "network" | null;
       host: string | null;
@@ -179,6 +184,11 @@ export function PrinterClient({ initialData }: PrinterClientProps) {
       // ignore
     }
   }, []);
+
+  useEffect(() => {
+    const timer = setInterval(() => { void refreshData(); }, 5000);
+    return () => clearInterval(timer);
+  }, [refreshData]);
 
   // Mode toggle handler
   const handleModeChange = async (newMode: "test" | "real") => {
@@ -361,7 +371,7 @@ export function PrinterClient({ initialData }: PrinterClientProps) {
   };
 
   const printer = data.printer;
-  const isConfigured = Boolean(printer?.connection_type);
+  const isConfigured = Boolean(printer?.bw_os_printer_name || printer?.os_printer_name);
   const isOnline = Boolean(data.status?.online);
 
   const currentStatusData: PrinterStatusData = {
@@ -373,7 +383,7 @@ export function PrinterClient({ initialData }: PrinterClientProps) {
 
   let connectivitySub = "";
   if (!isConfigured) {
-    connectivitySub = "No connection details saved. Configure the printer to start receiving jobs.";
+    connectivitySub = "Choose your black-and-white and color printers above to start receiving jobs.";
   } else if (isOnline) {
     const timeStr = data.status?.last_seen_at
       ? formatRelativeTime(data.status.last_seen_at)
@@ -383,7 +393,7 @@ export function PrinterClient({ initialData }: PrinterClientProps) {
     connectivitySub = "Printer isn't responding. Check power, cable and network, then retry.";
   }
 
-  const discoveredPrinters = printer?.discovered_printers ?? [];
+  const discoveredPrinters = data.discovered_printers ?? printer?.discovered_printers ?? [];
 
   return (
     <div className="max-w-3xl mx-auto space-y-6 pb-12">
@@ -398,6 +408,15 @@ export function PrinterClient({ initialData }: PrinterClientProps) {
           <span>{toastMessage}</span>
         </div>
       )}
+
+      <PrinterAssignments
+        key={`${printer?.bw_os_printer_name ?? printer?.os_printer_name}-${printer?.color_os_printer_name ?? printer?.os_printer_name}`}
+        printers={discoveredPrinters}
+        bw={printer?.bw_os_printer_name ?? printer?.os_printer_name ?? ""}
+        color={printer?.color_os_printer_name ?? printer?.os_printer_name ?? ""}
+        discoveredAt={data.discovered_at ?? printer?.discovered_at ?? null}
+        onSaved={refreshData}
+      />
 
       {/* 1. Mode Card */}
       <PrinterModeToggle
@@ -535,7 +554,7 @@ export function PrinterClient({ initialData }: PrinterClientProps) {
               className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-indigo-600 text-white text-sm font-medium hover:bg-indigo-700 active:bg-indigo-800 transition-colors shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600"
             >
               <Settings2 className="w-4 h-4" />
-              <span>Configure printer</span>
+              <span>Advanced connection details</span>
             </button>
 
             <button
@@ -904,7 +923,7 @@ export function PrinterClient({ initialData }: PrinterClientProps) {
       )}
 
       {/* Printer Configuration Modal */}
-      <PrinterConfigModal
+      {isModalOpen && <PrinterConfigModal
         open={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         savedConfig={{
@@ -915,11 +934,11 @@ export function PrinterClient({ initialData }: PrinterClientProps) {
           os_printer_name: printer?.os_printer_name,
         }}
         discoveredPrinters={discoveredPrinters}
-        discoveredAt={printer?.discovered_at ?? null}
+        discoveredAt={data.discovered_at ?? printer?.discovered_at ?? null}
         agentToken={data.agent?.agent_token}
         shopId={data.shop?.id}
         onSaved={handleModalSaved}
-      />
+      />}
     </div>
   );
 }
