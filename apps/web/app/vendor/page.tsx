@@ -135,25 +135,212 @@ export default function VendorOverviewPage() {
   const downloadQR = () => {
     const svg = qrRef.current;
     if (!svg) return;
-    const serializer = new XMLSerializer();
-    const svgStr = serializer.serializeToString(svg);
+
+    // A4 at 96 dpi → 794 × 1123 px
+    const W = 794;
+    const H = 1123;
+    const MARGIN = 48;
+
     const canvas = document.createElement("canvas");
-    canvas.width = 400;
-    canvas.height = 400;
+    canvas.width = W;
+    canvas.height = H;
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
-    const img = new Image();
-    img.onload = () => {
+
+    const drawPoster = (qrDataUrl: string) => {
+      // Background
       ctx.fillStyle = "#ffffff";
-      ctx.fillRect(0, 0, 400, 400);
-      ctx.drawImage(img, 0, 0, 400, 400);
-      const a = document.createElement("a");
-      a.href = canvas.toDataURL("image/png");
-      a.download = `printbuddy-qr-${vendorData?.shop?.id ?? "shop"}.png`;
-      a.click();
+      ctx.fillRect(0, 0, W, H);
+
+      // Top accent bar
+      ctx.fillStyle = "#4F46E5"; // indigo-600
+      ctx.fillRect(0, 0, W, 8);
+
+      // ── HEADER: "Print Buddy" ──────────────────────────
+      const headerY = 60;
+      ctx.fillStyle = "#4F46E5";
+      ctx.font = "bold 52px 'Segoe UI', system-ui, sans-serif";
+      ctx.textAlign = "center";
+      ctx.fillText("Print Buddy", W / 2, headerY);
+
+      // Sub-tagline
+      ctx.fillStyle = "#6B7280";
+      ctx.font = "20px 'Segoe UI', system-ui, sans-serif";
+      ctx.fillText("Your neighbourhood digital print service", W / 2, headerY + 34);
+
+      // Divider
+      ctx.strokeStyle = "#E5E7EB";
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.moveTo(MARGIN, headerY + 56);
+      ctx.lineTo(W - MARGIN, headerY + 56);
+      ctx.stroke();
+
+      // ── "Scan QR Code" heading ─────────────────────────
+      const scanY = headerY + 110;
+      ctx.fillStyle = "#111827";
+      ctx.font = "bold 36px 'Segoe UI', system-ui, sans-serif";
+      ctx.textAlign = "center";
+      ctx.fillText("Scan QR Code", W / 2, scanY);
+
+      ctx.fillStyle = "#6B7280";
+      ctx.font = "18px 'Segoe UI', system-ui, sans-serif";
+      ctx.fillText("to print from your phone — no app needed", W / 2, scanY + 32);
+
+      // ── QR Code ───────────────────────────────────────
+      const qrSize = 340;
+      const qrX = (W - qrSize) / 2;
+      const qrY = scanY + 64;
+
+      // Card shadow / border
+      ctx.fillStyle = "#F9FAFB";
+      ctx.strokeStyle = "#E5E7EB";
+      ctx.lineWidth = 2;
+      const pad = 20;
+      roundRect(ctx, qrX - pad, qrY - pad, qrSize + pad * 2, qrSize + pad * 2, 20);
+      ctx.fill();
+      ctx.stroke();
+
+      const qrImg = new Image();
+      qrImg.onload = () => {
+        ctx.drawImage(qrImg, qrX, qrY, qrSize, qrSize);
+
+        // ── URL under QR ──
+        ctx.fillStyle = "#9CA3AF";
+        ctx.font = "14px 'Segoe UI', system-ui, sans-serif";
+        ctx.textAlign = "center";
+        const urlY = qrY + qrSize + pad + 28;
+        ctx.fillText(qrUrl, W / 2, urlY);
+
+        // ── Divider ──
+        const divY = urlY + 28;
+        ctx.strokeStyle = "#E5E7EB";
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.moveTo(MARGIN, divY);
+        ctx.lineTo(W - MARGIN, divY);
+        ctx.stroke();
+
+        // ── "How it works" ──
+        const howY = divY + 40;
+        ctx.fillStyle = "#374151";
+        ctx.font = "bold 22px 'Segoe UI', system-ui, sans-serif";
+        ctx.textAlign = "center";
+        ctx.fillText("How it works", W / 2, howY);
+
+        // ── 4-step flow ──
+        const steps = [
+          { num: "1", title: "Scan", sub: "Scan this QR code" },
+          { num: "2", title: "Upload", sub: "Upload your document" },
+          { num: "3", title: "Pay", sub: "Pay via UPI (GPay / PhonePe)" },
+          { num: "4", title: "Collect", sub: "Walk up & collect your print" },
+        ];
+
+        const stepAreaY = howY + 28;
+        const colW = (W - MARGIN * 2) / 4;
+
+        steps.forEach((step, i) => {
+          const cx = MARGIN + colW * i + colW / 2;
+          const cy = stepAreaY + 36;
+
+          // Circle
+          ctx.fillStyle = "#4F46E5";
+          ctx.beginPath();
+          ctx.arc(cx, cy, 26, 0, Math.PI * 2);
+          ctx.fill();
+
+          // Number
+          ctx.fillStyle = "#ffffff";
+          ctx.font = "bold 20px 'Segoe UI', system-ui, sans-serif";
+          ctx.textAlign = "center";
+          ctx.fillText(step.num, cx, cy + 7);
+
+          // Arrow between steps
+          if (i < 3) {
+            ctx.fillStyle = "#D1D5DB";
+            ctx.font = "18px 'Segoe UI', system-ui, sans-serif";
+            ctx.fillText("→", cx + colW / 2, cy + 7);
+          }
+
+          // Step title
+          ctx.fillStyle = "#111827";
+          ctx.font = "bold 16px 'Segoe UI', system-ui, sans-serif";
+          ctx.fillText(step.title, cx, cy + 54);
+
+          // Step sub
+          ctx.fillStyle = "#6B7280";
+          ctx.font = "13px 'Segoe UI', system-ui, sans-serif";
+          // word-wrap manually
+          const words = step.sub.split(" ");
+          let line = "";
+          let lineY = cy + 74;
+          words.forEach((word) => {
+            const test = line ? `${line} ${word}` : word;
+            if (ctx.measureText(test).width > colW - 12) {
+              ctx.fillText(line, cx, lineY);
+              line = word;
+              lineY += 18;
+            } else {
+              line = test;
+            }
+          });
+          if (line) ctx.fillText(line, cx, lineY);
+        });
+
+        // ── Bottom footer ──
+        ctx.fillStyle = "#9CA3AF";
+        ctx.font = "13px 'Segoe UI', system-ui, sans-serif";
+        ctx.textAlign = "center";
+        ctx.fillText("Powered by Print Buddy · printbuddy.in", W / 2, H - 28);
+
+        // Bottom accent bar
+        ctx.fillStyle = "#4F46E5";
+        ctx.fillRect(0, H - 8, W, 8);
+
+        // Download
+        const a = document.createElement("a");
+        a.href = canvas.toDataURL("image/png");
+        a.download = `printbuddy-qr-${vendorData?.shop?.id ?? "shop"}-A4.png`;
+        a.click();
+      };
+      qrImg.src = qrDataUrl;
     };
-    img.src = `data:image/svg+xml;base64,${btoa(unescape(encodeURIComponent(svgStr)))}`;
+
+    // Render QR SVG → data URL first
+    const serializer = new XMLSerializer();
+    const svgStr = serializer.serializeToString(svg);
+    const qrCanvas = document.createElement("canvas");
+    qrCanvas.width = 340;
+    qrCanvas.height = 340;
+    const qrCtx = qrCanvas.getContext("2d");
+    if (!qrCtx) return;
+    const qrImg2 = new Image();
+    qrImg2.onload = () => {
+      qrCtx.fillStyle = "#ffffff";
+      qrCtx.fillRect(0, 0, 340, 340);
+      qrCtx.drawImage(qrImg2, 0, 0, 340, 340);
+      drawPoster(qrCanvas.toDataURL("image/png"));
+    };
+    qrImg2.src = `data:image/svg+xml;base64,${btoa(unescape(encodeURIComponent(svgStr)))}`;
   };
+
+  /** Helper to draw a rounded rectangle path */
+  function roundRect(
+    ctx: CanvasRenderingContext2D,
+    x: number, y: number, w: number, h: number, r: number
+  ) {
+    ctx.beginPath();
+    ctx.moveTo(x + r, y);
+    ctx.lineTo(x + w - r, y);
+    ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+    ctx.lineTo(x + w, y + h - r);
+    ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+    ctx.lineTo(x + r, y + h);
+    ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+    ctx.lineTo(x, y + r);
+    ctx.quadraticCurveTo(x, y, x + r, y);
+    ctx.closePath();
+  }
 
   const origin = typeof window !== "undefined" ? window.location.origin : "";
   const qrUrl = shopId ? `${origin}/s/${shopId}` : "";
@@ -350,10 +537,10 @@ export default function VendorOverviewPage() {
                 <button
                   onClick={downloadQR}
                   className="flex items-center gap-2 px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600"
-                  aria-label="Download QR code as PNG"
+                  aria-label="Download printable A4 QR poster as PNG"
                 >
                   <Download className="w-4 h-4" />
-                  Download PNG
+                  Download A4 Poster
                 </button>
                 <a
                   href={`/kiosk/${shopId}`}

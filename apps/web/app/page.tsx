@@ -286,7 +286,7 @@ function HeroVisual() {
             Auto-printing
           </p>
           <p className={cn(jakarta.className, "text-[10px] text-gray-400")}>
-            Enter 4-digit code to collect
+            Walk up &amp; collect your print
           </p>
         </div>
       </div>
@@ -370,7 +370,7 @@ function HeroSection() {
               <strong className="text-white font-semibold">digital software</strong> and{" "}
               <strong className="text-white font-semibold">print software</strong> transforming any Xerox printer into an unattended{" "}
               <strong className="text-[#4ade80] font-semibold">wireless printing machine</strong> and{" "}
-              <strong className="text-[#4ade80] font-semibold">printing ATM machine</strong>. Customers upload from their phone, pay via UPI, and collect with a secure 4-digit code.{" "}
+              <strong className="text-[#4ade80] font-semibold">printing ATM machine</strong>. Customers upload from their phone, pay via UPI, and simply walk up to collect their prints — no codes, no app.{" "}
               <span className="text-zinc-200 font-medium">
                 No new hardware. Zero manual queues.
               </span>
@@ -441,7 +441,7 @@ function FlowStrip() {
     {
       icon: Printer,
       label: "Collect at counter",
-      sub: "Enter 4-digit code to release",
+      sub: "Walk up & collect your print",
     },
   ];
 
@@ -675,13 +675,13 @@ function PrintingAtmSection() {
     },
     {
       icon: Lock,
-      badge: "PIN-Protected Release",
-      title: "Secure Printing ATM Machine",
-      subtitle: "Bank-grade privacy with 4-digit release code",
-      desc: "Operate your counter just like a financial ATM machine. Once paid, jobs remain encrypted and paused until the customer physically arrives at your printer and enters their 4-digit release code. No stranger can ever grab another customer's Aadhaar card, exam paper, or confidential document.",
+      badge: "Instant Auto-Release",
+      title: "Secure & Effortless Printing",
+      subtitle: "Automatic job dispatch after payment — no PIN needed",
+      desc: "Once your payment is confirmed, your print job is instantly dispatched to the shop printer. Walk up to the counter and collect your printout — no codes, no waiting, no friction. Documents are permanently deleted from our servers immediately after printing.",
       bullets: [
-        "Unattended output tray protection",
-        "4-digit release code on customer's phone",
+        "Automatic job release after UPI payment",
+        "Walk-up & collect — completely PINless",
         "Instant document shredding after print",
       ],
       tag: "Printing ATM",
@@ -824,8 +824,8 @@ function FeaturesSection() {
     {
       icon: Lock,
       color: "bg-blue-50 border-blue-100 text-blue-500",
-      title: "4-Digit Release Code",
-      desc: "Prints only release when the customer is physically at your shop and enters their private code.",
+      title: "Instant PINless Release",
+      desc: "Print jobs are automatically dispatched the moment payment is confirmed. No codes. Just walk up and collect.",
     },
     {
       icon: IndianRupee,
@@ -935,7 +935,7 @@ function YotmalNetworkSection() {
     },
     {
       name: "Government & Legal Document Hubs",
-      desc: "PIN-secured printing for sensitive court documents, affidavits, and identity verifications with zero data retention.",
+      desc: "Privacy-first printing for sensitive court documents, affidavits, and identity verifications with zero data retention and instant document shredding.",
     },
     {
       name: "Tier-2 & Tier-3 City Expansion",
@@ -1642,7 +1642,7 @@ function FAQSection() {
     },
     {
       q: "How does Print Buddy function as a printing ATM machine?",
-      a: "Just like a cash ATM machine dispenses currency only after you enter a confidential ATM PIN, Print Buddy functions as a secure printing ATM machine. After paying online, the customer receives a 4-digit release code. The print job is held securely and only starts printing when the customer enters this code at the physical counter.",
+      a: "Print Buddy functions as a completely automated printing ATM machine. After paying via UPI online, the print job is instantly dispatched to the shop printer. The customer simply walks up to the counter and collects their printout — no codes, no PIN, no friction. Documents are permanently deleted from our servers immediately after printing.",
     },
     {
       q: "Can Print Buddy turn my shop counter into a 24/7 printing vending machine?",
@@ -1981,7 +1981,7 @@ export default function LandingPage() {
         },
         featureList: [
           "Universal wireless printing machine capability without cables or drivers",
-          "Secure printing ATM machine PIN protection for confidential documents",
+          "Secure printing ATM machine with instant PINless auto-release for confidential documents",
           "Self-service printing vending machine workflow with instant UPI payments",
           "Digital software running on existing shop Windows PC or Raspberry Pi",
           "Active print shop network in Yotmal and throughout Maharashtra & India",
@@ -2023,7 +2023,7 @@ export default function LandingPage() {
             name: "How does Print Buddy function as a printing ATM machine?",
             acceptedAnswer: {
               "@type": "Answer",
-              text: "Just like a cash ATM machine dispenses currency only after you enter a confidential ATM PIN, Print Buddy functions as a secure printing ATM machine. After paying online, the customer receives a 4-digit release code. The print job is held securely and only starts printing when the customer enters this code at the physical counter.",
+              text: "Print Buddy functions as a completely automated printing ATM machine. After paying via UPI online, the print job is instantly dispatched to the shop printer. The customer simply walks up to the counter and collects their printout — no codes, no PIN, no friction. Documents are permanently deleted from our servers immediately after printing.",
             },
           },
           {
