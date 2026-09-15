@@ -1,0 +1,29 @@
+# PrintBuddy — Project Agent Instructions (`.agent`)
+
+This repository follows the architecture and guidelines defined below:
+
+## 1. Project Overview & Mission
+**PrintBuddy** is a software platform turning existing local Xerox/print shops into connected, automated, self-serve print nodes without requiring proprietary hardware kiosks.
+- **Tier 0 (Core / Zero Hardware):** Shop's existing PC + Printer + Internet. Requires only the Print Agent software and a QR sticker.
+- **Tier 1 (Headless Node):** Raspberry Pi running Print Agent for shops without a usable PC.
+- **Tier 2 (Ad Node):** Pi + Monitor for QR, live status, and local idle ads (optional add-on, not in MVP).
+
+## 2. Tech Stack
+- **Customer App:** Next.js (App Router), React, TypeScript, Tailwind CSS, shadcn/ui, built as a PWA.
+- **Shop & Admin Dashboards:** Next.js, TypeScript, Tailwind CSS, shadcn/ui.
+- **Cloud Backend:** Next.js Route Handlers (Node/TypeScript) + Supabase (Postgres, Auth, Storage, Realtime).
+- **Print Agent:** Python 3 standalone service (`pycups` on Linux/Raspberry Pi; SumatraPDF CLI / spooler on Windows).
+- **Payments:** Razorpay (Orders API + Checkout + Webhook verification, UPI-first).
+- **Document Normalization:** LibreOffice headless, img2pdf, PyMuPDF / pdfplumber.
+
+## 3. Critical Invariants & Rules
+1. **Webhook-Only Dispatch:** Never dispatch jobs based on client-side payment success callbacks. Printing is gated strictly by server-verified Razorpay webhooks.
+2. **Outbound-Only Agent Connection:** Shop networks are behind NAT/routers. The Print Agent connects outbound via Supabase Realtime WebSocket (with polling fallback). No open ports or inbound HTTP servers on the shop network.
+3. **OS-Level Printing (No Vendor SDKs):** Print via OS abstractions (CUPS on Linux/Pi; Windows Spooler + SumatraPDF on Windows) using installed manufacturer drivers.
+4. **Server-Side Normalization:** Always normalize documents to print-ready PDF server-side. Compute physical page counts and color usage dynamically.
+5. **Locked Pricing:** Eliminate "final cost may vary" ambiguity. The price shown after document inspection is locked before payment.
+6. **Privacy & Ephemerality:** Use short-lived signed URLs. Auto-delete files immediately after printing.
+7. **Unattended Pickup / Print-Release:** Paid jobs require customer confirmation ("I'm at the printer" or a 4-digit release code) before physical printing to protect sensitive output.
+8. **Offline Resilience:** The Print Agent queues already-paid jobs locally if shop connectivity fluctuates and flushes upon reconnect. Provide automated/1-tap refunds on hardware failure.
+
+See [AGENTS.md](file:///c:/myfile/print-software/AGENTS.md) for full architectural specifications, schema definitions, and state machine details.
