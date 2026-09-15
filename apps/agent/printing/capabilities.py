@@ -280,7 +280,9 @@ def _discover_via_lpoptions(printer_name: str, caps: dict) -> dict:
 
 def _discover_windows_stub(printer_name: str) -> tuple[dict, str | None]:
     log.info("Windows: IPP discovery not available — keeping default capabilities for %s", printer_name)
-    return dict(FULL_DEFAULT), None
+    caps = dict(FULL_DEFAULT)
+    caps.update(quality=["normal"], media_types=["plain"], finishings=[])
+    return caps, None
 
 
 # ── Public entry point ────────────────────────────────────────

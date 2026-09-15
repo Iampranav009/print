@@ -24,3 +24,4 @@ apps/web/.ds-compiled-tailwind.css
 apps/web/types/
 apps/web/.ds-src-mirror/
 supabase/.temp/
+.playwright-cli/

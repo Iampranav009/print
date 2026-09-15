@@ -97,6 +97,8 @@ export async function POST(req: NextRequest) {
     finishings: flatOptions.finishings ?? [],
   };
 
-  const breakdown = computePrice(pricing as Pricing, safeOptions, totalPages);
+  let breakdown;
+  try { breakdown = computePrice(pricing as Pricing, safeOptions, totalPages); }
+  catch(error) { return Response.json({error: error instanceof Error ? error.message : "Invalid print options"},{status:400}); }
   return Response.json({ pricePaise: breakdown.price_paise, breakdown });
 }

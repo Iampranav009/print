@@ -70,16 +70,23 @@ export async function GET(
     primaryMode === "test" ||
     (lastSeenMs > 0 && Date.now() - lastSeenMs < HEARTBEAT_WINDOW_MS);
 
-  return Response.json({
-    shop,
-    pricing,
-    printers: printerList,
-    capabilities,
-    printer_status: {
-      mode: primaryMode,
-      online: printerOnline,
-      last_seen_at: primary?.last_seen_at ?? null,
-      connection_type: primary?.connection_type ?? null,
+  return Response.json(
+    {
+      shop,
+      pricing,
+      printers: printerList,
+      capabilities,
+      printer_status: {
+        mode: primaryMode,
+        online: printerOnline,
+        last_seen_at: primary?.last_seen_at ?? null,
+        connection_type: primary?.connection_type ?? null,
+      },
     },
-  });
+    {
+      headers: {
+        "Cache-Control": "public, s-maxage=5, stale-while-revalidate=15",
+      },
+    }
+  );
 }

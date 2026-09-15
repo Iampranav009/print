@@ -34,6 +34,7 @@ interface DocumentPreviewProps {
   grayscale?: boolean;
   numberUp?: number;    // 1, 2, 4 — pages per sheet
   paperSize?: string;   // "A4", "A3", "Letter", "Legal", "A5"
+  pageRange?: string | null;
   scaling?: string;     // "none" | "fit-to-page" | "shrink-to-fit"
 }
 
@@ -61,6 +62,7 @@ export function DocumentPreview({
   numberUp = 1,
   paperSize = "A4",
   scaling = "none",
+  pageRange = null,
 }: DocumentPreviewProps) {
   const [current, setCurrent] = useState(0);
   const [pdfDocs, setPdfDocs] = useState<Record<number, PdfDocProxy | null>>({});
@@ -68,6 +70,7 @@ export function DocumentPreview({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [renderedPages, setRenderedPages] = useState<Record<string, string>>({});
+  const [pageSizes, setPageSizes] = useState<Record<string, [number, number]>>({});
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
 
   const filesKey = files.map((f) => f.name + f.file.size).join("|");
@@ -76,7 +79,7 @@ export function DocumentPreview({
     setCurrent(0);
     setRenderedPages({});
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filesKey]);
+  }, [filesKey, pageRange, numberUp]);
 
   useEffect(() => {
     let cancelled = false;
@@ -133,8 +136,17 @@ export function DocumentPreview({
     pageCounts.forEach((count, fi) => {
       for (let p = 1; p <= count; p++) out.push({ fileIndex: fi, pageInFile: p });
     });
-    return out;
-  }, [pageCounts]);
+    if (!pageRange) return out;
+    const selected = new Set<number>();
+    for (const part of pageRange.split(",")) {
+      const match = /^(\d+)(?:-(\d+))?$/.exec(part.trim());
+      if (!match) return [];
+      const start = Number(match[1]), end = Number(match[2] ?? match[1]);
+      if (start < 1 || end < start || end > out.length) return [];
+      for (let n=start;n<=end;n++) selected.add(n-1);
+    }
+    return out.filter((_,index)=>selected.has(index));
+  }, [pageCounts, pageRange]);
 
   // Pre-render current page + enough neighbours to populate n-up slots.
   useEffect(() => {
@@ -163,6 +175,7 @@ export function DocumentPreview({
         try {
           const page = await doc.getPage(pageInFile);
           const baseViewport = page.getViewport({ scale: 1 });
+          setPageSizes(prev => ({...prev, [key]: [baseViewport.width, baseViewport.height]}));
           const scale = Math.min(2, 800 / Math.max(baseViewport.width, baseViewport.height));
           const viewport = page.getViewport({ scale });
 
@@ -185,7 +198,7 @@ export function DocumentPreview({
 
     return () => { cancelled = true; };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [current, pages, pdfDocs, numberUp]);
+  }, [current, pages, pdfDocs, numberUp, renderedPages]);
 
   const startX = useRef<number | null>(null);
   const onTouchStart = (e: React.TouchEvent) => { startX.current = e.touches[0].clientX; };
@@ -193,29 +206,31 @@ export function DocumentPreview({
     if (startX.current === null) return;
     const dx = e.changedTouches[0].clientX - startX.current;
     if (Math.abs(dx) > 40) {
-      if (dx < 0 && current < pages.length - 1) setCurrent(current + 1);
-      if (dx > 0 && current > 0) setCurrent(current - 1);
+      if (dx < 0 && current < pages.length - 1) setCurrent(Math.min(Math.floor((pages.length - 1) / numberUp) * numberUp, current + numberUp));
+      if (dx > 0 && current > 0) setCurrent(Math.max(0, current - numberUp));
     }
     startX.current = null;
   };
 
-  const prev = () => setCurrent((c) => Math.max(0, c - 1));
-  const next = () => setCurrent((c) => Math.min(pages.length - 1, c + 1));
+  const prev = () => setCurrent((c) => Math.max(0, c - numberUp));
+  const next = () => setCurrent((c) => Math.min(Math.floor((pages.length - 1) / numberUp) * numberUp, c + numberUp));
 
   // ── Layout decisions ─────────────────────────────────────────────────────────
 
   const useNUp = numberUp > 1;
   // N-up always shows a landscape sheet with pages tiled inside.
   // 2-up: 2 columns × 1 row  |  4-up: 2 columns × 2 rows
-  const nUpCols = numberUp >= 4 ? 2 : 2;
-  const nUpRows = numberUp >= 4 ? 2 : 1;
+  const nUpCols = numberUp === 9 ? 3 : 2;
+  const nUpRows = Math.ceil(numberUp / nUpCols);
 
   // Container aspect ratio: n-up always landscape; single page follows paper+orientation.
-  const containerAspect = useNUp ? "4/3" : paperAspect(paperSize, orientation);
+  const containerAspect = paperAspect(paperSize, orientation);
   const maxH = useNUp ? 280 : orientation === "landscape" ? 280 : 400;
 
   // Scaling controls how tightly the image fills the container.
-  const imgPadding = scaling === "fit-to-page" ? 0 : scaling === "shrink-to-fit" ? 20 : 8;
+  const imgPadding = 0;
+  const [paperW, paperH] = PAPER_DIMS[paperSize] ?? PAPER_DIMS.A4;
+  const sheetWidth = maxH * (orientation === "landscape" ? paperH / paperW : paperW / paperH);
 
   // ── Loading / error states ───────────────────────────────────────────────────
 
@@ -243,7 +258,7 @@ export function DocumentPreview({
     );
   }
 
-  const currentPage = pages[current];
+  const currentPage = pages[Math.min(current, pages.length - 1)];
   const currentFile = files[currentPage.fileIndex];
   const currentUrl = renderedPages[`${current}`];
 
@@ -259,6 +274,12 @@ export function DocumentPreview({
     display: "block",
   };
 
+  const sourceSize = pageSizes[`${current}`];
+  const sheetPoints = orientation === "landscape" ? [paperH * 72 / 25.4, paperW * 72 / 25.4] : [paperW * 72 / 25.4, paperH * 72 / 25.4];
+  const fitScale = sourceSize ? Math.min(sheetPoints[0] / sourceSize[0], sheetPoints[1] / sourceSize[1]) : 1;
+  const previewScale = scaling === "fit-to-page" ? fitScale : scaling === "shrink-to-fit" ? Math.min(1, fitScale) : 1;
+  const previewWidth = sourceSize ? `${sourceSize[0] * previewScale / sheetPoints[0] * 100}%` : "100%";
+
   // ── Render ───────────────────────────────────────────────────────────────────
   return (
     <div className={`w-full ${className}`}>
@@ -272,7 +293,9 @@ export function DocumentPreview({
           // ── N-up grid: tile pages in a grid showing the print sheet layout ──
           <div
             style={{
-              aspectRatio: "4/3",
+              aspectRatio: containerAspect,
+              marginInline: "auto",
+              width: `min(100%, ${sheetWidth}px)`,
               maxHeight: maxH,
               display: "grid",
               gridTemplateColumns: `repeat(${nUpCols}, 1fr)`,
@@ -310,7 +333,7 @@ export function DocumentPreview({
                         ...imgStyle,
                         boxShadow: "none",
                         // Pages beyond the first are dimmed to show they're "other" pages
-                        opacity: i === 0 ? 1 : 0.7,
+                        opacity: 1,
                       }}
                     />
                   ) : pageIdx < pages.length ? (
@@ -328,11 +351,15 @@ export function DocumentPreview({
           <div
             style={{
               aspectRatio: containerAspect,
+              marginInline: "auto",
+              width: `min(100%, ${sheetWidth}px)`,
               maxHeight: maxH,
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
               padding: imgPadding,
+              overflow: "hidden",
+              background: "white",
               transition: "padding 0.25s ease, aspect-ratio 0.3s ease",
             }}
           >
@@ -343,7 +370,11 @@ export function DocumentPreview({
                 alt={`${currentFile.name} — page ${currentPage.pageInFile}`}
                 style={{
                   ...imgStyle,
-                  transform: orientation === "landscape" ? "rotate(90deg)" : "none",
+                  width: previewWidth,
+                  height: "auto",
+                  maxWidth: "none",
+                  maxHeight: "none",
+                  flexShrink: 0,
                 }}
               />
             ) : (
@@ -369,7 +400,7 @@ export function DocumentPreview({
             <button
               type="button"
               onClick={next}
-              disabled={current === pages.length - 1}
+              disabled={current + numberUp >= pages.length}
               style={{ touchAction: "manipulation" }}
               aria-label="Next page"
               className="absolute right-2 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-white/90 shadow flex items-center justify-center disabled:opacity-30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"

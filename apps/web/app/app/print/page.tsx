@@ -430,24 +430,20 @@ function PrintContent() {
     if (!shopId && !config) setConfig(defaultConfig(null));
   }, [shopId, config]);
 
+  const priceRequest = useRef(0);
   // Fetch price
   const fetchPrice = useCallback(async () => {
     if (!fileState || !config) return;
+    const request = ++priceRequest.current;
     setPriceState("fetching");
     setRawPriceResult(null);
     try {
       const body = {
         shopId: shopId ?? "virtual",
-        pageCount: config.useCustomRange
-          ? Math.max(1, config.pageRange.split(",").reduce((acc, part) => {
-              const t = part.trim();
-              if (t.includes("-")) {
-                const [a, b] = t.split("-").map(Number);
-                return acc + (b - a + 1);
-              }
-              return acc + 1;
-            }, 0))
-          : fileState.totalPages,
+        pageCount: fileState.totalPages,
+        pageRange: config.useCustomRange ? config.pageRange : null,
+        numberUp: config.numberUp,
+        mediaType: config.mediaType,
         copies: config.copies,
         color: config.color,
         duplex: config.duplex,
@@ -460,9 +456,11 @@ function PrintContent() {
       });
       if (!res.ok) throw new Error("Could not fetch price");
       const result: PriceResult = await res.json();
+      if (request !== priceRequest.current) return;
       setRawPriceResult(result);
       setPriceState("ready");
     } catch {
+      if (request !== priceRequest.current) return;
       setPriceState("error");
     }
   }, [fileState, config, shopId]);
@@ -470,7 +468,7 @@ function PrintContent() {
   useEffect(() => {
     if (fileState && config) fetchPrice();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [fileState?.path, config?.copies, config?.color, config?.orientation, config?.paper, config?.duplex, config?.useCustomRange, config?.pageRange]);
+  }, [fileState?.path, config?.copies, config?.color, config?.orientation, config?.paper, config?.duplex, config?.useCustomRange, config?.pageRange, config?.numberUp, config?.mediaType]);
 
   // Merge PDFs + images into one PDF using pdf-lib. Runs entirely in the
   // browser so the server keeps its single-file contract. Images become
@@ -657,7 +655,7 @@ function PrintContent() {
           },
         }),
       });
-      if (!res.ok) throw new Error("Could not create print job");
+      if (!res.ok) { const failure = await res.json(); throw new Error(failure.error ?? "Could not create print job"); }
       const { jobId, orderId, amount, currency, keyId } = await res.json() as {
         jobId: string;
         orderId: string;
@@ -809,6 +807,7 @@ function PrintContent() {
                 numberUp={config?.numberUp ?? 1}
                 paperSize={config?.paper ?? "A4"}
                 scaling={config?.scaling ?? "none"}
+                pageRange={config?.useCustomRange ? config.pageRange : null}
               />
 
               {rawFiles.length > 1 && (
@@ -1009,8 +1008,8 @@ function PrintContent() {
         {/* Price */}
         <div className="flex items-baseline justify-between mb-3">
           <div>
-            <p className="text-sm font-bold text-gray-900">Estimated Cost</p>
-            <p className="text-[10px] text-gray-400">*Final cost may vary based on the kiosk model</p>
+            <p className="text-sm font-bold text-gray-900">Print cost</p>
+            <p className="text-[10px] text-gray-400">Price is confirmed before payment</p>
           </div>
           <div className="text-right">
             {priceState === "ready" && rawPriceResult ? (

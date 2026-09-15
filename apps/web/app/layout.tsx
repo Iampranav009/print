@@ -91,12 +91,16 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" className="h-full antialiased font-sans">
+      <head>
+        <link rel="preconnect" href="https://checkout.razorpay.com" />
+        <link rel="dns-prefetch" href="https://api.razorpay.com" />
+      </head>
       <body className="min-h-full flex flex-col" suppressHydrationWarning>
         {children}
         <RegisterSW />
         <Script
           src="https://checkout.razorpay.com/v1/checkout.js"
-          strategy="afterInteractive"
+          strategy="lazyOnload"
         />
       </body>
     </html>

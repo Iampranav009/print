@@ -44,7 +44,7 @@ def print_windows(
 
         copies = job.get("copies", 1)
         if copies > 1:
-            settings_parts.append(f"x{copies}")
+            settings_parts.append(f"{copies}x")
 
         settings_parts.append("color" if job.get("color", False) else "monochrome")
 
@@ -52,8 +52,10 @@ def print_windows(
             duplex_edge = job.get("duplexEdge") or job.get("duplex_edge") or "long"
             settings_parts.append("duplexshort" if duplex_edge == "short" else "duplexlong")
 
-        if job.get("orientation") == "landscape":
-            settings_parts.append("landscape")
+        else:
+            settings_parts.append("simplex")
+
+        settings_parts.append("landscape" if job.get("orientation") == "landscape" else "portrait")
 
         if job.get("pageRange") or job.get("page_range"):
             settings_parts.append(job.get("pageRange") or job.get("page_range"))
@@ -63,7 +65,7 @@ def print_windows(
 
         number_up = job.get("numberUp") or job.get("number_up") or 1
         if number_up > 1:
-            settings_parts.append(f"nup={number_up}")
+            return False, "Multi-page layout must be prepared by the server before Windows printing"
 
         if not job.get("collate", True):
             dropped.append("collate=false (SumatraPDF always collates)")
@@ -85,11 +87,14 @@ def print_windows(
         elif scaling == "shrink-to-fit":
             settings_parts.append("shrink")
 
+        else:
+            settings_parts.append("noscale")
+
         for f in job.get("finishings", []):
             dropped.append(f"finishing={f} (not supported by SumatraPDF)")
 
         if dropped:
-            log.warning("[%s] Dropped options: %s", str(job.get("id", "?"))[:8], "; ".join(dropped))
+            return False, "Unsupported Windows options: " + "; ".join(dropped)
 
         settings = ",".join(settings_parts) if settings_parts else ""
         sumatra_exe = get_sumatra_executable()

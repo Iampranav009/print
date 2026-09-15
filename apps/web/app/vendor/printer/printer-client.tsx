@@ -140,7 +140,7 @@ export function PrinterClient({ initialData }: PrinterClientProps) {
   const [pricing, setPricing] = useState<PricingFields>({
     bw_page_paise: 200,
     color_page_paise: 1000,
-    duplex_factor: 1.0,
+    duplex_factor: 0.75,
     a3_multiplier: 2.0,
     min_charge_paise: 300,
   });
@@ -469,16 +469,16 @@ export function PrinterClient({ initialData }: PrinterClientProps) {
               <button
                 type="button"
                 role="switch"
-                aria-checked={colorEnabled}
+                aria-label="Allow colour printing" aria-checked={colorEnabled}
                 disabled={togglingColor}
                 onClick={() => handleFeatureToggle("color_enabled", !colorEnabled)}
-                className={`relative w-10 h-5 rounded-full transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600 disabled:opacity-60 ${
+                className={`relative shrink-0 w-12 h-7 rounded-full transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600 disabled:opacity-60 ${
                   colorEnabled ? "bg-indigo-600" : "bg-zinc-300"
                 }`}
               >
                 <span
-                  className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow-sm transition-transform duration-200 ${
-                    colorEnabled ? "translate-x-5" : "translate-x-0.5"
+                  className={`absolute left-0 top-1 w-5 h-5 rounded-full bg-white shadow-sm transition-transform duration-200 ${
+                    colorEnabled ? "translate-x-6" : "translate-x-1"
                   }`}
                 />
               </button>
@@ -498,16 +498,16 @@ export function PrinterClient({ initialData }: PrinterClientProps) {
               <button
                 type="button"
                 role="switch"
-                aria-checked={duplexEnabled}
+                aria-label="Allow double-sided printing" aria-checked={duplexEnabled}
                 disabled={togglingDuplex}
                 onClick={() => handleFeatureToggle("duplex_enabled", !duplexEnabled)}
-                className={`relative w-10 h-5 rounded-full transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600 disabled:opacity-60 ${
+                className={`relative shrink-0 w-12 h-7 rounded-full transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600 disabled:opacity-60 ${
                   duplexEnabled ? "bg-indigo-600" : "bg-zinc-300"
                 }`}
               >
                 <span
-                  className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow-sm transition-transform duration-200 ${
-                    duplexEnabled ? "translate-x-5" : "translate-x-0.5"
+                  className={`absolute left-0 top-1 w-5 h-5 rounded-full bg-white shadow-sm transition-transform duration-200 ${
+                    duplexEnabled ? "translate-x-6" : "translate-x-1"
                   }`}
                 />
               </button>
@@ -551,7 +551,7 @@ export function PrinterClient({ initialData }: PrinterClientProps) {
             <button
               type="button"
               onClick={() => setIsModalOpen(true)}
-              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-indigo-600 text-white text-sm font-medium hover:bg-indigo-700 active:bg-indigo-800 transition-colors shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600"
+              className="inline-flex min-h-11 items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-indigo-600 text-white text-sm font-medium hover:bg-indigo-700 active:bg-indigo-800 transition-colors shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600"
             >
               <Settings2 className="w-4 h-4" />
               <span>Advanced connection details</span>
@@ -561,7 +561,7 @@ export function PrinterClient({ initialData }: PrinterClientProps) {
               type="button"
               onClick={handleVerify}
               disabled={verifying}
-              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl border border-zinc-200 bg-white text-zinc-700 text-sm font-medium hover:bg-zinc-50 active:bg-zinc-100 transition-colors shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600 disabled:opacity-50"
+              className="inline-flex min-h-11 items-center justify-center gap-2 px-5 py-2.5 rounded-xl border border-zinc-200 bg-white text-zinc-700 text-sm font-medium hover:bg-zinc-50 active:bg-zinc-100 transition-colors shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600 disabled:opacity-50"
             >
               <RefreshCw className={`w-4 h-4 ${verifying ? "animate-spin text-indigo-600" : ""}`} />
               <span>{verifying ? "Verifying..." : "Verify connectivity"}</span>
@@ -723,7 +723,7 @@ export function PrinterClient({ initialData }: PrinterClientProps) {
                     onChange={(e) => handlePricingChange("duplex_factor", e.target.value)}
                     className="w-full px-3.5 py-2.5 rounded-xl border border-zinc-200 bg-white text-sm text-zinc-900 focus:outline-none focus:ring-2 focus:ring-indigo-600 font-mono text-xs"
                   />
-                  <p className="text-[11px] text-zinc-400">0.9 = 10% cheaper per side; 1.0 = no discount</p>
+                  <p className="text-[11px] text-zinc-400">0.75: two Rs.10 sides cost Rs.15 together. An unpaired last side stays Rs.10.</p>
                 </div>
 
                 {/* A3 multiplier */}
@@ -811,16 +811,16 @@ export function PrinterClient({ initialData }: PrinterClientProps) {
             <button
               type="button"
               role="switch"
-              aria-checked={soundEnabled}
+              aria-label="Voice announcements" aria-checked={soundEnabled}
               disabled={savingSound}
               onClick={() => handleSoundToggle(!soundEnabled)}
-              className={`relative shrink-0 w-10 h-5 rounded-full transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600 disabled:opacity-60 ${
+              className={`relative shrink-0 w-12 h-7 rounded-full transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600 disabled:opacity-60 ${
                 soundEnabled ? "bg-indigo-600" : "bg-zinc-300"
               }`}
             >
               <span
-                className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow-sm transition-transform duration-200 ${
-                  soundEnabled ? "translate-x-5" : "translate-x-0.5"
+                className={`absolute left-0 top-1 w-5 h-5 rounded-full bg-white shadow-sm transition-transform duration-200 ${
+                  soundEnabled ? "translate-x-6" : "translate-x-1"
                 }`}
               />
             </button>

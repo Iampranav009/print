@@ -48,5 +48,12 @@ export async function GET(req: NextRequest) {
       .sort((a, b) => (a.distance_km ?? Infinity) - (b.distance_km ?? Infinity));
   }
 
-  return Response.json({ shops: results });
+  return Response.json(
+    { shops: results },
+    {
+      headers: {
+        "Cache-Control": "public, s-maxage=30, stale-while-revalidate=120",
+      },
+    }
+  );
 }

@@ -43,8 +43,7 @@ def build_cups_options(job: dict, caps: dict | None = None) -> dict[str, str]:
     if caps and sides_value not in caps.get("sides", [sides_value]):
         dropped.append(f"sides={sides_value} → falling back to one-sided")
         sides_value = "one-sided"
-    if sides_value != "one-sided":
-        options["sides"] = sides_value
+    options["sides"] = sides_value
 
     # Paper
     paper = job.get("paper", "A4")
@@ -53,8 +52,7 @@ def build_cups_options(job: dict, caps: dict | None = None) -> dict[str, str]:
     else:
         options["media"] = paper
 
-    if job.get("orientation") == "landscape":
-        options["orientation-requested"] = "4"
+    options["orientation-requested"] = "4" if job.get("orientation") == "landscape" else "3"
 
     # Number-up
     number_up = job.get("numberUp") or job.get("number_up") or 1
@@ -91,8 +89,7 @@ def build_cups_options(job: dict, caps: dict | None = None) -> dict[str, str]:
 
     # Scaling
     scaling = job.get("scaling", "none")
-    if scaling in ("fit-to-page", "shrink-to-fit"):
-        options["fit-to-page"] = "true"
+    options["print-scaling"] = {"fit-to-page": "fit", "shrink-to-fit": "auto-fit"}.get(scaling, "none")
 
     # Finishings — map to IPP finishing codes
     supported = caps.get("finishings", []) if caps else None

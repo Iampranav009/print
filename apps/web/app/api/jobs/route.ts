@@ -1,8 +1,9 @@
 import { getSupabase } from "@/lib/supabase";
 import { createClient as createServerSupabase } from "@/lib/supabase/server";
 import { getRazorpay } from "@/lib/razorpay";
-import { computePrice, parsePageRange } from "@/lib/pricing";
+import { computePrice } from "@/lib/pricing";
 import type { PrintOptions, Pricing, PrinterCapabilities } from "@printbuddy/shared";
+import { preparePrintPdf } from "@/lib/print-layout";
 import { PDFDocument } from "pdf-lib";
 import { NextRequest } from "next/server";
 
@@ -186,7 +187,19 @@ export async function POST(req: NextRequest) {
 
   const safeOptions = safeOptionsForValidation;
 
-  const breakdown = computePrice(pricing as Pricing, safeOptions, totalPages);
+  let breakdown;
+  try { breakdown = computePrice(pricing as Pricing, safeOptions, totalPages); }
+  catch (error) { return Response.json({error: error instanceof Error ? error.message : "Invalid print options"}, {status:400}); }
+  let printPath = filePath;
+  if (mime === "application/pdf") {
+    try {
+      const prepared = await preparePrintPdf(new Uint8Array(await fileData.arrayBuffer()), safeOptions);
+      printPath = `${shopId}/${crypto.randomUUID()}.layout.pdf`;
+      const {error: uploadError} = await supabase.storage.from("documents").upload(printPath, prepared, {contentType:"application/pdf"});
+      if(uploadError) throw uploadError;
+    } catch { return Response.json({error:"Could not prepare the selected print layout"}, {status:422}); }
+  }
+
   const releaseCode = generateReleaseCode();
 
   const { data: job, error: jobErr } = await supabase
@@ -194,7 +207,7 @@ export async function POST(req: NextRequest) {
     .insert({
       shop_id: shopId,
       user_id: userId,
-      file_path: filePath,
+      file_path: printPath,
       file_mime: mime,
       pages: breakdown.selected_pages,
       copies: safeOptions.copies,
@@ -220,6 +233,7 @@ export async function POST(req: NextRequest) {
     .single();
 
   if (jobErr || !job) {
+    if (printPath !== filePath) await supabase.storage.from("documents").remove([printPath!]);
     return Response.json({ error: "Failed to create job", detail: jobErr?.message, code: jobErr?.code }, { status: 500 });
   }
 

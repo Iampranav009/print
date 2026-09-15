@@ -5,24 +5,15 @@ export function parsePageRange(
   totalPages: number
 ): number {
   if (!range) return totalPages;
-  let count = 0;
+  const pages = new Set<number>();
   for (const part of range.split(",")) {
-    const trimmed = part.trim();
-    if (trimmed.includes("-")) {
-      const [startStr, endStr] = trimmed.split("-");
-      const start = Math.max(1, parseInt(startStr, 10));
-      const end = Math.min(totalPages, parseInt(endStr, 10));
-      if (!isNaN(start) && !isNaN(end) && end >= start) {
-        count += end - start + 1;
-      }
-    } else {
-      const page = parseInt(trimmed, 10);
-      if (!isNaN(page) && page >= 1 && page <= totalPages) {
-        count += 1;
-      }
-    }
+    const match = /^(\d+)(?:-(\d+))?$/.exec(part.trim());
+    if (!match) throw new Error("Enter a valid page range, such as 1-3,5");
+    const start = Number(match[1]), end = Number(match[2] ?? match[1]);
+    if (start < 1 || end > totalPages || end < start) throw new Error("Page range is outside this document");
+    for (let page = start; page <= end; page++) pages.add(page);
   }
-  return Math.max(count, 1);
+  return pages.size;
 }
 
 export function computePrice(
@@ -30,6 +21,8 @@ export function computePrice(
   options: PrintOptions,
   totalPages: number
 ): PriceBreakdown {
+  if (!Number.isInteger(options.copies) || options.copies < 1 || options.copies > 99) throw new Error("Copies must be between 1 and 99");
+  if (![1, 2, 4, 6, 9].includes(options.numberUp)) throw new Error("Unsupported pages per sheet");
   const selected_pages = parsePageRange(options.pageRange, totalPages);
   const number_up = Math.max(options.numberUp || 1, 1);
   const sides = Math.ceil(selected_pages / number_up);
@@ -51,7 +44,9 @@ export function computePrice(
   let subtotal = per_side * sides * copies;
 
   const duplex_factor_applied = options.duplex ? Number(pricing.duplex_factor) : 1;
-  subtotal = Math.round(subtotal * duplex_factor_applied);
+  subtotal = options.duplex
+    ? Math.round(per_side * (Math.floor(sides / 2) * 2 * duplex_factor_applied + sides % 2) * copies)
+    : subtotal;
 
   const min_charge_applied = subtotal < pricing.min_charge_paise;
   const price_paise = Math.max(subtotal, pricing.min_charge_paise);

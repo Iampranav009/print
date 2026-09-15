@@ -195,7 +195,38 @@ function BlurFade({
   );
 }
 
-// --- BUILT-IN GLASS BUTTON COMPONENT (WITH CLICK FIX) ---
+// --- GOOGLE ICON ---
+const GoogleIcon = ({ className, ...props }: React.SVGProps<SVGSVGElement>) => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    viewBox="0 0 64 64"
+    className={cn("w-5 h-5 flex-shrink-0", className)}
+    {...props}
+  >
+    <g fillRule="evenodd" fill="none">
+      <g fillRule="nonzero" transform="translate(3, 2)">
+        <path
+          fill="#4285F4"
+          d="M57.8123233,30.1515267 C57.8123233,27.7263183 57.6155321,25.9565533 57.1896408,24.1212666 L29.4960833,24.1212666 L29.4960833,35.0674653 L45.7515771,35.0674653 C45.4239683,37.7877475 43.6542033,41.8844383 39.7213169,44.6372555 L39.6661883,45.0037254 L48.4223791,51.7870338 L49.0290201,51.8475849 C54.6004021,46.7020943 57.8123233,39.1313952 57.8123233,30.1515267"
+        />
+        <path
+          fill="#34A853"
+          d="M29.4960833,58.9921667 C37.4599129,58.9921667 44.1456164,56.3701671 49.0290201,51.8475849 L39.7213169,44.6372555 C37.2305867,46.3742596 33.887622,47.5868638 29.4960833,47.5868638 C21.6960582,47.5868638 15.0758763,42.4415991 12.7159637,35.3297782 L12.3700541,35.3591501 L3.26524241,42.4054492 L3.14617358,42.736447 C7.9965904,52.3717589 17.959737,58.9921667 29.4960833,58.9921667"
+        />
+        <path
+          fill="#FBBC05"
+          d="M12.7159637,35.3297782 C12.0932812,33.4944915 11.7329116,31.5279353 11.7329116,29.4960833 C11.7329116,27.4640054 12.0932812,25.4976752 12.6832029,23.6623884 L12.6667095,23.2715173 L3.44779955,16.1120237 L3.14617358,16.2554937 C1.14708246,20.2539019 0,24.7439491 0,29.4960833 C0,34.2482175 1.14708246,38.7380388 3.14617358,42.736447 L12.7159637,35.3297782"
+        />
+        <path
+          fill="#EB4335"
+          d="M29.4960833,11.4050769 C35.0347044,11.4050769 38.7707997,13.7975244 40.9011602,15.7968415 L49.2255853,7.66898166 C44.1130815,2.91684746 37.4599129,0 29.4960833,0 C17.959737,0 7.9965904,6.62018183 3.14617358,16.2554937 L12.6832029,23.6623884 C15.0758763,16.5505675 21.6960582,11.4050769 29.4960833,11.4050769"
+        />
+      </g>
+    </g>
+  </svg>
+);
+
+// --- BUILT-IN GLASS BUTTON COMPONENT (WITH CLICK FIX & FULL-WIDTH SUPPORT) ---
 const glassButtonVariants = cva(
   "relative isolate all-unset cursor-pointer rounded-full transition-all",
   {
@@ -211,12 +242,12 @@ const glassButtonVariants = cva(
   }
 );
 const glassButtonTextVariants = cva(
-  "glass-button-text relative block select-none tracking-tighter",
+  "glass-button-text relative select-none tracking-tight",
   {
     variants: {
       size: {
-        default: "px-6 py-3.5",
-        sm: "px-4 py-2",
+        default: "px-6 py-3",
+        sm: "px-4 py-2.5",
         lg: "px-8 py-4",
         icon: "flex h-10 w-10 items-center justify-center",
       },
@@ -235,18 +266,34 @@ export const GlassButton = React.forwardRef<HTMLButtonElement, GlassButtonProps>
       const button = e.currentTarget.querySelector("button");
       if (button && e.target !== button) button.click();
     };
+    const isFullWidth = className?.includes("w-full");
     return (
       <div
-        className={cn("glass-button-wrap cursor-pointer rounded-full relative", className)}
+        className={cn(
+          "glass-button-wrap cursor-pointer rounded-full relative",
+          isFullWidth ? "w-full flex" : "inline-flex",
+          className
+        )}
         onClick={handleWrapperClick}
       >
         <button
-          className={cn("glass-button relative z-10", glassButtonVariants({ size }))}
+          className={cn(
+            "glass-button relative z-10 flex items-center justify-center",
+            isFullWidth && "w-full",
+            glassButtonVariants({ size })
+          )}
           ref={ref}
           onClick={onClick}
           {...props}
         >
-          <span className={cn(glassButtonTextVariants({ size }), contentClassName)}>
+          <span
+            className={cn(
+              "flex items-center justify-center",
+              isFullWidth && "w-full",
+              glassButtonTextVariants({ size }),
+              contentClassName
+            )}
+          >
             {children}
           </span>
         </button>
@@ -333,31 +380,7 @@ const GradientBackground = () => (
   </>
 );
 
-// --- GOOGLE ICON ---
-const GoogleIcon = (props: React.SVGProps<SVGSVGElement>) => (
-  <svg {...props} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" className="w-6 h-6">
-    <g fillRule="evenodd" fill="none">
-      <g fillRule="nonzero" transform="translate(3, 2)">
-        <path
-          fill="#4285F4"
-          d="M57.8123233,30.1515267 C57.8123233,27.7263183 57.6155321,25.9565533 57.1896408,24.1212666 L29.4960833,24.1212666 L29.4960833,35.0674653 L45.7515771,35.0674653 C45.4239683,37.7877475 43.6542033,41.8844383 39.7213169,44.6372555 L39.6661883,45.0037254 L48.4223791,51.7870338 L49.0290201,51.8475849 C54.6004021,46.7020943 57.8123233,39.1313952 57.8123233,30.1515267"
-        />
-        <path
-          fill="#34A853"
-          d="M29.4960833,58.9921667 C37.4599129,58.9921667 44.1456164,56.3701671 49.0290201,51.8475849 L39.7213169,44.6372555 C37.2305867,46.3742596 33.887622,47.5868638 29.4960833,47.5868638 C21.6960582,47.5868638 15.0758763,42.4415991 12.7159637,35.3297782 L12.3700541,35.3591501 L3.26524241,42.4054492 L3.14617358,42.736447 C7.9965904,52.3717589 17.959737,58.9921667 29.4960833,58.9921667"
-        />
-        <path
-          fill="#FBBC05"
-          d="M12.7159637,35.3297782 C12.0932812,33.4944915 11.7329116,31.5279353 11.7329116,29.4960833 C11.7329116,27.4640054 12.0932812,25.4976752 12.6832029,23.6623884 L12.6667095,23.2715173 L3.44779955,16.1120237 L3.14617358,16.2554937 C1.14708246,20.2539019 0,24.7439491 0,29.4960833 C0,34.2482175 1.14708246,38.7380388 3.14617358,42.736447 L12.7159637,35.3297782"
-        />
-        <path
-          fill="#EB4335"
-          d="M29.4960833,11.4050769 C35.0347044,11.4050769 38.7707997,13.7975244 40.9011602,15.7968415 L49.2255853,7.66898166 C44.1130815,2.91684746 37.4599129,0 29.4960833,0 C17.959737,0 7.9965904,6.62018183 3.14617358,16.2554937 L12.6832029,23.6623884 C15.0758763,16.5505675 21.6960582,11.4050769 29.4960833,11.4050769"
-        />
-      </g>
-    </g>
-  </svg>
-);
+
 
 const modalSteps = [
   { message: "Authenticating...", icon: <Loader className="w-12 h-12 text-primary animate-spin" /> },
@@ -697,7 +720,7 @@ export const AuthComponent = ({
 
         <fieldset
           disabled={modalStatus !== "closed"}
-          className="relative z-10 flex flex-col items-center gap-6 w-[320px] max-w-full mx-auto p-4"
+          className="relative z-10 flex flex-col items-center gap-6 w-full max-w-[340px] mx-auto px-4 py-2"
         >
           <AnimatePresence mode="wait">
             {authStep === "email" && (
@@ -724,25 +747,27 @@ export const AuthComponent = ({
                 </BlurFade>
 
                 <BlurFade delay={0.25 * 3} className="w-full">
-                  <div className="flex items-center justify-center gap-3 w-full">
+                  <div className="w-full flex items-center justify-center">
                     <GlassButton
                       type="button"
                       onClick={handleGoogleClick}
-                      contentClassName="flex items-center justify-center gap-2"
-                      size="sm"
+                      contentClassName="flex items-center justify-center gap-3 py-1 text-sm"
+                      size="default"
                       className="w-full"
                     >
-                      <GoogleIcon />
-                      <span className="font-semibold text-foreground">Continue with Google</span>
+                      <GoogleIcon className="w-5 h-5" />
+                      <span className="font-medium text-foreground tracking-normal">Continue with Google</span>
                     </GlassButton>
                   </div>
                 </BlurFade>
 
                 <BlurFade delay={0.25 * 4} className="w-full">
-                  <div className="flex items-center w-full gap-2 py-2">
-                    <hr className="w-full border-border" />
-                    <span className="text-xs font-semibold text-muted-foreground uppercase">Or with email</span>
-                    <hr className="w-full border-border" />
+                  <div className="flex items-center w-full gap-3 py-1">
+                    <div className="flex-1 h-px bg-border/80" />
+                    <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider whitespace-nowrap shrink-0">
+                      Or with email
+                    </span>
+                    <div className="flex-1 h-px bg-border/80" />
                   </div>
                 </BlurFade>
               </motion.div>
@@ -799,7 +824,7 @@ export const AuthComponent = ({
             )}
           </AnimatePresence>
 
-          <form onSubmit={handleFinalSubmit} className="w-[300px] space-y-6">
+          <form onSubmit={handleFinalSubmit} className="w-full space-y-6">
             <AnimatePresence>
               {authStep !== "confirmPassword" && (
                 <motion.div
@@ -958,7 +983,7 @@ export const AuthComponent = ({
                         </motion.div>
                       )}
                     </AnimatePresence>
-                    <div className="glass-input-wrap w-[300px]">
+                    <div className="glass-input-wrap w-full">
                       <div className="glass-input">
                         <span className="glass-input-text-area"></span>
                         <div className="relative z-10 flex-shrink-0 flex items-center justify-center w-10 pl-2">
