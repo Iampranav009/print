@@ -274,7 +274,7 @@ export async function POST(req: NextRequest) {
 
       orderResult = {
         orderId: order.id,
-        keyId: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
+        keyId: process.env.RAZORPAY_KEY_ID || process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
         amount: breakdown.price_paise,
         currency: "INR",
       };

@@ -52,7 +52,7 @@ export async function POST(
 
   return Response.json({
     orderId: order.id,
-    keyId: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
+    keyId: process.env.RAZORPAY_KEY_ID || process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
     amount: job.price_paise,
     currency: "INR",
   });
