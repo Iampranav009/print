@@ -1,4 +1,5 @@
 """CUPS option builder and print function for PrintBuddy."""
+from __future__ import annotations
 
 import logging
 import time

@@ -1,4 +1,5 @@
 """PrintBuddy's Windows setup window and background tray app."""
+from __future__ import annotations
 import json
 import os
 from pathlib import Path

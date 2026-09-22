@@ -1,4 +1,5 @@
 """Small built-in diagnostic PDF; contains no customer document data."""
+from __future__ import annotations
 from datetime import datetime
 
 
