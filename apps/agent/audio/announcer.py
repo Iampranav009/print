@@ -12,7 +12,9 @@ To add Hindi (via Piper later), add PHRASES_HI and route via _phrases().
 TTS uses native Windows speech on Windows and pyttsx3 on Linux.
 Both run offline on the shop computer; the dashboard does not need to stay open.
 """
+from __future__ import annotations
 
+import base64
 import logging
 import json
 import os
@@ -71,12 +73,13 @@ class WindowsSpeechEngine(TtsEngine):
         self.set_volume(volume)
 
     def speak(self, text: str) -> None:
+        encoded = base64.b64encode(text.encode("utf-8")).decode("ascii")
         script = (
-            "$ErrorActionPreference='Stop'; Add-Type -AssemblyName System.Speech; "
-            "$p=[Console]::In.ReadToEnd() | ConvertFrom-Json; "
-            "$s=New-Object System.Speech.Synthesis.SpeechSynthesizer; "
-            "try { $s.SetOutputToDefaultAudioDevice(); $s.Volume=$p.volume; "
-            "$s.Speak([string]$p.text) } finally { $s.Dispose() }"
+            "$ErrorActionPreference='Stop'; "
+            "$s=New-Object -ComObject SAPI.SpVoice; "
+            f"$s.Volume={round(self._volume * 100)}; "
+            f"$text=[Text.Encoding]::UTF8.GetString([Convert]::FromBase64String('{encoded}')); "
+            "$null=$s.Speak($text);"
         )
         result = subprocess.run(
             ["powershell.exe", "-NoProfile", "-NonInteractive", "-Command", script],

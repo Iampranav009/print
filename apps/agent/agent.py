@@ -5,6 +5,7 @@ Supports three print modes (PRINTBUDDY_PRINT_MODE):
   virtual  — send to a cups-pdf virtual printer (exercises real CUPS path)
   real     — send to a physical printer via CUPS (Linux) or SumatraPDF (Windows)
 """
+from __future__ import annotations
 
 import json
 import logging

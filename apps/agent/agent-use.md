@@ -46,3 +46,42 @@ Logs: `%LOCALAPPDATA%/PrintBuddy/agent.log` (rotated). Windows speech uses the d
 - TypeScript/build: `npm run build`.
 
 To stop automatic startup, disable **PrintBuddy Agent** in Windows Task Scheduler. Quit the tray app before replacing its installed EXE. To remove the app, remove that task and the PrintBuddy Start-menu shortcut, then remove `%LOCALAPPDATA%/PrintBuddy` after any active job has finished.
+
+## Windows downloads
+
+- `PrintBuddy-Setup.exe`: Windows 10/11 x64, CPython 3.14.
+- `PrintBuddy-Windows7-Setup.exe`: legacy Windows 7 SP1 x86/x64 target,
+  CPython 3.8.10 x86, PyInstaller 4.10, and bundled SumatraPDF 3.6.1 x86.
+  Requires applicable Windows runtime updates and an installed printer driver.
+  These older runtimes are end-of-life. Windows 7 hardware acceptance testing
+  is still required; do not describe the legacy release as universally verified.
+
+The legacy agent uses the Windows spooler API for printer discovery, HKCU Run
+for sign-in startup (no administrator password), and SAPI speech via PowerShell
+2-compatible commands. It retains the same outbound cloud API, pairing flow,
+DPAPI credential storage, and per-job printer selection. On Windows 7, startup
+is at sign-in; it does not have the modern scheduled task's crash-restart policy.
+
+Build with `scripts/build-agent-legacy.ps1 -PythonPath <python38-x86.exe>`.
+The runtime must include Tcl/Tk. Pinned dependencies are in
+`requirements-legacy-lock.txt`. The build verifies the official Sumatra ZIP
+checksum and bundles its 32-bit engine, avoiding a second download on old PCs.
+The environment used here was extracted under `.agent-build/legacy/` from the
+official Python NuGet package and signed Python Tcl/Tk MSI, without installing
+Python system-wide. No shop tokens are included in either download.
+
+Verification: 21 agent tests passed under Python 3.8 x86; Tk initialization,
+DPAPI round-trip, verified HTTPS, and native binary architecture/import audits
+passed on the development PC. Application Control blocked the packaged EXE's
+launch here; that is not a passed installer test. On a Windows 7 SP1 shop PC,
+verify launch, automatic discovery, one-time pairing, speaker test, a test page,
+restart/sign-in, and background printing before unattended use.
+
+The old `python314.dll` / `api-ms-win-core-path-l1-1-0.dll` error on Windows 7
+means the modern edition was used. Download the legacy edition instead; never
+copy replacement DLLs from third-party sites.
+
+Bundled component sources and licenses:
+- Python: https://www.python.org/downloads/release/python-3810/ (PSF license)
+- SumatraPDF: https://github.com/sumatrapdfreader/sumatrapdf/tree/3.6.1 (GPLv3)
+- PyInstaller: https://pyinstaller.org/en/v4.10/license.html

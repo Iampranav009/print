@@ -4,6 +4,7 @@ Returns a dict matching the PrinterCapabilities shape:
   color, sides, media, media_types, number_up, quality,
   finishings, collate, reverse, scaling, max_copies
 """
+from __future__ import annotations
 
 import logging
 import subprocess
