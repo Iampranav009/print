@@ -50,6 +50,9 @@ interface Job {
   razorpay_order_id: string | null;
   created_at: string;
   updated_at: string;
+  queueAhead: number;
+  estimatedWaitMinutes: number;
+  refundStatus: string | null;
 }
 
 const TERMINAL: JobStatus[] = [
@@ -57,7 +60,6 @@ const TERMINAL: JobStatus[] = [
   "printed",
   "released",
   "payment_failed",
-  "print_failed",
   "cancelled",
   "refunded",
 ];
@@ -109,6 +111,12 @@ function getStatusConfig(status: JobStatus) {
       };
     case "dispatched":
     case "awaiting_release":
+      return {
+        icon: <Clock className="w-10 h-10 text-indigo-600" />,
+        headline: "Your print is in line",
+        sub: "Payment confirmed. We’ll update you when printing begins.",
+        color: "blue",
+      };
     case "printing":
       return {
         icon: <Printer className="w-10 h-10 text-blue-600 animate-pulse" />,
@@ -140,15 +148,21 @@ function getStatusConfig(status: JobStatus) {
       return {
         icon: <XCircle className="w-10 h-10 text-red-500" />,
         headline: "Print failed",
-        sub: "Something went wrong at the printer. Please contact the shop counter.",
+        sub: "Something went wrong at the printer. We’re checking your refund.",
         color: "red",
       };
-    case "cancelled":
     case "refunded":
       return {
+        icon: <CheckCircle2 className="w-10 h-10 text-green-600" />,
+        headline: "Refund processed",
+        sub: "Razorpay confirmed your refund. Your bank may take time to show the credit.",
+        color: "green",
+      };
+    case "cancelled":
+      return {
         icon: <XCircle className="w-10 h-10 text-zinc-400" />,
-        headline: status === "refunded" ? "Order refunded" : "Order cancelled",
-        sub: "This order was cancelled or refunded.",
+        headline: "Order cancelled",
+        sub: "This order was cancelled.",
         color: "zinc",
       };
     default:
@@ -311,6 +325,19 @@ export default function JobDetailPage({
               {cfg.sub}
             </p>
           )}
+          {["dispatched", "awaiting_release"].includes(job!.status) && job!.queueAhead > 0 && (
+            <div className="mt-5 rounded-2xl bg-indigo-50 px-4 py-3 text-sm text-indigo-900" role="status" aria-live="polite">
+              <p className="font-semibold">{job!.queueAhead} {job!.queueAhead === 1 ? "print" : "prints"} ahead of yours</p>
+              <p className="mt-1">Estimated wait: about {job!.estimatedWaitMinutes} {job!.estimatedWaitMinutes === 1 ? "minute" : "minutes"}.</p>
+            </div>
+          )}
+          {job!.status === "print_failed" && (
+            <div className="mt-5 rounded-2xl bg-amber-50 px-4 py-3 text-sm text-amber-900" role="status" aria-live="polite">
+              {job!.refundStatus === "pending" ? "Refund requested with Razorpay. We’re checking its progress." :
+                job!.refundStatus === "failed" ? "The refund could not be processed automatically. Please contact the shop for help." :
+                "We’re checking the refund request. This screen will update automatically."}
+            </div>
+          )}
 
           {/* Print failure reason */}
           {job!.status === "print_failed" && job!.failure_reason && (
@@ -334,7 +361,6 @@ export default function JobDetailPage({
 
         {/* Order details Card */}
         <div className="bg-white border border-gray-100 rounded-2xl overflow-hidden shadow-sm">
-          <DetailRow label="Order" value={`#${job!.id.slice(0, 8).toUpperCase()}`} />
           <DetailRow
             label="Pages"
             value={`${job!.pages} × ${job!.copies} cop${job!.copies !== 1 ? "ies" : "y"}`}
@@ -362,19 +388,7 @@ export default function JobDetailPage({
 
         {job!.status === "print_failed" && (
           <div className="text-center text-xs text-gray-500 py-2">
-            Please visit the counter
-            {job!.shop_id && (
-              <>
-                {" "}or{" "}
-                <Link
-                  href={`/app/print?shop=${job!.shop_id}`}
-                  className="underline underline-offset-2 font-medium text-green-600 hover:text-green-800"
-                >
-                  try a new order
-                </Link>
-              </>
-            )}
-            .
+            Need help? Please speak to the shop while we check your refund.
           </div>
         )}
 

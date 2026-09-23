@@ -370,6 +370,7 @@ function PrintContent() {
 
   const [paying, setPaying] = useState(false);
   const [payError, setPayError] = useState<string | null>(null);
+  const [displayName, setDisplayName] = useState("");
 
   // Live broadcast channel to the matching kiosk screen. One session per
   // page load; regenerated when the user picks a fresh file so old kiosk
@@ -635,6 +636,7 @@ function PrintContent() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           shopId: shopId ?? shopData?.shop.id ?? "virtual",
+          displayName: displayName.trim() || undefined,
           filePath: fileState.path,
           fileName: fileState.file.name,
           options: {
@@ -704,7 +706,7 @@ function PrintContent() {
     } finally {
       setPaying(false);
     }
-  }, [fileState, config, rawPriceResult, shopId, shopData, router, broadcast]);
+  }, [fileState, config, rawPriceResult, shopId, shopData, router, broadcast, displayName]);
 
   const caps = shopData?.capabilities ?? DEFAULT_CAPABILITIES;
   const hasFile = fileState !== null;
@@ -1024,6 +1026,16 @@ function PrintContent() {
 
         <div>
           {/* Scan Kiosk / Pay — single full-width button */}
+          {shopId && (
+            <div className="mb-3">
+              <label htmlFor="print-display-name" className="block text-xs font-semibold text-gray-700 mb-1.5">Name for the print screen</label>
+              <input id="print-display-name" type="text" maxLength={32} autoComplete="given-name"
+                value={displayName} onChange={(event) => setDisplayName(event.target.value)}
+                placeholder="Your first name"
+                className="w-full min-h-[48px] rounded-xl border border-gray-200 bg-white px-3.5 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500" />
+              <p className="text-[11px] text-gray-500 mt-1">Only this name appears on the shared screen.</p>
+            </div>
+          )}
           {!shopId ? (
             <button
               type="button"

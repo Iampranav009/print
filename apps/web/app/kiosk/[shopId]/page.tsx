@@ -34,16 +34,10 @@ interface DbJob {
   release_code: string | null;
   file_path?: string | null;
   file_name?: string | null;
+  display_name?: string | null;
   created_at: string;
   updated_at?: string;
 }
-
-const TERMINAL_STATUSES: JobStatus[] = [
-  "printed",
-  "payment_failed",
-  "print_failed",
-  "refunded",
-];
 
 export default function KioskPage({
   params,
@@ -60,6 +54,10 @@ export default function KioskPage({
 
   const [activeJob, setActiveJob] = useState<KioskJob | null>(null);
   const [recentJobs, setRecentJobs] = useState<KioskJob[]>([]);
+  const [queuedJobs, setQueuedJobs] = useState<KioskJob[]>([]);
+  const readyJobsRef = useRef(0);
+  const activeJobIdRef = useRef<string | null>(null);
+  const completionCountdownRef = useRef(false);
 
   // Transient event from the customer's mobile session, arriving via
   // Supabase Realtime broadcast (WebSocket). Overrides the DB job for
@@ -86,7 +84,7 @@ export default function KioskPage({
     reason: string;
   } | null>(null);
 
-  // After a successful print, count down from 5s and then return to idle
+  // After a successful print, count down from 3s and refresh the display
   // so the QR reappears for the next customer. Only runs on print:completed
   // — payment_failed / print_failed stay on screen until a new session.
   const [returnCountdown, setReturnCountdown] = useState<number | null>(null);
@@ -94,11 +92,13 @@ export default function KioskPage({
   const clearReturnCountdown = useCallback(() => {
     if (countdownTimerRef.current) clearInterval(countdownTimerRef.current);
     countdownTimerRef.current = null;
+    completionCountdownRef.current = false;
     setReturnCountdown(null);
   }, []);
   const startReturnCountdown = useCallback(
     (seconds: number) => {
       clearReturnCountdown();
+      completionCountdownRef.current = true;
       setReturnCountdown(seconds);
       countdownTimerRef.current = setInterval(() => {
         setReturnCountdown((prev) => {
@@ -106,8 +106,8 @@ export default function KioskPage({
           if (prev <= 1) {
             if (countdownTimerRef.current) clearInterval(countdownTimerRef.current);
             countdownTimerRef.current = null;
-            // Time's up — return to idle so the QR reappears.
-            setActiveJob(null);
+            // Reload from the durable queue. The next paid job becomes active.
+            window.location.reload();
             return null;
           }
           return prev - 1;
@@ -139,32 +139,34 @@ export default function KioskPage({
       status: j.status,
       price_paise: j.price_paise,
       release_code: j.release_code,
-      file_name: extractFileName(j.file_path || j.file_name),
+      file_name: j.file_path || j.file_name ? extractFileName(j.file_path || j.file_name) : undefined,
+      display_name: j.display_name || "Customer",
       created_at: j.created_at,
       updated_at: j.updated_at,
     }));
 
-    // Prefer a live non-terminal job (that means work is in progress).
-    const nonTerminal = formattedJobs.find(
-      (j) => !TERMINAL_STATUSES.includes(j.status)
-    );
+    const ready = formattedJobs.filter((j) => ["dispatched", "awaiting_release", "released", "printing"].includes(j.status));
+    readyJobsRef.current = ready.length;
+    const nonTerminal = ready.find((j) => j.status === "printing") ?? ready[0];
+    if (!completionCountdownRef.current) activeJobIdRef.current = nonTerminal?.id ?? null;
+    setQueuedJobs(completionCountdownRef.current ? ready : ready.filter((j) => j.id !== nonTerminal?.id));
+    if (nonTerminal) setLiveActivity(null);
 
     setActiveJob((prev) => {
+      if (completionCountdownRef.current) return prev;
       // 1. Fresh non-terminal job takes over immediately.
       if (nonTerminal) return nonTerminal;
       // 2. No live work in the DB and we're already showing something:
       //    keep showing it. Upload:start will clear this when a new
       //    session begins.
       if (prev) return prev;
-      // 3. Nothing in flight, nothing showing → try to hydrate from the
-      //    newest terminal row (e.g. server restart mid-session) so the
-      //    operator sees "Print complete" instead of the QR.
-      return formattedJobs[0] ?? null;
+      // A fresh display with no paid work returns to the existing QR view.
+      return null;
     });
 
     // Recent jobs: up to 3 terminal completed jobs
     const completed = formattedJobs
-      .filter((j) => ["done", "printed", "released"].includes(j.status))
+      .filter((j) => ["done", "printed"].includes(j.status))
       .slice(0, 3);
     setRecentJobs(completed);
   }, []);
@@ -191,16 +193,10 @@ export default function KioskPage({
         if (shopData.printer_status) setPrinterStatus(shopData.printer_status);
 
         // 2. Fetch initial jobs for this shop
-        const supabase = createClient();
-        const { data: jobsData } = await supabase
-          .from("print_jobs")
-          .select("id, shop_id, status, price_paise, release_code, file_path, created_at, updated_at")
-          .eq("shop_id", shopId)
-          .order("created_at", { ascending: false })
-          .limit(10);
-
-        if (active && jobsData) {
-          updateJobStates(jobsData as DbJob[]);
+        const queueRes = await fetch(`/api/kiosk/${encodeURIComponent(shopId)}/active`, { cache: "no-store" });
+        if (active && queueRes.ok) {
+          const data = await queueRes.json();
+          updateJobStates([data.active, ...data.queue, ...data.recent].filter(Boolean) as DbJob[]);
         }
       } catch (err: unknown) {
         if (!active) return;
@@ -243,15 +239,24 @@ export default function KioskPage({
     const supabase = createClient();
 
     const fetchLatestJobs = async () => {
-      const { data } = await supabase
-        .from("print_jobs")
-        .select("id, shop_id, status, price_paise, release_code, file_path, created_at, updated_at")
-        .eq("shop_id", shopId)
-        .order("created_at", { ascending: false })
-        .limit(10);
-
-      if (data) {
-        updateJobStates(data as DbJob[]);
+      const res = await fetch(`/api/kiosk/${encodeURIComponent(shopId)}/active`, { cache: "no-store" });
+      if (res.ok) {
+        const data = await res.json();
+        const justPrinted = (data.recent as DbJob[]).find(
+          (job) => job.id === activeJobIdRef.current && job.status === "printed"
+        );
+        if (justPrinted && !completionCountdownRef.current) {
+          completionCountdownRef.current = true;
+          setActiveJob({
+            ...justPrinted,
+            release_code: null,
+            file_name: justPrinted.file_name || undefined,
+            display_name: justPrinted.display_name || "Customer",
+          });
+          setLiveActivity(null);
+          startReturnCountdown(3);
+        }
+        updateJobStates([data.active, ...data.queue, ...data.recent].filter(Boolean) as DbJob[]);
       }
     };
 
@@ -282,6 +287,7 @@ export default function KioskPage({
 
         switch (evt.type) {
           case "upload:start":
+            if (readyJobsRef.current > 0) break;
             // A new customer session begins here — this is the ONLY moment
             // we clear a sticky terminal state (Print complete / Payment
             // rejected / Print failed) so the kiosk resets for the new one.
@@ -297,6 +303,7 @@ export default function KioskPage({
             break;
 
           case "upload:progress":
+            if (readyJobsRef.current > 0) break;
             setLiveActivity((prev) =>
               prev && prev.kind === "uploading"
                 ? { ...prev, percent: evt.percent }
@@ -305,6 +312,7 @@ export default function KioskPage({
             break;
 
           case "upload:done":
+            if (readyJobsRef.current > 0) break;
             // Hold the "100% complete" state until checkout begins or the
             // job transitions. NO auto-expiry — user must not see the QR
             // reappear mid-flow.
@@ -317,6 +325,7 @@ export default function KioskPage({
             break;
 
           case "checkout:opened":
+            if (readyJobsRef.current > 0) break;
             setLiveActivity({
               kind: "checkout",
               fileName: evt.fileName,
@@ -333,6 +342,10 @@ export default function KioskPage({
           // ── Server-side events (broadcast from webhook / virtual ticker)
           // These arrive whether or not RLS lets anon see the DB row change.
           case "payment:success": {
+            if (readyJobsRef.current > 0) {
+              fetchLatestJobs();
+              break;
+            }
             const synth: KioskJob = {
               id: evt.jobId,
               shop_id: shopId,
@@ -371,6 +384,10 @@ export default function KioskPage({
           }
 
           case "print:started": {
+            if (readyJobsRef.current > 0) {
+              fetchLatestJobs();
+              break;
+            }
             setActiveJob((prev) =>
               prev
                 ? { ...prev, status: "printing", updated_at: evt.sentAt }
@@ -390,6 +407,10 @@ export default function KioskPage({
           }
 
           case "print:completed": {
+            if (activeJobIdRef.current && activeJobIdRef.current !== evt.jobId) {
+              fetchLatestJobs();
+              break;
+            }
             setActiveJob((prev) =>
               prev
                 ? { ...prev, status: "printed", updated_at: evt.sentAt }
@@ -409,7 +430,7 @@ export default function KioskPage({
             // Start the visible 5s "Returning to home in Xs" countdown.
             // Success is the ONLY state that auto-returns — failures stay
             // on screen until a new session.
-            startReturnCountdown(5);
+            startReturnCountdown(3);
             break;
           }
 
@@ -436,7 +457,7 @@ export default function KioskPage({
       .subscribe();
 
     // Fallback polling interval every 12 seconds
-    const interval = setInterval(fetchLatestJobs, 12000);
+    const interval = setInterval(fetchLatestJobs, 2000);
 
     return () => {
       supabase.removeChannel(channel);
@@ -565,6 +586,7 @@ export default function KioskPage({
             <KioskStatus
               activeJob={activeJob}
               recentJobs={recentJobs}
+              queuedJobs={queuedJobs}
               liveActivity={liveActivity}
               returnCountdown={returnCountdown}
             />
@@ -580,6 +602,7 @@ export default function KioskPage({
             <KioskStatus
               activeJob={activeJob}
               recentJobs={recentJobs}
+              queuedJobs={queuedJobs}
               liveActivity={liveActivity}
               returnCountdown={returnCountdown}
               centered

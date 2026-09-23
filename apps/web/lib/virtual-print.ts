@@ -34,10 +34,11 @@ async function loadJob(jobId: string) {
 
 async function setStatus(jobId: string, status: string) {
   const supabase = getSupabase();
-  await supabase
+  const { error } = await supabase
     .from("print_jobs")
     .update({ status, updated_at: new Date().toISOString() })
     .eq("id", jobId);
+  if (error) throw error;
 }
 
 /**
@@ -52,6 +53,21 @@ export function advanceVirtualJob(jobId: string): Promise<void> {
       if (!initial) return;
       const shopId = initial.shop_id;
       const fileName = initial.file_path?.split("/").pop()?.replace(/^\d+_/, "");
+
+      // Demo shops use the same one-at-a-time ordering as a physical node.
+      // Wait on the persisted shop queue, not on a browser or kiosk session.
+      while (true) {
+        if (await isTerminal(jobId)) return;
+        const { data: ready } = await getSupabase().from("print_jobs")
+          .select("id, status")
+          .eq("shop_id", shopId)
+          .in("status", ["dispatched", "awaiting_release", "released", "printing"])
+          .order("updated_at", { ascending: true })
+          .limit(50);
+        const active = ready?.find((job) => job.status === "printing") ?? ready?.[0];
+        if (active?.id === jobId) break;
+        await sleep(1000);
+      }
 
       await sleep(DOWNLOAD_MS);
       if (await isTerminal(jobId)) return;

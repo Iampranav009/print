@@ -117,6 +117,10 @@ export async function POST(req: NextRequest) {
   const authed = await createServerSupabase();
   const { data: { user } } = await authed.auth.getUser();
   const userId = user?.id ?? null;
+  const rawName = body.displayName ?? user?.user_metadata?.full_name ?? user?.user_metadata?.name;
+  const displayName = typeof rawName === "string"
+    ? rawName.trim().split(/\s+/)[0].slice(0, 32) || null
+    : null;
 
   const supabase = getSupabase();
 
@@ -202,11 +206,10 @@ export async function POST(req: NextRequest) {
 
   const releaseCode = generateReleaseCode();
 
-  const { data: job, error: jobErr } = await supabase
-    .from("print_jobs")
-    .insert({
+  const jobPayload = {
       shop_id: shopId,
       user_id: userId,
+      display_name: displayName,
       file_path: printPath,
       file_mime: mime,
       pages: breakdown.selected_pages,
@@ -228,9 +231,16 @@ export async function POST(req: NextRequest) {
       price_paise: breakdown.price_paise,
       status: "priced",
       release_code: releaseCode,
-    })
-    .select("id")
-    .single();
+    };
+  let { data: job, error: jobErr } = await supabase
+    .from("print_jobs").insert(jobPayload).select("id").single();
+  if (["42703", "PGRST204"].includes(jobErr?.code ?? "")) {
+    const { display_name: _notYetMigrated, ...legacyPayload } = jobPayload;
+    void _notYetMigrated;
+    const fallback = await supabase.from("print_jobs").insert(legacyPayload).select("id").single();
+    job = fallback.data;
+    jobErr = fallback.error;
+  }
 
   if (jobErr || !job) {
     if (printPath !== filePath) await supabase.storage.from("documents").remove([printPath!]);

@@ -48,11 +48,14 @@ interface Job {
   razorpay_order_id: string | null;
   created_at: string;
   updated_at: string;
+  queueAhead: number;
+  estimatedWaitMinutes: number;
+  refundStatus: string | null;
 }
 
 // ── Constants ──────────────────────────────────────────────────────────────────
 
-const TERMINAL: JobStatus[] = ["done", "printed", "payment_failed", "print_failed", "cancelled"];
+const TERMINAL: JobStatus[] = ["done", "printed", "payment_failed", "cancelled", "refunded"];
 const POLL_INTERVAL = 4000;
 const SLOW_THRESHOLD_MS = 3 * 60 * 1000;
 
@@ -89,6 +92,12 @@ function getStatusConfig(status: JobStatus) {
       };
     case "dispatched":
     case "awaiting_release":
+      return {
+        icon: <Clock className="w-10 h-10 text-indigo-600" />,
+        headline: "Your print is in line",
+        sub: "Payment confirmed. We’ll update you when printing begins.",
+        color: "blue",
+      };
     case "printing":
       return {
         icon: <Printer className="w-10 h-10 text-blue-600 animate-pulse" />,
@@ -120,8 +129,15 @@ function getStatusConfig(status: JobStatus) {
       return {
         icon: <XCircle className="w-10 h-10 text-red-500" />,
         headline: "Print failed",
-        sub: "Something went wrong at the printer. Please contact the shop counter.",
+        sub: "Something went wrong at the printer. We’re checking your refund.",
         color: "red",
+      };
+    case "refunded":
+      return {
+        icon: <CheckCircle2 className="w-10 h-10 text-emerald-600" />,
+        headline: "Refund processed",
+        sub: "Razorpay confirmed your refund. Your bank may take time to show the credit.",
+        color: "emerald",
       };
     case "cancelled":
       return {
@@ -286,6 +302,19 @@ export default function JobPage({
               {cfg.sub}
             </p>
           )}
+          {["dispatched", "awaiting_release"].includes(job!.status) && job!.queueAhead > 0 && (
+            <div className="mt-5 rounded-2xl bg-indigo-50 px-4 py-3 text-sm text-indigo-900" role="status" aria-live="polite">
+              <p className="font-semibold">{job!.queueAhead} {job!.queueAhead === 1 ? "print" : "prints"} ahead of yours</p>
+              <p className="mt-1">Estimated wait: about {job!.estimatedWaitMinutes} {job!.estimatedWaitMinutes === 1 ? "minute" : "minutes"}.</p>
+            </div>
+          )}
+          {job!.status === "print_failed" && (
+            <div className="mt-5 rounded-2xl bg-amber-50 px-4 py-3 text-sm text-amber-900" role="status" aria-live="polite">
+              {job!.refundStatus === "pending" ? "Refund requested with Razorpay. We’re checking its progress." :
+                job!.refundStatus === "failed" ? "The refund could not be processed automatically. Please contact the shop for help." :
+                "We’re checking the refund request. This screen will update automatically."}
+            </div>
+          )}
 
           {/* Print failure reason */}
           {job!.status === "print_failed" && job!.failure_reason && (
@@ -311,7 +340,6 @@ export default function JobPage({
 
         {/* Order details */}
         <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl overflow-hidden shadow-sm">
-          <Row label="Order" value={`#${job!.id.slice(0, 8).toUpperCase()}`} />
           <Row label="Pages" value={`${job!.pages} × ${job!.copies} cop${job!.copies !== 1 ? "ies" : "y"}`} />
           <Row label="Type" value={job!.color ? "Colour" : "Black & white"} />
           <Row label="Paper" value={job!.paper} />
@@ -332,19 +360,7 @@ export default function JobPage({
         )}
         {job!.status === "print_failed" && (
           <div className="text-center text-sm text-zinc-500">
-            Please visit the counter
-            {job!.shop_id && (
-              <>
-                {" "}or{" "}
-                <a
-                  href={`/s/${job!.shop_id}`}
-                  className="underline underline-offset-2 font-medium text-zinc-700 dark:text-zinc-300"
-                >
-                  try a new order
-                </a>
-              </>
-            )}
-            .
+            Need help? Please speak to the shop while we check your refund.
           </div>
         )}
 

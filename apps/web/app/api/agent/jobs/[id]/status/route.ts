@@ -1,6 +1,7 @@
 import { getSupabase } from "@/lib/supabase";
 import { resolveAgentToken } from "@/lib/agent-auth";
 import { createRefund } from "@/lib/razorpay";
+import { broadcastToKiosk } from "@/lib/kiosk-broadcast";
 import { NextRequest } from "next/server";
 import type { JobStatus } from "@printbuddy/shared";
 
@@ -29,12 +30,15 @@ export async function POST(
 
   const { data: job } = await supabase
     .from("print_jobs")
-    .select("id, status, shop_id, razorpay_order_id, price_paise")
+    .select("id, status, shop_id, razorpay_order_id, price_paise, file_path")
     .eq("id", id)
     .single();
 
   if (!job || job.shop_id !== agent.shopId) {
     return Response.json({ error: "Job not found" }, { status: 404 });
+  }
+  if (job.status === newStatus) {
+    return Response.json({ ok: true, alreadyRecorded: true });
   }
 
   const allowed = VALID_TRANSITIONS[job.status as JobStatus];
@@ -51,7 +55,24 @@ export async function POST(
   };
   if (failureReason) updateData.failure_reason = failureReason;
 
-  await supabase.from("print_jobs").update(updateData).eq("id", id);
+  const { data: changed, error: changeError } = await supabase
+    .from("print_jobs")
+    .update(updateData)
+    .eq("id", id)
+    .eq("status", job.status)
+    .select("id")
+    .maybeSingle();
+  if (changeError) return Response.json({ error: "Status update failed" }, { status: 503 });
+  if (!changed) return Response.json({ error: "Job status changed; retry safely" }, { status: 409 });
+
+  const fileName = job.file_path?.split("/").pop()?.replace(/^\d+_/, "");
+  if (newStatus === "printing") {
+    await broadcastToKiosk(job.shop_id, { type: "print:started", jobId: id, fileName, sentAt: new Date().toISOString() });
+  } else if (newStatus === "printed") {
+    await broadcastToKiosk(job.shop_id, { type: "print:completed", jobId: id, fileName, sentAt: new Date().toISOString() });
+  } else if (newStatus === "print_failed") {
+    await broadcastToKiosk(job.shop_id, { type: "print:failed", jobId: id, reason: failureReason, sentAt: new Date().toISOString() });
+  }
 
   if (newStatus === "print_failed" && job.razorpay_order_id) {
     try {
@@ -65,27 +86,29 @@ export async function POST(
       if (payment?.razorpay_payment_id) {
         const refund = await createRefund(
           payment.razorpay_payment_id,
-          job.price_paise
+          job.price_paise,
+          job.id
         );
 
-        await supabase
+        const { error: refundSaveError } = await supabase
           .from("payments")
           .update({
             refund_id: refund.id,
-            refund_status: "initiated",
+            refund_status: refund.status,
           })
           .eq("razorpay_order_id", job.razorpay_order_id);
+        if (refundSaveError) throw refundSaveError;
 
-        await supabase
-          .from("print_jobs")
-          .update({
-            status: "refunded",
-            updated_at: new Date().toISOString(),
-          })
-          .eq("id", id);
+        if (refund.status === "processed") {
+          await supabase.from("payments").update({ status: "refunded" }).eq("razorpay_order_id", job.razorpay_order_id);
+          await supabase.from("print_jobs").update({ status: "refunded" }).eq("id", id).eq("status", "print_failed");
+        }
+      } else {
+        console.error("[refund] Captured payment not found for failed job", { jobId: id });
       }
-    } catch {
-      // Refund failed — logged but doesn't block the status update
+    } catch (error) {
+      console.error("[refund] Could not initiate refund", { jobId: id, error });
+      await supabase.from("payments").update({ refund_status: "failed" }).eq("razorpay_order_id", job.razorpay_order_id);
     }
   }
 

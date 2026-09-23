@@ -11,6 +11,17 @@ export async function GET(req: NextRequest) {
 
   const supabase = getSupabase();
 
+  // A physical printer has one active slot. Other paid jobs remain durable
+  // in the database and become eligible when this job finishes.
+  const { data: printing, error: printingError } = await supabase
+    .from("print_jobs")
+    .select("id")
+    .eq("shop_id", agent.shopId)
+    .eq("status", "printing")
+    .limit(1)
+    .maybeSingle();
+  if (printingError) return Response.json({ error: "Queue unavailable" }, { status: 503 });
+
   const [{ data: job }, { data: announcements }, { data: printer, error: printerError }] = await Promise.all([
     supabase
       .from("print_jobs")
@@ -19,7 +30,7 @@ export async function GET(req: NextRequest) {
       )
       .eq("shop_id", agent.shopId)
       .in("status", ["dispatched", "released", "awaiting_release"])
-      .order("created_at", { ascending: true })
+      .order("updated_at", { ascending: true })
       .limit(1)
       .maybeSingle(),
 
@@ -37,7 +48,7 @@ export async function GET(req: NextRequest) {
   ]);
   if (printerError) return Response.json({ error: "Printer routing unavailable" }, { status: 503 });
 
-  if (!job) {
+  if (printing || !job) {
     return Response.json({
       job: null,
       announcements: (announcements ?? []).map((a) => ({
