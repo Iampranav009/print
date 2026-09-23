@@ -10,9 +10,8 @@ import {
   XCircle,
   FileCheck2,
 } from "lucide-react";
-import { StatusPill, type JobStatus } from "./StatusPill";
+import { type JobStatus } from "./StatusPill";
 import { DocumentUploadIcon } from "./DocumentUploadIcon";
-import { formatRelativeTime } from "@/lib/date-utils";
 
 export interface KioskJob {
   id: string;
@@ -123,38 +122,10 @@ function HeroFrame({
   );
 }
 
-function RecentStrip({ recentJobs }: { recentJobs: KioskJob[] }) {
-  if (recentJobs.length === 0) return null;
-  return (
-    <div className="mt-8 pt-6 border-t border-zinc-100">
-      <p className="text-xs font-semibold text-zinc-400 uppercase tracking-wider mb-3">
-        Recent Activity
-      </p>
-      <div className="flex flex-wrap gap-2.5">
-        {recentJobs.slice(0, 3).map((j) => (
-          <div
-            key={j.id}
-            className="flex items-center gap-2.5 bg-zinc-50 border border-zinc-200 rounded-xl px-3.5 py-2 text-sm"
-          >
-            <span className="font-medium text-zinc-700 truncate max-w-[140px]">
-              {j.display_name || "Customer"}
-            </span>
-            <StatusPill status={j.status} />
-            <span className="text-xs text-zinc-500">
-              {formatRelativeTime(j.created_at)}
-            </span>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
 // ── Main component ──────────────────────────────────────────────────────────
 
 export function KioskStatus({
   activeJob,
-  recentJobs,
   queuedJobs = [],
   liveActivity,
   centered,
@@ -163,7 +134,7 @@ export function KioskStatus({
   // ── Live upload / checkout (before the DB job exists or catches up) ──────
   if (liveActivity?.kind === "uploading") {
     return (
-      <div className="flex flex-col h-full w-full">
+      <div className="flex h-full w-full">
         <div
           className={`flex-1 flex flex-col ${
             centered ? "items-center text-center" : "items-start"
@@ -208,17 +179,13 @@ export function KioskStatus({
             </div>
           </div>
         </div>
-
-        <div className="px-6 lg:px-12 pb-8">
-          <RecentStrip recentJobs={recentJobs} />
-        </div>
       </div>
     );
   }
 
   if (liveActivity?.kind === "checkout") {
     return (
-      <div className="flex flex-col h-full w-full">
+      <div className="flex h-full w-full">
         <HeroFrame
           tone="warn"
           icon={<CreditCard className="w-14 h-14" />}
@@ -235,9 +202,6 @@ export function KioskStatus({
             {liveActivity.fileName}
           </p>
         </HeroFrame>
-        <div className="px-6 lg:px-12 pb-8">
-          <RecentStrip recentJobs={recentJobs} />
-        </div>
       </div>
     );
   }
@@ -245,7 +209,7 @@ export function KioskStatus({
   // ── Idle ────────────────────────────────────────────────────────────────
   if (!activeJob) {
     return (
-      <div className="flex flex-col h-full w-full">
+      <div className="flex h-full w-full">
         <HeroFrame
           tone="success"
           icon={<Printer className="w-14 h-14" />}
@@ -263,9 +227,6 @@ export function KioskStatus({
             </span>
           </div>
         </HeroFrame>
-        <div className="px-6 lg:px-12 pb-8">
-          <RecentStrip recentJobs={recentJobs} />
-        </div>
       </div>
     );
   }
@@ -350,7 +311,7 @@ export function KioskStatus({
     isPrinted && typeof returnCountdown === "number" && returnCountdown > 0;
 
   return (
-    <div className="flex flex-col h-full w-full">
+    <div className="flex h-full w-full">
       <HeroFrame tone={tone} icon={iconNode} headline={headline} sub={sub} centered={centered}>
         {queuedJobs.length > 0 && (
           <div className="mt-7 w-full max-w-xl rounded-2xl border border-indigo-100 bg-indigo-50/70 px-5 py-4 text-left" role="status" aria-live="polite">
@@ -419,9 +380,6 @@ export function KioskStatus({
           </div>
         )}
       </HeroFrame>
-      <div className="px-6 lg:px-12 pb-8">
-        <RecentStrip recentJobs={recentJobs} />
-      </div>
     </div>
   );
 }

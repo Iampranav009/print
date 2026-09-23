@@ -44,6 +44,8 @@ interface PrinterConfigBody {
   sound_enabled?: boolean;
   sound_language?: string;
   sound_volume?: number;
+  cash_payments_enabled?: boolean;
+  default_payment_method?: "online" | "cash";
 }
 
 export async function GET(_req: NextRequest) {
@@ -56,7 +58,7 @@ export async function GET(_req: NextRequest) {
   const [{ data: shop }, { data: printer }, { data: agents }] = await Promise.all([
     supabase
       .from("shops")
-      .select("id, name, virtual_mode, discovered_printers, discovered_at, sound_enabled, sound_language, sound_volume")
+      .select("id, name, virtual_mode, discovered_printers, discovered_at, sound_enabled, sound_language, sound_volume, cash_payments_enabled, default_payment_method")
       .eq("id", shopId)
       .single(),
     supabase
@@ -108,6 +110,8 @@ export async function GET(_req: NextRequest) {
       id: shop?.id,
       name: shop?.name,
       virtual_mode: shop?.virtual_mode ?? false,
+      cash_payments_enabled: shop?.cash_payments_enabled ?? false,
+      default_payment_method: shop?.default_payment_method ?? "online",
     },
     soundSettings: {
       enabled: shop?.sound_enabled ?? false,
@@ -165,6 +169,16 @@ export async function PUT(req: NextRequest) {
     const vol = Math.round(body.sound_volume);
     if (vol >= 0 && vol <= 100) shopPatch.sound_volume = vol;
   }
+  if (body.cash_payments_enabled !== undefined) shopPatch.cash_payments_enabled = body.cash_payments_enabled;
+  if (body.default_payment_method !== undefined) {
+    if (!['online', 'cash'].includes(body.default_payment_method)) {
+      return Response.json({ error: "Invalid default payment method" }, { status: 400 });
+    }
+    if (body.default_payment_method === "cash" && body.cash_payments_enabled === false) {
+      return Response.json({ error: "Enable cash payments before making cash the default." }, { status: 400 });
+    }
+    shopPatch.default_payment_method = body.default_payment_method;
+  }
 
   if (Object.keys(shopPatch).length > 0) {
     const { error: shopErr } = await supabase
@@ -182,7 +196,7 @@ export async function PUT(req: NextRequest) {
 
   // Early return if only sound settings were updated (no printer row changes needed).
   if (body.mode === undefined && Object.keys(body).every(
-    (k) => ["sound_enabled", "sound_language", "sound_volume"].includes(k)
+    (k) => ["sound_enabled", "sound_language", "sound_volume", "cash_payments_enabled", "default_payment_method"].includes(k)
   )) {
     return Response.json({ ok: true });
   }

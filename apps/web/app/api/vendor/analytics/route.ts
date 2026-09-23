@@ -24,6 +24,7 @@ interface JobRow {
   color: boolean;
   paper: string;
   file_path: string | null;
+  payment_method: "online" | "cash";
 }
 
 const PAID_STATUSES = [
@@ -89,7 +90,7 @@ export async function GET(req: NextRequest) {
 
   const { data: rows, error } = await supabase
     .from("print_jobs")
-    .select("id, created_at, status, price_paise, pages, copies, color, paper, file_path")
+    .select("id, created_at, status, price_paise, pages, copies, color, paper, file_path, payment_method")
     .eq("shop_id", shop.id)
     .in("status", PAID_STATUSES)
     .gte("created_at", since)
@@ -107,6 +108,8 @@ export async function GET(req: NextRequest) {
     color_revenue_paise: 0,
     bw_revenue_paise: 0,
     total_jobs: jobs.length,
+    online_revenue_paise: 0,
+    cash_revenue_paise: 0,
   };
 
   const bucketMap = new Map<
@@ -125,6 +128,8 @@ export async function GET(req: NextRequest) {
       summary.bw_prints += sheets;
       summary.bw_revenue_paise += j.price_paise;
     }
+    if (j.payment_method === "cash") summary.cash_revenue_paise += j.price_paise;
+    else summary.online_revenue_paise += j.price_paise;
 
     const key = bucketKey(period, j.created_at);
     const b = bucketMap.get(key) ?? {
@@ -153,6 +158,7 @@ export async function GET(req: NextRequest) {
     color: j.color,
     paper: j.paper,
     file_name: j.file_path?.split("/").pop() ?? "document",
+    payment_method: j.payment_method ?? "online",
   }));
 
   return Response.json({ period, since, summary, series, recent });

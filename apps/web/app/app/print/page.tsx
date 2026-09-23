@@ -27,12 +27,14 @@ import {
   Check,
   QrCode,
   ChevronRight,
+  Banknote,
+  CreditCard,
 } from "lucide-react";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 interface ShopData {
-  shop: { id: string; name: string; location: string | null; virtual_mode?: boolean };
+  shop: { id: string; name: string; location: string | null; virtual_mode?: boolean; cash_payments_enabled?: boolean; default_payment_method?: "online" | "cash" };
   capabilities: PrinterCapabilities | null;
 }
 
@@ -87,7 +89,7 @@ function formatPaise(p: number) {
 function defaultConfig(caps: PrinterCapabilities | null): Config {
   return {
     copies: 1,
-    color: !!(caps?.color),
+    color: false,
     orientation: "portrait",
     paper: caps?.media?.[0] ?? "A4",
     duplex: false,
@@ -220,7 +222,13 @@ function OptionPair<T extends string>({
   disabled,
 }: {
   label: string;
-  options: Array<{ value: T; label: string; icon: React.ReactNode }>;
+  options: Array<{
+    value: T;
+    label: string;
+    icon: React.ReactNode;
+    disabled?: boolean;
+    disabledReason?: string;
+  }>;
   value: T;
   onChange: (v: T) => void;
   disabled?: boolean;
@@ -231,18 +239,20 @@ function OptionPair<T extends string>({
       <div className="grid grid-cols-2 gap-2.5">
         {options.map((opt) => {
           const active = value === opt.value;
+          const isOptDisabled = disabled || !!opt.disabled;
           return (
             <button
               key={opt.value}
               type="button"
-              onClick={() => !disabled && onChange(opt.value)}
-              disabled={disabled}
+              onClick={() => !isOptDisabled && onChange(opt.value)}
+              disabled={isOptDisabled}
               style={{ touchAction: "manipulation" }}
+              title={opt.disabledReason}
               className={`flex items-center gap-2.5 px-3 py-3 rounded-xl border-2 text-sm font-semibold transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 ${
                 active
                   ? "border-blue-700 bg-white text-gray-900"
                   : "border-gray-200 bg-gray-50 text-gray-700 hover:border-gray-300"
-              } ${disabled ? "opacity-40 cursor-not-allowed" : "cursor-pointer"}`}
+              } ${isOptDisabled ? "opacity-40 cursor-not-allowed" : "cursor-pointer"}`}
               aria-pressed={active}
             >
               <span className="text-base leading-none">{opt.icon}</span>
@@ -370,7 +380,7 @@ function PrintContent() {
 
   const [paying, setPaying] = useState(false);
   const [payError, setPayError] = useState<string | null>(null);
-  const [displayName, setDisplayName] = useState("");
+  const [paymentMethod, setPaymentMethod] = useState<"online" | "cash">("online");
 
   // Live broadcast channel to the matching kiosk screen. One session per
   // page load; regenerated when the user picks a fresh file so old kiosk
@@ -416,6 +426,7 @@ function PrintContent() {
         const data: ShopData = await res.json();
         if (!active) return;
         setShopData(data);
+        setPaymentMethod(data.shop.cash_payments_enabled && data.shop.default_payment_method === "cash" ? "cash" : "online");
         if (data.capabilities) setConfig(defaultConfig(data.capabilities));
       } catch (err: unknown) {
         if (!active) return;
@@ -636,9 +647,9 @@ function PrintContent() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           shopId: shopId ?? shopData?.shop.id ?? "virtual",
-          displayName: displayName.trim() || undefined,
           filePath: fileState.path,
           fileName: fileState.file.name,
+          paymentMethod,
           options: {
             copies: config.copies,
             color: config.color,
@@ -665,6 +676,11 @@ function PrintContent() {
         currency: string;
         keyId: string;
       };
+
+      if (paymentMethod === "cash") {
+        router.push(`/app/history/${jobId}`);
+        return;
+      }
 
       const win = window as unknown as RazorpayWindow;
       if (typeof win.Razorpay !== "function") throw new Error("Payment not available");
@@ -706,7 +722,7 @@ function PrintContent() {
     } finally {
       setPaying(false);
     }
-  }, [fileState, config, rawPriceResult, shopId, shopData, router, broadcast, displayName]);
+  }, [fileState, config, rawPriceResult, shopId, shopData, router, broadcast, paymentMethod]);
 
   const caps = shopData?.capabilities ?? DEFAULT_CAPABILITIES;
   const hasFile = fileState !== null;
@@ -752,7 +768,7 @@ function PrintContent() {
       )}
 
       {/* Scrollable body */}
-      <div className="flex-1 overflow-y-auto pb-36">
+      <div className={`flex-1 overflow-y-auto ${shopData?.shop.cash_payments_enabled ? "pb-52" : "pb-36"}`}>
         {/* Upload zone / File preview */}
         <div className="px-4 pt-4">
           {!shopId ? (
@@ -901,10 +917,15 @@ function PrintContent() {
               label="Choose print color"
               value={config.color ? "color" : "bw"}
               onChange={(v) => setConfig((c) => c ? { ...c, color: v === "color" } : c)}
-              disabled={caps ? !caps.color : false}
               options={[
-                { value: "color", label: "Coloured", icon: "🎨" },
                 { value: "bw", label: "B & W", icon: "⚫" },
+                {
+                  value: "color",
+                  label: "Coloured",
+                  icon: "🎨",
+                  disabled: caps ? !caps.color : false,
+                  disabledReason: caps && !caps.color ? "This printer only supports Black & White" : undefined,
+                },
               ]}
             />
 
@@ -1007,6 +1028,28 @@ function PrintContent() {
           paddingBottom: "max(16px, env(safe-area-inset-bottom))",
         }}
       >
+        {shopId && shopData?.shop.cash_payments_enabled && (
+          <div className="grid grid-cols-2 gap-2 mb-3" role="radiogroup" aria-label="Payment method">
+            <button
+              type="button"
+              role="radio"
+              aria-checked={paymentMethod === "online"}
+              onClick={() => setPaymentMethod("online")}
+              className={`min-h-10 rounded-xl border px-3 text-xs font-semibold flex items-center justify-center gap-2 transition-colors ${paymentMethod === "online" ? "border-blue-500 bg-blue-50 text-blue-700" : "border-gray-200 text-gray-600"}`}
+            >
+              <CreditCard className="w-4 h-4" /> Online
+            </button>
+            <button
+              type="button"
+              role="radio"
+              aria-checked={paymentMethod === "cash"}
+              onClick={() => setPaymentMethod("cash")}
+              className={`min-h-10 rounded-xl border px-3 text-xs font-semibold flex items-center justify-center gap-2 transition-colors ${paymentMethod === "cash" ? "border-emerald-500 bg-emerald-50 text-emerald-700" : "border-gray-200 text-gray-600"}`}
+            >
+              <Banknote className="w-4 h-4" /> Cash at counter
+            </button>
+          </div>
+        )}
         {/* Price */}
         <div className="flex items-baseline justify-between mb-3">
           <div>
@@ -1026,16 +1069,6 @@ function PrintContent() {
 
         <div>
           {/* Scan Kiosk / Pay — single full-width button */}
-          {shopId && (
-            <div className="mb-3">
-              <label htmlFor="print-display-name" className="block text-xs font-semibold text-gray-700 mb-1.5">Name for the print screen</label>
-              <input id="print-display-name" type="text" maxLength={32} autoComplete="given-name"
-                value={displayName} onChange={(event) => setDisplayName(event.target.value)}
-                placeholder="Your first name"
-                className="w-full min-h-[48px] rounded-xl border border-gray-200 bg-white px-3.5 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500" />
-              <p className="text-[11px] text-gray-500 mt-1">Only this name appears on the shared screen.</p>
-            </div>
-          )}
           {!shopId ? (
             <button
               type="button"
@@ -1055,7 +1088,7 @@ function PrintContent() {
               className="w-full min-h-[52px] rounded-2xl bg-green-500 hover:bg-green-600 active:bg-green-700 text-white font-semibold text-base flex items-center justify-center gap-2 transition-colors disabled:opacity-40 disabled:cursor-not-allowed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-green-500 shadow-sm"
             >
               {paying ? <Loader2 className="w-5 h-5 animate-spin" /> : null}
-              {paying ? "Processing…" : "Pay & Print"}
+              {paying ? "Processing…" : paymentMethod === "cash" ? "Request cash payment" : "Pay online & print"}
             </button>
           )}
         </div>

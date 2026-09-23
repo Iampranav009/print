@@ -11,7 +11,7 @@ export async function GET(
 
   const { data: job, error } = await supabase
     .from("print_jobs")
-    .select("id, shop_id, status, price_paise, pages, copies, color, paper, duplex, orientation, release_code, failure_reason, razorpay_order_id, created_at, updated_at")
+    .select("id, shop_id, status, price_paise, pages, copies, color, paper, duplex, orientation, release_code, failure_reason, razorpay_order_id, payment_method, created_at, updated_at")
     .eq("id", id)
     .single();
 

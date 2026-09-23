@@ -17,7 +17,6 @@ export default async function ProfilePage() {
   } = await supabase.auth.getUser();
 
   let totalPrints = 0;
-  let totalSpentPaise = 0;
   let favoriteShop = "—";
 
   if (user) {
@@ -40,10 +39,6 @@ export default async function ProfilePage() {
         ["paid", "awaiting_release", "released", "printed", "done"].includes(j.status)
       );
       totalPrints = successfulJobs.length;
-      totalSpentPaise = successfulJobs.reduce(
-        (sum, j) => sum + (j.price_paise || 0),
-        0
-      );
 
       // Compute favorite shop
       const shopCounts: Record<string, { count: number; name: string }> = {};
@@ -75,6 +70,7 @@ export default async function ProfilePage() {
       user?.email?.split("@")[0] ||
       "PrintBuddy User",
     avatarUrl: user?.user_metadata?.avatar_url || user?.user_metadata?.picture,
+    contactPhone: user?.user_metadata?.contact_phone || user?.phone,
   };
 
   return (
@@ -82,7 +78,6 @@ export default async function ProfilePage() {
       user={userData}
       stats={{
         totalPrints,
-        totalSpentPaise,
         favoriteShop,
       }}
     />

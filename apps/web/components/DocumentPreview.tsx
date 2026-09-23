@@ -14,7 +14,8 @@ type PdfDocProxy = {
   destroy(): void;
 };
 type PdfPageProxy = {
-  getViewport(opts: { scale: number }): { width: number; height: number };
+  rotate?: number;
+  getViewport(opts: { scale: number; rotation?: number }): { width: number; height: number };
   render(opts: { canvasContext: CanvasRenderingContext2D; viewport: unknown }): {
     promise: Promise<void>;
     cancel(): void;
@@ -148,6 +149,10 @@ export function DocumentPreview({
     return out.filter((_,index)=>selected.has(index));
   }, [pageCounts, pageRange]);
 
+  const useNUp = numberUp > 1;
+  const nUpCols = numberUp === 9 ? 3 : 2;
+  const nUpRows = Math.ceil(numberUp / nUpCols);
+
   // Pre-render current page + enough neighbours to populate n-up slots.
   useEffect(() => {
     if (pages.length === 0) return;
@@ -159,25 +164,76 @@ export function DocumentPreview({
 
     (async () => {
       for (const i of targets) {
-        const key = `${i}`;
+        const key = `${i}_${orientation}_${numberUp}_${paperSize}`;
         if (renderedPages[key]) continue;
 
         const { fileIndex, pageInFile } = pages[i];
         const file = files[fileIndex];
         const doc = pdfDocs[fileIndex];
 
+        const [pW, pH] = PAPER_DIMS[paperSize] ?? PAPER_DIMS.A4;
+        const sheetW = orientation === "landscape" ? pH : pW;
+        const sheetH = orientation === "landscape" ? pW : pH;
+        const cols = useNUp ? nUpCols : 1;
+        const rows = useNUp ? nUpRows : 1;
+        const slotW = sheetW / cols;
+        const slotH = sheetH / rows;
+        const isSlotLandscape = slotW > slotH;
+
         if (!doc) {
-          const url = URL.createObjectURL(file.file);
-          if (!cancelled) setRenderedPages((prev) => ({ ...prev, [key]: url }));
+          try {
+            const img = new Image();
+            const rawUrl = URL.createObjectURL(file.file);
+            img.src = rawUrl;
+            await new Promise((res) => {
+              img.onload = () => res(null);
+              img.onerror = () => res(null);
+            });
+            const imgW = img.naturalWidth || 800;
+            const imgH = img.naturalHeight || 600;
+            const isImgLandscape = imgW > imgH;
+            const shouldRotate = isSlotLandscape !== isImgLandscape;
+
+            if (shouldRotate) {
+              const canvas = document.createElement("canvas");
+              canvas.width = imgH;
+              canvas.height = imgW;
+              const ctx = canvas.getContext("2d");
+              if (ctx) {
+                ctx.translate(0, imgW);
+                ctx.rotate(-Math.PI / 2);
+                ctx.drawImage(img, 0, 0);
+                const dataUrl = canvas.toDataURL("image/jpeg", 0.85);
+                if (!cancelled) {
+                  setPageSizes((prev) => ({ ...prev, [key]: [canvas.width, canvas.height] }));
+                  setRenderedPages((prev) => ({ ...prev, [key]: dataUrl }));
+                }
+              }
+            } else {
+              if (!cancelled) {
+                setPageSizes((prev) => ({ ...prev, [key]: [imgW, imgH] }));
+                setRenderedPages((prev) => ({ ...prev, [key]: rawUrl }));
+              }
+            }
+          } catch (err) {
+            console.error("[DocumentPreview] render image failed", err);
+          }
           continue;
         }
 
         try {
           const page = await doc.getPage(pageInFile);
           const baseViewport = page.getViewport({ scale: 1 });
-          setPageSizes(prev => ({...prev, [key]: [baseViewport.width, baseViewport.height]}));
-          const scale = Math.min(2, 800 / Math.max(baseViewport.width, baseViewport.height));
-          const viewport = page.getViewport({ scale });
+          const isPageLandscape = baseViewport.width > baseViewport.height;
+          const shouldRotate = isSlotLandscape !== isPageLandscape;
+
+          const baseRotation = (page.rotate || 0);
+          const rotation = (baseRotation + (shouldRotate ? 270 : 0)) % 360;
+          const rotatedViewport = page.getViewport({ scale: 1, rotation });
+          setPageSizes(prev => ({ ...prev, [key]: [rotatedViewport.width, rotatedViewport.height] }));
+
+          const scale = Math.min(2, 800 / Math.max(rotatedViewport.width, rotatedViewport.height));
+          const viewport = page.getViewport({ scale, rotation });
 
           const canvas = document.createElement("canvas");
           canvas.width = Math.ceil(viewport.width);
@@ -198,7 +254,7 @@ export function DocumentPreview({
 
     return () => { cancelled = true; };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [current, pages, pdfDocs, numberUp, renderedPages]);
+  }, [current, pages, pdfDocs, numberUp, orientation, paperSize, renderedPages]);
 
   const startX = useRef<number | null>(null);
   const onTouchStart = (e: React.TouchEvent) => { startX.current = e.touches[0].clientX; };
@@ -214,14 +270,6 @@ export function DocumentPreview({
 
   const prev = () => setCurrent((c) => Math.max(0, c - numberUp));
   const next = () => setCurrent((c) => Math.min(Math.floor((pages.length - 1) / numberUp) * numberUp, c + numberUp));
-
-  // ── Layout decisions ─────────────────────────────────────────────────────────
-
-  const useNUp = numberUp > 1;
-  // N-up always shows a landscape sheet with pages tiled inside.
-  // 2-up: 2 columns × 1 row  |  4-up: 2 columns × 2 rows
-  const nUpCols = numberUp === 9 ? 3 : 2;
-  const nUpRows = Math.ceil(numberUp / nUpCols);
 
   // Container aspect ratio: n-up always landscape; single page follows paper+orientation.
   const containerAspect = paperAspect(paperSize, orientation);
@@ -260,7 +308,8 @@ export function DocumentPreview({
 
   const currentPage = pages[Math.min(current, pages.length - 1)];
   const currentFile = files[currentPage.fileIndex];
-  const currentUrl = renderedPages[`${current}`];
+  const currentKey = `${current}_${orientation}_${numberUp}_${paperSize}`;
+  const currentUrl = renderedPages[currentKey];
 
   // ── Shared image style ───────────────────────────────────────────────────────
   const imgStyle: React.CSSProperties = {
@@ -274,7 +323,7 @@ export function DocumentPreview({
     display: "block",
   };
 
-  const sourceSize = pageSizes[`${current}`];
+  const sourceSize = pageSizes[currentKey];
   const sheetPoints = orientation === "landscape" ? [paperH * 72 / 25.4, paperW * 72 / 25.4] : [paperW * 72 / 25.4, paperH * 72 / 25.4];
   const fitScale = sourceSize ? Math.min(sheetPoints[0] / sourceSize[0], sheetPoints[1] / sourceSize[1]) : 1;
   const previewScale = scaling === "fit-to-page" ? fitScale : scaling === "shrink-to-fit" ? Math.min(1, fitScale) : 1;
@@ -307,8 +356,9 @@ export function DocumentPreview({
           >
             {Array.from({ length: numberUp }).map((_, i) => {
               const pageIdx = current + i;
+              const pageKey = `${pageIdx}_${orientation}_${numberUp}_${paperSize}`;
               const url = pageIdx < pages.length
-                ? (renderedPages[`${pageIdx}`] ?? null)
+                ? (renderedPages[pageKey] ?? null)
                 : null;
               return (
                 <div
@@ -372,8 +422,9 @@ export function DocumentPreview({
                   ...imgStyle,
                   width: previewWidth,
                   height: "auto",
-                  maxWidth: "none",
-                  maxHeight: "none",
+                  maxWidth: "100%",
+                  maxHeight: "100%",
+                  objectFit: "contain",
                   flexShrink: 0,
                 }}
               />

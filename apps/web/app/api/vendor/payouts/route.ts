@@ -45,7 +45,7 @@ export async function GET(_req: NextRequest) {
   const [{ data: jobs }, { data: requests }, { data: bank }] = await Promise.all([
     supabase
       .from("print_jobs")
-      .select("price_paise, status")
+      .select("price_paise, status, payment_method")
       .eq("shop_id", gate.shop!.id)
       .in("status", PAID_STATUSES),
     supabase
@@ -60,9 +60,11 @@ export async function GET(_req: NextRequest) {
       .maybeSingle(),
   ]);
 
-  const gross_revenue_paise = (jobs ?? []).reduce((sum, j) => sum + (j.price_paise as number), 0);
-  const platform_fee_paise = Math.floor((gross_revenue_paise * PLATFORM_FEE_BPS) / 10_000);
-  const lifetime_available_paise = Math.max(0, gross_revenue_paise - platform_fee_paise);
+  const online_collection_paise = (jobs ?? []).filter((j) => j.payment_method !== "cash").reduce((sum, j) => sum + (j.price_paise as number), 0);
+  const cash_collection_paise = (jobs ?? []).filter((j) => j.payment_method === "cash").reduce((sum, j) => sum + (j.price_paise as number), 0);
+  const gross_revenue_paise = online_collection_paise + cash_collection_paise;
+  const platform_fee_paise = Math.floor((online_collection_paise * PLATFORM_FEE_BPS) / 10_000);
+  const lifetime_available_paise = Math.max(0, online_collection_paise - platform_fee_paise);
 
   const requested_or_paid_paise = (requests ?? [])
     .filter((r) => ["pending", "approved", "paid"].includes(r.status as string))
@@ -74,6 +76,8 @@ export async function GET(_req: NextRequest) {
     shop_id: gate.shop!.id,
     platform_fee_bps: PLATFORM_FEE_BPS,
     gross_revenue_paise,
+    online_collection_paise,
+    cash_collection_paise,
     lifetime_available_paise,
     already_requested_paise: requested_or_paid_paise,
     available_paise,

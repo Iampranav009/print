@@ -11,7 +11,7 @@ export async function POST(
 
   const { data: job, error: jobErr } = await supabase
     .from("print_jobs")
-    .select("id, price_paise, status")
+    .select("id, price_paise, status, payment_method")
     .eq("id", id)
     .single();
 
@@ -24,6 +24,9 @@ export async function POST(
       { error: `Cannot pay for job in status: ${job.status}` },
       { status: 400 }
     );
+  }
+  if (job.payment_method === "cash") {
+    return Response.json({ error: "Cash jobs are confirmed by the shop counter." }, { status: 400 });
   }
 
   const razorpay = getRazorpay();

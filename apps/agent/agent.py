@@ -46,6 +46,8 @@ HEADERS = {"Authorization": f"Bearer {AGENT_TOKEN}"}
 PENDING_STATUS_FILE = CONFIG_DIR / "pending-print-status.json"
 
 _last_known_caps: dict | None = None
+CASH_REQUEST_HANDLER = None
+_seen_cash_requests: set[str] = set()
 
 
 # ── Discovered printers ──────────────────────────────────
@@ -173,6 +175,25 @@ def ack_announcements(ids: list[str]) -> None:
         log.debug("Acked %d announcement(s)", len(ids))
     except Exception as e:
         log.warning("Failed to ack announcements: %s", e)
+
+
+def poll_cash_requests() -> None:
+    """Surface new cash jobs to the Windows desktop without releasing them."""
+    if CASH_REQUEST_HANDLER is None:
+        return
+    try:
+        resp = requests.get(f"{API_BASE}/api/agent/cash-jobs", headers=HEADERS, timeout=10)
+        resp.raise_for_status()
+        pending = resp.json().get("jobs", [])
+        pending_ids = {job.get("id") for job in pending if job.get("id")}
+        _seen_cash_requests.intersection_update(pending_ids)
+        for job in pending:
+            job_id = job.get("id")
+            if job_id and job_id not in _seen_cash_requests:
+                _seen_cash_requests.add(job_id)
+                CASH_REQUEST_HANDLER(job)
+    except Exception as e:
+        log.warning("Cash request poll failed: %s", e)
 
 
 # ── Forced failure logic ─────────────────────────────────
@@ -461,6 +482,7 @@ def main(stop_event: threading.Event | None = None) -> None:
         cap_refresh_secs = CAPABILITY_REFRESH_MINUTES * 60
 
         while not stop_event.is_set():
+            poll_cash_requests()
             poll_and_print()
 
             now = time.monotonic()

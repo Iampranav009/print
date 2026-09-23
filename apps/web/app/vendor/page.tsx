@@ -19,6 +19,8 @@ type AnalyticsResponse = {
     color_revenue_paise: number;
     bw_revenue_paise: number;
     total_jobs: number;
+    online_revenue_paise: number;
+    cash_revenue_paise: number;
   };
   series: Array<{
     bucket: string;
@@ -37,6 +39,7 @@ type AnalyticsResponse = {
     color: boolean;
     paper: string;
     file_name: string;
+    payment_method: "online" | "cash";
   }>;
 };
 
@@ -468,6 +471,7 @@ export default function VendorOverviewPage() {
                   <th className="px-4 py-3 text-xs font-medium text-zinc-500 uppercase tracking-wide">Pages</th>
                   <th className="px-4 py-3 text-xs font-medium text-zinc-500 uppercase tracking-wide">Type</th>
                   <th className="px-4 py-3 text-xs font-medium text-zinc-500 uppercase tracking-wide">Amount</th>
+                  <th className="px-4 py-3 text-xs font-medium text-zinc-500 uppercase tracking-wide">Payment</th>
                   <th className="px-4 py-3 text-xs font-medium text-zinc-500 uppercase tracking-wide">Status</th>
                   <th className="px-4 py-3 text-xs font-medium text-zinc-500 uppercase tracking-wide">Action</th>
                   <th className="px-6 py-3 text-xs font-medium text-zinc-500 uppercase tracking-wide">Time</th>
@@ -492,6 +496,7 @@ export default function VendorOverviewPage() {
                       </span>
                     </td>
                     <td className="px-4 py-3 text-zinc-900 tabular-nums">{formatPaise(job.price_paise)}</td>
+                    <td className="px-4 py-3"><span className={`inline-flex px-2 py-0.5 rounded-full text-[10px] font-semibold ${job.payment_method === "cash" ? "bg-emerald-100 text-emerald-700" : "bg-blue-100 text-blue-700"}`}>{job.payment_method === "cash" ? "Cash" : "Online"}</span></td>
                     <td className="px-4 py-3"><StatusPill status={job.status as JobStatus} /></td>
                     <td className="px-4 py-3">
                       {job.status === "awaiting_release" && (

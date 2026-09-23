@@ -29,6 +29,7 @@ class PrintBuddyWindow:
         self.exit_code = 0
         self.settings = {}
         self.settings_error = None
+        self.cash_windows = {}
         try:
             self.settings = load_settings()
         except Exception:
@@ -187,6 +188,7 @@ class PrintBuddyWindow:
         def worker():
             try:
                 import agent
+                agent.CASH_REQUEST_HANDLER = lambda job: self.events.put(("cash_request", job))
                 agent.main(stop_event=self.stop_event)
             except Exception:
                 self.events.put(("fatal", None))
@@ -231,6 +233,15 @@ class PrintBuddyWindow:
                     self.status.set(value)
                 elif kind == "show":
                     self.root.deiconify(); self.root.lift()
+                elif kind == "cash_request":
+                    self.show_cash_request(value)
+                elif kind == "cash_result":
+                    job_id, ok, message = value
+                    window = self.cash_windows.pop(job_id, None)
+                    if window and window.winfo_exists():
+                        window.destroy()
+                    if not ok:
+                        messagebox.showerror("Cash payment", message)
                 elif kind == "quit":
                     self.stop_event.set()
                     self.status.set("Finishing the current job before quitting…")
@@ -245,6 +256,51 @@ class PrintBuddyWindow:
         except queue.Empty:
             pass
         self.root.after(100, self.pump)
+
+    def show_cash_request(self, job):
+        job_id = job.get("id")
+        if not job_id or job_id in self.cash_windows:
+            return
+        popup = tk.Toplevel(self.root)
+        self.cash_windows[job_id] = popup
+        popup.title("PrintBuddy cash payment")
+        popup.attributes("-topmost", True)
+        popup.resizable(False, False)
+        width, height = 390, 330
+        x = max(0, popup.winfo_screenwidth() - width - 24)
+        y = max(0, popup.winfo_screenheight() - height - 72)
+        popup.geometry(f"{width}x{height}+{x}+{y}")
+        frame = ttk.Frame(popup, padding=22)
+        frame.pack(fill="both", expand=True)
+        name = job.get("display_name") or "Customer"
+        pages = int(job.get("pages") or 0)
+        copies = int(job.get("copies") or 1)
+        kind = "Colour" if job.get("color") else "Black & white"
+        amount = float(job.get("price_paise") or 0) / 100
+        ttk.Label(frame, text="Cash payment requested", font=("Segoe UI", 16, "bold")).pack(anchor="w")
+        ttk.Label(frame, text=f"{name} is waiting at the counter", font=("Segoe UI", 10)).pack(anchor="w", pady=(3, 16))
+        details = f"Print job\n{pages} page{'s' if pages != 1 else ''} × {copies} cop{'ies' if copies != 1 else 'y'}\n{kind} · {job.get('paper') or 'A4'}"
+        ttk.Label(frame, text=details, font=("Segoe UI", 11), justify="left").pack(anchor="w")
+        ttk.Label(frame, text=f"Collect ₹{amount:.2f}", font=("Segoe UI", 20, "bold"), foreground="#087f5b").pack(anchor="w", pady=16)
+        actions = ttk.Frame(frame)
+        actions.pack(fill="x", side="bottom")
+        ttk.Button(actions, text="Payment received", command=lambda: self.decide_cash(job_id, "received")).pack(side="left")
+        ttk.Button(actions, text="Not received", command=lambda: self.decide_cash(job_id, "not_received")).pack(side="right")
+        popup.protocol("WM_DELETE_WINDOW", lambda: popup.withdraw())
+        popup.bell()
+
+    def decide_cash(self, job_id, decision):
+        def work():
+            try:
+                response = requests.post(
+                    f"{self.settings['PRINTBUDDY_API_BASE']}/api/agent/cash-jobs",
+                    headers={"Authorization": f"Bearer {self.settings['AGENT_TOKEN']}"},
+                    json={"jobId": job_id, "decision": decision}, timeout=15)
+                response.raise_for_status()
+                self.events.put(("cash_result", (job_id, True, "")))
+            except Exception:
+                self.events.put(("cash_result", (job_id, False, "Could not update the cash payment. Check the internet connection and try again.")))
+        threading.Thread(target=work, daemon=True).start()
 
     def finish_quit(self):
         if self.agent_thread.is_alive():

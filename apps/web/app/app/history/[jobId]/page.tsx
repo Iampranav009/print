@@ -48,6 +48,7 @@ interface Job {
   release_code: string | null;
   failure_reason: string | null;
   razorpay_order_id: string | null;
+  payment_method: "online" | "cash";
   created_at: string;
   updated_at: string;
   queueAhead: number;
@@ -83,14 +84,14 @@ function subscribeOnline(callback: () => void) {
   };
 }
 
-function getStatusConfig(status: JobStatus) {
+function getStatusConfig(status: JobStatus, paymentMethod: "online" | "cash" = "online") {
   switch (status) {
     case "payment_pending":
     case "awaiting_payment":
       return {
         icon: <Clock className="w-10 h-10 text-amber-500" />,
-        headline: "Confirming payment…",
-        sub: "Waiting for bank confirmation. This usually takes under a minute.",
+        headline: paymentMethod === "cash" ? "Waiting for cash confirmation" : "Confirming payment…",
+        sub: paymentMethod === "cash" ? "Please pay at the counter. Your print will enter the queue when the shop confirms receipt." : "Waiting for bank confirmation. This usually takes under a minute.",
         color: "amber",
       };
     case "queued":
@@ -114,7 +115,7 @@ function getStatusConfig(status: JobStatus) {
       return {
         icon: <Clock className="w-10 h-10 text-indigo-600" />,
         headline: "Your print is in line",
-        sub: "Payment confirmed. We’ll update you when printing begins.",
+        sub: `${paymentMethod === "cash" ? "Cash received" : "Payment confirmed"}. We’ll update you when printing begins.`,
         color: "blue",
       };
     case "printing":
@@ -148,7 +149,7 @@ function getStatusConfig(status: JobStatus) {
       return {
         icon: <XCircle className="w-10 h-10 text-red-500" />,
         headline: "Print failed",
-        sub: "Something went wrong at the printer. We’re checking your refund.",
+        sub: paymentMethod === "cash" ? "Something went wrong at the printer. Please collect your cash back from the shop counter." : "Something went wrong at the printer. We’re checking your refund.",
         color: "red",
       };
     case "refunded":
@@ -275,7 +276,7 @@ export default function JobDetailPage({
     );
   }
 
-  const cfg = getStatusConfig(job!.status);
+  const cfg = getStatusConfig(job!.status, job!.payment_method);
   const isTerminal = TERMINAL.includes(job!.status);
   const isPrinted =
     job!.status === "printed" ||

@@ -1,4 +1,4 @@
-import { PDFDocument, pushGraphicsState, popGraphicsState, rectangle, clip, endPath } from "pdf-lib";
+import { PDFDocument, pushGraphicsState, popGraphicsState, rectangle, clip, endPath, degrees } from "pdf-lib";
 import type { PrintOptions } from "@printbuddy/shared";
 
 const sizes: Record<string, [number, number]> = { A4: [595.28,841.89], A3:[841.89,1190.55], A5:[419.53,595.28], Letter:[612,792], Legal:[612,1008] };
@@ -29,10 +29,32 @@ export async function preparePrintPdf(bytes: Uint8Array, options: PrintOptions):
       const page=embedded[offset+slot];
       const cellW=width/cols,cellH=height/rows;
       const x=(slot%cols)*cellW, y=height-(Math.floor(slot/cols)+1)*cellH;
-      const fit=Math.min(cellW/page.width,cellH/page.height);
-      const scale=count>1 || options.scaling === "fit-to-page" ? fit : options.scaling === "shrink-to-fit" ? Math.min(1,fit) : 1;
+      const shouldRotate = (cellW > cellH) !== (page.width > page.height);
+      const rotW = shouldRotate ? page.height : page.width;
+      const rotH = shouldRotate ? page.width : page.height;
+      const fit = Math.min(cellW / rotW, cellH / rotH);
+      const scale = count > 1 || options.scaling === "fit-to-page" ? fit : options.scaling === "shrink-to-fit" ? Math.min(1, fit) : 1;
+      const drawW = rotW * scale;
+      const drawH = rotH * scale;
+      const centerX = x + (cellW - drawW) / 2;
+      const centerY = y + (cellH - drawH) / 2;
       sheet.pushOperators(pushGraphicsState(),rectangle(x,y,cellW,cellH),clip(),endPath());
-      sheet.drawPage(page,{x:x+(cellW-page.width*scale)/2,y:y+(cellH-page.height*scale)/2,xScale:scale,yScale:scale});
+      if (shouldRotate) {
+        sheet.drawPage(page, {
+          x: centerX + page.height * scale,
+          y: centerY,
+          xScale: scale,
+          yScale: scale,
+          rotate: degrees(90),
+        });
+      } else {
+        sheet.drawPage(page, {
+          x: centerX,
+          y: centerY,
+          xScale: scale,
+          yScale: scale,
+        });
+      }
       sheet.pushOperators(popGraphicsState());
     }
   }

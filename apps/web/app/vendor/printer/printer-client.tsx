@@ -16,6 +16,8 @@ import {
   RotateCcw,
   IndianRupee,
   Volume2,
+  Banknote,
+  CreditCard,
 } from "lucide-react";
 import { PrinterAssignments } from "@/components/vendor/PrinterAssignments";
 import { PrinterModeToggle } from "@/components/vendor/PrinterModeToggle";
@@ -33,7 +35,7 @@ export interface PrinterClientProps {
   initialData: {
     discovered_printers?: Array<{ name: string; driver?: string; is_default?: boolean }>;
     discovered_at?: string | null;
-    shop: { id: string; name: string; virtual_mode: boolean };
+    shop: { id: string; name: string; virtual_mode: boolean; cash_payments_enabled?: boolean; default_payment_method?: "online" | "cash" };
     soundSettings?: SoundSettings;
     printer: {
       id: string;
@@ -135,6 +137,9 @@ export function PrinterClient({ initialData }: PrinterClientProps) {
     data.soundSettings?.language ?? "en"
   );
   const [savingSound, setSavingSound] = useState(false);
+  const [cashEnabled, setCashEnabled] = useState(data.shop?.cash_payments_enabled ?? false);
+  const [defaultPaymentMethod, setDefaultPaymentMethod] = useState<"online" | "cash">(data.shop?.default_payment_method ?? "online");
+  const [savingPayment, setSavingPayment] = useState(false);
 
   // Pricing
   const [pricing, setPricing] = useState<PricingFields>({
@@ -179,6 +184,8 @@ export function PrinterClient({ initialData }: PrinterClientProps) {
         setMode(json.status?.mode ?? (json.shop?.virtual_mode ? "test" : "real"));
         setColorEnabled(json.printer?.color_enabled ?? false);
         setDuplexEnabled(json.printer?.duplex_enabled ?? false);
+        setCashEnabled(json.shop?.cash_payments_enabled ?? false);
+        setDefaultPaymentMethod(json.shop?.default_payment_method ?? "online");
       }
     } catch {
       // ignore
@@ -340,6 +347,31 @@ export function PrinterClient({ initialData }: PrinterClientProps) {
       showToast(err instanceof Error ? err.message : "Could not update sound setting.");
     } finally {
       setSavingSound(false);
+    }
+  };
+
+  const savePaymentSettings = async (cash: boolean, preferred: "online" | "cash") => {
+    const previousCash = cashEnabled;
+    const previousDefault = defaultPaymentMethod;
+    const safeDefault = cash ? preferred : "online";
+    setCashEnabled(cash);
+    setDefaultPaymentMethod(safeDefault);
+    setSavingPayment(true);
+    try {
+      const res = await fetch("/api/vendor/printer", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ cash_payments_enabled: cash, default_payment_method: safeDefault }),
+      });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(json.error || "Could not save payment settings");
+      showToast("Payment settings saved");
+    } catch (err) {
+      setCashEnabled(previousCash);
+      setDefaultPaymentMethod(previousDefault);
+      showToast(err instanceof Error ? err.message : "Could not save payment settings");
+    } finally {
+      setSavingPayment(false);
     }
   };
 
@@ -513,6 +545,42 @@ export function PrinterClient({ initialData }: PrinterClientProps) {
               </button>
             </div>
           </div>
+        </div>
+      )}
+
+      {mode === "real" && (
+        <div className="bg-white rounded-2xl border border-zinc-100 p-6 shadow-sm space-y-5">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <h2 className="text-lg font-semibold text-zinc-900">Customer payments</h2>
+              <p className="text-sm text-zinc-500 mt-1">Online payments remain automatic. Cash jobs wait for confirmation in the Windows PrintBuddy app.</p>
+            </div>
+            <button
+              type="button"
+              role="switch"
+              aria-label="Accept cash payments"
+              aria-checked={cashEnabled}
+              disabled={savingPayment}
+              onClick={() => void savePaymentSettings(!cashEnabled, !cashEnabled ? defaultPaymentMethod : "online")}
+              className={`relative shrink-0 w-12 h-7 rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600 disabled:opacity-60 ${cashEnabled ? "bg-indigo-600" : "bg-zinc-300"}`}
+            >
+              <span className={`absolute left-0 top-1 w-5 h-5 rounded-full bg-white shadow-sm transition-transform ${cashEnabled ? "translate-x-6" : "translate-x-1"}`} />
+            </button>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {([{"value":"online","label":"Online payment","detail":"Razorpay confirmation","icon":CreditCard},{"value":"cash","label":"Cash at counter","detail":"Owner confirms receipt","icon":Banknote}] as const).map((option) => {
+              const Icon = option.icon;
+              const disabled = option.value === "cash" && !cashEnabled;
+              return (
+                <button key={option.value} type="button" disabled={disabled || savingPayment} onClick={() => void savePaymentSettings(cashEnabled, option.value)} className={`flex items-center gap-3 rounded-2xl border p-4 text-left transition-colors disabled:opacity-40 ${defaultPaymentMethod === option.value ? "border-indigo-500 bg-indigo-50" : "border-zinc-200 hover:bg-zinc-50"}`}>
+                  <span className="w-9 h-9 rounded-xl bg-white border border-zinc-100 flex items-center justify-center"><Icon className="w-4 h-4 text-indigo-600" /></span>
+                  <span><span className="block text-sm font-semibold text-zinc-900">{option.label}</span><span className="block text-xs text-zinc-500">{option.detail}</span></span>
+                  <span className={`ml-auto w-4 h-4 rounded-full border-4 ${defaultPaymentMethod === option.value ? "border-indigo-600" : "border-zinc-300"}`} />
+                </button>
+              );
+            })}
+          </div>
+          {cashEnabled && <p className="text-xs text-amber-700 bg-amber-50 border border-amber-100 rounded-xl px-3 py-2">Cash jobs do not print until the shop confirms that payment was received.</p>}
         </div>
       )}
 

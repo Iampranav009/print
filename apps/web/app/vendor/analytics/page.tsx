@@ -20,6 +20,8 @@ type AnalyticsResponse = {
     color_revenue_paise: number;
     bw_revenue_paise: number;
     total_jobs: number;
+    online_revenue_paise: number;
+    cash_revenue_paise: number;
   };
   series: Array<{
     bucket: string;
@@ -38,6 +40,7 @@ type AnalyticsResponse = {
     color: boolean;
     paper: string;
     file_name: string;
+    payment_method: "online" | "cash";
   }>;
 };
 
@@ -96,17 +99,19 @@ export default function AnalyticsPage() {
 
       {/* Summary tiles */}
       {loading ? (
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-          {[...Array(6)].map((_, i) => <SkeletonTile key={i} />)}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          {[...Array(8)].map((_, i) => <SkeletonTile key={i} />)}
         </div>
       ) : (
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <StatTile label="Total prints" value={(s?.total_prints ?? 0).toString()} />
           <StatTile label="Total revenue" value={formatPaise(s?.total_revenue_paise ?? 0)} />
           <StatTile label="Colour prints" value={(s?.color_prints ?? 0).toString()} />
           <StatTile label="B&W prints" value={(s?.bw_prints ?? 0).toString()} />
           <StatTile label="Colour revenue" value={formatPaise(s?.color_revenue_paise ?? 0)} />
           <StatTile label="B&W revenue" value={formatPaise(s?.bw_revenue_paise ?? 0)} />
+          <StatTile label="Online collection" value={formatPaise(s?.online_revenue_paise ?? 0)} />
+          <StatTile label="Cash collection" value={formatPaise(s?.cash_revenue_paise ?? 0)} />
         </div>
       )}
 
@@ -161,6 +166,7 @@ export default function AnalyticsPage() {
                   <th className="px-4 py-3 text-xs font-medium text-zinc-500 uppercase tracking-wide">Pages</th>
                   <th className="px-4 py-3 text-xs font-medium text-zinc-500 uppercase tracking-wide">Type</th>
                   <th className="px-4 py-3 text-xs font-medium text-zinc-500 uppercase tracking-wide">Amount</th>
+                  <th className="px-4 py-3 text-xs font-medium text-zinc-500 uppercase tracking-wide">Payment</th>
                   <th className="px-4 py-3 text-xs font-medium text-zinc-500 uppercase tracking-wide">Status</th>
                   <th className="px-6 py-3 text-xs font-medium text-zinc-500 uppercase tracking-wide">Time</th>
                 </tr>
@@ -182,6 +188,7 @@ export default function AnalyticsPage() {
                       </span>
                     </td>
                     <td className="px-4 py-3 text-zinc-900 tabular-nums">{formatPaise(job.price_paise)}</td>
+                    <td className="px-4 py-3"><span className={`inline-flex px-2 py-0.5 rounded-full text-[10px] font-semibold ${job.payment_method === "cash" ? "bg-emerald-100 text-emerald-700" : "bg-blue-100 text-blue-700"}`}>{job.payment_method === "cash" ? "Cash" : "Online"}</span></td>
                     <td className="px-4 py-3"><StatusPill status={job.status as JobStatus} /></td>
                     <td className="px-6 py-3 text-zinc-400 text-xs">
                       {new Date(job.created_at).toLocaleString("en-IN", {

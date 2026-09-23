@@ -11,7 +11,7 @@ export async function GET(
 
   const { data: shop, error: shopErr } = await supabase
     .from("shops")
-    .select("id, name, location, status, virtual_mode")
+    .select("id, name, location, status, virtual_mode, cash_payments_enabled, default_payment_method")
     .eq("id", shopId)
     .single();
 

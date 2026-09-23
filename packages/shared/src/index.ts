@@ -123,6 +123,7 @@ export interface PrintJob {
   status: JobStatus;
   release_code: string | null;
   razorpay_order_id: string | null;
+  payment_method: "online" | "cash";
   failure_reason: string | null;
   created_at: string;
   updated_at: string;

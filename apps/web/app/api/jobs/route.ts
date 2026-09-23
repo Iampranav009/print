@@ -99,7 +99,8 @@ export async function POST(req: NextRequest) {
   const filePath = body.filePath as string | undefined;
   const rawFileMime = body.fileMime as string | undefined;
   const rawOptions = (body.options ?? {}) as Record<string, unknown>;
-  const withOrder = body.withOrder !== false; // default true — client wants a
+  const paymentMethod = body.paymentMethod === "cash" ? "cash" : "online";
+  const withOrder = paymentMethod === "online" && body.withOrder !== false; // default true — client wants a
                                               // Razorpay order in the same call
 
   if (!filePath || !rawOptions) {
@@ -123,6 +124,15 @@ export async function POST(req: NextRequest) {
     : null;
 
   const supabase = getSupabase();
+
+  const { data: shop } = await supabase
+    .from("shops")
+    .select("cash_payments_enabled")
+    .eq("id", shopId)
+    .single();
+  if (paymentMethod === "cash" && !shop?.cash_payments_enabled) {
+    return Response.json({ error: "This shop does not accept cash payments." }, { status: 400 });
+  }
 
   const { data: pricing, error: pricingErr } = await supabase
     .from("pricing")
@@ -229,7 +239,8 @@ export async function POST(req: NextRequest) {
       finishings: safeOptions.finishings,
       sides_billed: breakdown.sides,
       price_paise: breakdown.price_paise,
-      status: "priced",
+      status: paymentMethod === "cash" ? "awaiting_payment" : "priced",
+      payment_method: paymentMethod,
       release_code: releaseCode,
     };
   let { data: job, error: jobErr } = await supabase
@@ -245,6 +256,20 @@ export async function POST(req: NextRequest) {
   if (jobErr || !job) {
     if (printPath !== filePath) await supabase.storage.from("documents").remove([printPath!]);
     return Response.json({ error: "Failed to create job", detail: jobErr?.message, code: jobErr?.code }, { status: 500 });
+  }
+
+  if (paymentMethod === "cash") {
+    const { error: paymentError } = await supabase.from("payments").insert({
+      print_job_id: job.id,
+      amount_paise: breakdown.price_paise,
+      status: "pending",
+      payment_method: "cash",
+    });
+    if (paymentError) {
+      await supabase.from("print_jobs").delete().eq("id", job.id);
+      if (printPath !== filePath) await supabase.storage.from("documents").remove([printPath]);
+      return Response.json({ error: "Could not start cash payment confirmation" }, { status: 500 });
+    }
   }
 
   // Optionally mint the Razorpay order in the same call. The mobile client
@@ -280,6 +305,7 @@ export async function POST(req: NextRequest) {
         razorpay_order_id: order.id,
         amount_paise: breakdown.price_paise,
         status: "pending",
+        payment_method: "online",
       });
 
       orderResult = {
@@ -301,6 +327,7 @@ export async function POST(req: NextRequest) {
     pricePaise: breakdown.price_paise,
     breakdown,
     releaseCode,
+    paymentMethod,
     ...(orderResult ?? {}),
   });
 }

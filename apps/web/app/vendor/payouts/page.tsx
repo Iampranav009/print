@@ -22,6 +22,8 @@ interface PayoutData {
   shop_id: string;
   platform_fee_bps: number;
   gross_revenue_paise: number;
+  online_collection_paise: number;
+  cash_collection_paise: number;
   lifetime_available_paise: number;
   already_requested_paise: number;
   available_paise: number;
@@ -125,13 +127,23 @@ export default function VendorPayoutsPage() {
   return (
     <div className="space-y-6">
       {/* Balance summary */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <div className="bg-white rounded-2xl shadow-sm border border-zinc-100 p-5">
           <p className="text-sm font-medium text-zinc-500">Lifetime revenue</p>
           <p className="mt-1 text-2xl font-bold text-zinc-900 tabular-nums">
             {formatPaise(data?.gross_revenue_paise ?? 0)}
           </p>
           <p className="mt-1 text-xs text-zinc-400">Gross collected before platform fees</p>
+        </div>
+        <div className="bg-white rounded-2xl shadow-sm border border-zinc-100 p-5">
+          <p className="text-sm font-medium text-zinc-500">Online collection</p>
+          <p className="mt-1 text-2xl font-bold text-zinc-900 tabular-nums">{formatPaise(data?.online_collection_paise ?? 0)}</p>
+          <p className="mt-1 text-xs text-zinc-400">Eligible for bank payout</p>
+        </div>
+        <div className="bg-white rounded-2xl shadow-sm border border-zinc-100 p-5">
+          <p className="text-sm font-medium text-zinc-500">Cash collection</p>
+          <p className="mt-1 text-2xl font-bold text-emerald-700 tabular-nums">{formatPaise(data?.cash_collection_paise ?? 0)}</p>
+          <p className="mt-1 text-xs text-zinc-400">Already collected at your counter</p>
         </div>
         <div className="bg-white rounded-2xl shadow-sm border border-zinc-100 p-5">
           <p className="text-sm font-medium text-zinc-500">Already requested</p>

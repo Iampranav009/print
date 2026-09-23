@@ -553,7 +553,7 @@ export default function KioskPage({
     !!printerStatus && printerStatus.mode === "real" && !printerStatus.online;
 
   return (
-    <main className="min-h-dvh bg-white text-zinc-900 flex flex-col overflow-x-hidden relative">
+    <main className="h-dvh bg-white text-zinc-900 flex flex-col overflow-hidden relative">
       {showOfflineBanner && (
         <div
           role="alert"
@@ -568,10 +568,10 @@ export default function KioskPage({
       )}
       {showQR ? (
         // ── Idle: QR + welcome, split evenly ────────────────────────────
-        <div className="min-h-dvh flex flex-col lg:flex-row">
+        <div className="h-dvh flex flex-col lg:flex-row overflow-hidden">
           <section
             aria-label="Shop QR Code"
-            className="w-full lg:w-1/2 flex items-center justify-center p-8 lg:p-12 lg:border-r border-zinc-100 min-h-[50dvh] lg:min-h-dvh"
+            className="w-full lg:w-1/2 flex items-center justify-center p-6 lg:p-12 lg:border-r border-zinc-100 h-1/2 lg:h-dvh"
           >
             <KioskQR
               shopId={shop.id}
@@ -581,7 +581,7 @@ export default function KioskPage({
           </section>
           <section
             aria-label="Live Printer Status"
-            className="w-full lg:w-1/2 flex flex-col justify-center min-h-[50dvh] lg:min-h-dvh"
+            className="w-full lg:w-1/2 flex flex-col justify-center h-1/2 lg:h-dvh"
           >
             <KioskStatus
               activeJob={activeJob}
@@ -596,7 +596,7 @@ export default function KioskPage({
         // ── Active: full-screen centered status, no QR ──────────────────
         <section
           aria-label="Live Printer Status"
-          className="min-h-dvh w-full flex flex-col justify-center items-center"
+          className="h-dvh w-full flex flex-col justify-center items-center overflow-hidden"
         >
           <div className="w-full max-w-3xl mx-auto text-center">
             <KioskStatus

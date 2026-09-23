@@ -33,7 +33,7 @@ export async function GET(_req: NextRequest) {
   const [{ data: jobs }, { data: requests }, { data: bank }] = await Promise.all([
     supabase
       .from("print_jobs")
-      .select("price_paise")
+      .select("price_paise, payment_method")
       .eq("shop_id", shop.id)
       .in("status", PAID_STATUSES),
     supabase
@@ -47,16 +47,19 @@ export async function GET(_req: NextRequest) {
       .maybeSingle(),
   ]);
 
-  const gross_revenue_paise = (jobs ?? []).reduce(
+  const online_collection_paise = (jobs ?? []).filter((j) => j.payment_method !== "cash").reduce(
     (sum, j) => sum + (j.price_paise as number),
     0
   );
+  const cash_collection_paise = (jobs ?? []).filter((j) => j.payment_method === "cash").reduce(
+    (sum, j) => sum + (j.price_paise as number), 0
+  );
   const platform_fee_paise = Math.floor(
-    (gross_revenue_paise * PLATFORM_FEE_BPS) / 10_000
+    (online_collection_paise * PLATFORM_FEE_BPS) / 10_000
   );
   const lifetime_available_paise = Math.max(
     0,
-    gross_revenue_paise - platform_fee_paise
+    online_collection_paise - platform_fee_paise
   );
 
   const withheld_paise = (requests ?? [])
@@ -72,5 +75,8 @@ export async function GET(_req: NextRequest) {
     withheld_paise,
     can_withdraw: !!bank?.verified && available_paise > 0,
     bank_verified: !!bank?.verified,
+    online_collection_paise,
+    cash_collection_paise,
+    total_collection_paise: online_collection_paise + cash_collection_paise,
   });
 }
