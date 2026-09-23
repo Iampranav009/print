@@ -26,6 +26,26 @@ export async function POST(req: NextRequest) {
   const event = JSON.parse(rawBody);
   const eventType = event.event as string;
 
+  if (eventType.startsWith("refund.")) {
+    const refund = event.payload?.refund?.entity;
+    if (refund?.id && ["pending", "processed", "failed"].includes(refund.status)) {
+      const supabase = getSupabase();
+      const { data: payment } = await supabase.from("payments")
+        .update({ refund_status: refund.status })
+        .eq("refund_id", refund.id)
+        .select("print_job_id")
+        .maybeSingle();
+      if (payment && refund.status === "processed") {
+        await supabase.from("payments").update({ status: "refunded" }).eq("print_job_id", payment.print_job_id);
+        await supabase.from("print_jobs")
+          .update({ status: "refunded" })
+          .eq("id", payment.print_job_id)
+          .eq("status", "print_failed");
+      }
+    }
+    return Response.json({ ok: true });
+  }
+
   if (eventType === "order.paid" || eventType === "payment.captured") {
     const payment = event.payload?.payment?.entity;
     if (!payment) {
@@ -58,21 +78,28 @@ export async function POST(req: NextRequest) {
       return Response.json({ ok: true });
     }
 
-    await supabase
+    const { data: capturedPayment, error: paymentError } = await supabase
       .from("payments")
       .update({
         razorpay_payment_id: paymentId,
         status: "captured",
       })
-      .eq("razorpay_order_id", orderId);
+      .eq("razorpay_order_id", orderId)
+      .select("id")
+      .maybeSingle();
+    if (paymentError || !capturedPayment) {
+      return Response.json({ error: "Payment record unavailable" }, { status: 503 });
+    }
 
-    await supabase
+    const { error: dispatchError } = await supabase
       .from("print_jobs")
       .update({
         status: "dispatched",
         updated_at: new Date().toISOString(),
       })
-      .eq("id", job.id);
+      .eq("id", job.id)
+      .in("status", ["priced", "awaiting_payment", "payment_failed"]);
+    if (dispatchError) return Response.json({ error: "Dispatch failed" }, { status: 503 });
 
     // Kiosk WebSocket: push a payment-success event immediately so the
     // kiosk display swaps to "Payment successful" without waiting for
@@ -109,7 +136,8 @@ export async function POST(req: NextRequest) {
       await supabase
         .from("payments")
         .update({ status: "failed" })
-        .eq("razorpay_order_id", payment.order_id);
+        .eq("razorpay_order_id", payment.order_id)
+        .eq("status", "pending");
 
       await supabase
         .from("print_jobs")
@@ -117,7 +145,8 @@ export async function POST(req: NextRequest) {
           status: "payment_failed",
           updated_at: new Date().toISOString(),
         })
-        .eq("razorpay_order_id", payment.order_id);
+        .eq("razorpay_order_id", payment.order_id)
+        .in("status", ["priced", "awaiting_payment"]);
 
       if (job) {
         await broadcastToKiosk(job.shop_id, {

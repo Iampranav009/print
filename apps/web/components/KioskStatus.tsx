@@ -18,6 +18,7 @@ export interface KioskJob {
   id: string;
   shop_id: string;
   shop_name?: string;
+  display_name?: string;
   status: JobStatus;
   price_paise?: number;
   release_code: string | null;
@@ -36,6 +37,7 @@ export type KioskLiveActivity =
 interface KioskStatusProps {
   activeJob: KioskJob | null;
   recentJobs: KioskJob[];
+  queuedJobs?: KioskJob[];
   liveActivity?: KioskLiveActivity | null;
   /** Full-screen mode: bigger icons + type, centered layout, no side padding.
    * The kiosk switches to this the moment any activity starts. */
@@ -135,7 +137,7 @@ function RecentStrip({ recentJobs }: { recentJobs: KioskJob[] }) {
             className="flex items-center gap-2.5 bg-zinc-50 border border-zinc-200 rounded-xl px-3.5 py-2 text-sm"
           >
             <span className="font-medium text-zinc-700 truncate max-w-[140px]">
-              {j.file_name || `Job #${j.id.slice(0, 6)}`}
+              {j.display_name || "Customer"}
             </span>
             <StatusPill status={j.status} />
             <span className="text-xs text-zinc-500">
@@ -153,6 +155,7 @@ function RecentStrip({ recentJobs }: { recentJobs: KioskJob[] }) {
 export function KioskStatus({
   activeJob,
   recentJobs,
+  queuedJobs = [],
   liveActivity,
   centered,
   returnCountdown,
@@ -286,15 +289,15 @@ export function KioskStatus({
     case "dispatched":
       tone = "success";
       iconNode = <FileCheck2 className="w-14 h-14" />;
-      headline = "Payment successful";
-      sub = "Sending your file to the printer…";
+      headline = `${activeJob.display_name || "Customer"}’s print is ready`;
+      sub = "Your document is next for the printer.";
       break;
 
     case "printing":
       tone = "info";
       iconNode = <Printer className="w-14 h-14 animate-pulse" />;
-      headline = "Printing now…";
-      sub = "Please wait — your pages are on the printer.";
+      headline = `${activeJob.display_name || "Customer"}’s print is in progress`;
+      sub = "Please wait while the printer finishes these pages.";
       break;
 
     case "awaiting_release":
@@ -309,7 +312,7 @@ export function KioskStatus({
     case "printed":
       tone = "success";
       iconNode = <CheckCircle2 className="w-14 h-14" />;
-      headline = "Print complete";
+      headline = `${activeJob.display_name || "Customer"}’s print is complete`;
       sub = "Enjoy — thanks for using PrintBuddy.";
       break;
 
@@ -330,8 +333,8 @@ export function KioskStatus({
     case "refunded":
       tone = "warn";
       iconNode = <XCircle className="w-14 h-14" />;
-      headline = "Order refunded";
-      sub = "Your payment has been refunded.";
+      headline = "Refund processed";
+      sub = "The payment provider has confirmed this refund.";
       break;
 
     case "cancelled":
@@ -349,6 +352,16 @@ export function KioskStatus({
   return (
     <div className="flex flex-col h-full w-full">
       <HeroFrame tone={tone} icon={iconNode} headline={headline} sub={sub} centered={centered}>
+        {queuedJobs.length > 0 && (
+          <div className="mt-7 w-full max-w-xl rounded-2xl border border-indigo-100 bg-indigo-50/70 px-5 py-4 text-left" role="status" aria-live="polite">
+            <p className="text-xs font-semibold uppercase tracking-wide text-indigo-600 mb-2">Coming up next</p>
+            <p className="text-base font-semibold text-zinc-900">
+              {queuedJobs.slice(0, 2).map((job) => job.display_name || "Customer").join(", ")}
+              {queuedJobs.length > 2 ? ` and ${queuedJobs.length - 2} more` : ""}
+            </p>
+            <p className="text-sm text-zinc-600 mt-1">Prints will follow one at a time.</p>
+          </div>
+        )}
         {activeJob.price_paise !== undefined && (
           <div className="mt-6 flex items-center gap-2 text-sm text-zinc-500">
             <span className="font-medium text-zinc-700">{formatPaise(activeJob.price_paise)}</span>
@@ -391,7 +404,7 @@ export function KioskStatus({
                   strokeLinecap="round"
                   strokeDasharray={2 * Math.PI * 14}
                   strokeDashoffset={
-                    2 * Math.PI * 14 * (1 - (returnCountdown as number) / 5)
+                    2 * Math.PI * 14 * (1 - (returnCountdown as number) / 3)
                   }
                   style={{ transition: "stroke-dashoffset 1s linear" }}
                 />
@@ -401,7 +414,7 @@ export function KioskStatus({
               </span>
             </div>
             <span>
-              Returning to home in {returnCountdown}s
+              Updating the screen in {returnCountdown}s
             </span>
           </div>
         )}

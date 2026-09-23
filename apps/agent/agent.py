@@ -43,6 +43,7 @@ logging.basicConfig(
 log = logging.getLogger("printbuddy-agent")
 
 HEADERS = {"Authorization": f"Bearer {AGENT_TOKEN}"}
+PENDING_STATUS_FILE = CONFIG_DIR / "pending-print-status.json"
 
 _last_known_caps: dict | None = None
 
@@ -87,7 +88,13 @@ def heartbeat(printer_status: str = "online") -> dict:
         return {}
 
 
-def update_status(job_id: str, status: str, reason: str | None = None) -> None:
+def update_status(job_id: str, status: str, reason: str | None = None) -> bool:
+    terminal = status in ("printed", "print_failed")
+    if terminal:
+        CONFIG_DIR.mkdir(parents=True, exist_ok=True)
+        staged = PENDING_STATUS_FILE.with_suffix(".tmp")
+        staged.write_text(json.dumps({"job_id": job_id, "status": status, "reason": reason}), encoding="utf-8")
+        os.replace(staged, PENDING_STATUS_FILE)
     payload: dict = {"status": status}
     if reason:
         payload["reason"] = reason
@@ -99,9 +106,25 @@ def update_status(job_id: str, status: str, reason: str | None = None) -> None:
             timeout=10,
         )
         resp.raise_for_status()
+        if terminal:
+            PENDING_STATUS_FILE.unlink(missing_ok=True)
         log.info("[%s] → %s%s", job_id[:8], status, f" ({reason})" if reason else "")
+        return True
     except Exception as e:
         log.error("[%s] Failed to update status to %s: %s", job_id[:8], status, e)
+        return False
+
+
+def flush_pending_status() -> bool:
+    """Report a completed local print before accepting another paid job."""
+    if not PENDING_STATUS_FILE.exists():
+        return True
+    try:
+        pending = json.loads(PENDING_STATUS_FILE.read_text(encoding="utf-8"))
+        return update_status(pending["job_id"], pending["status"], pending.get("reason"))
+    except Exception as e:
+        log.error("Could not restore pending print status: %s", e)
+        return False
 
 
 def post_capabilities(capabilities: dict, make_and_model: str | None = None) -> None:
@@ -279,6 +302,8 @@ def _apply_sound_settings(hb_data: dict) -> None:
 
 
 def poll_and_print() -> None:
+    if not flush_pending_status():
+        return
     try:
         resp = requests.get(
             f"{API_BASE}/api/agent/jobs/next",
@@ -338,7 +363,14 @@ def poll_and_print() -> None:
             audio.announce_print_failed()
             return
 
-        update_status(job_id, "printing")
+        # Never send paper for a job the server did not accept as ours.
+        # The ready job remains queued and can be retried on the next poll.
+        if not update_status(job_id, "printing"):
+            try:
+                os.unlink(file_path)
+            except OSError:
+                pass
+            return
 
         try:
             success, reason = print_file(file_path, job)
@@ -350,6 +382,10 @@ def poll_and_print() -> None:
                 update_status(job_id, "print_failed", reason or "Printer error")
                 log.error("[%s] Print failed: %s", job_id[:8], reason)
                 audio.announce_print_failed()
+        except Exception as e:
+            log.exception("[%s] Unexpected print error", job_id[:8])
+            update_status(job_id, "print_failed", str(e))
+            audio.announce_print_failed()
         finally:
             try:
                 os.unlink(file_path)

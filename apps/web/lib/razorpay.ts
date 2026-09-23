@@ -30,9 +30,10 @@ export function verifyWebhookSignature(
   );
 }
 
-export async function createRefund(paymentId: string, amountPaise: number) {
+export async function createRefund(paymentId: string, amountPaise: number, jobId: string) {
   return getRazorpay().payments.refund(paymentId, {
     amount: amountPaise,
     speed: "normal",
+    receipt: jobId,
   });
 }
