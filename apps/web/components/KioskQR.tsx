@@ -28,8 +28,8 @@ export function KioskQR({ shopId, shopName, location, compact }: KioskQRProps) {
   return (
     <div className="flex flex-col items-center justify-center text-center select-none w-full max-w-md mx-auto">
       {/* Shop badge */}
-      <div className="flex items-center gap-3 mb-6">
-        <div className="w-12 h-12 rounded-2xl bg-indigo-600 flex items-center justify-center shadow-sm">
+      <div className="flex items-center gap-3 mb-7">
+        <div className="w-12 h-12 rounded-2xl bg-brand flex items-center justify-center shadow-[0_8px_24px_rgba(12,131,31,0.18)]">
           <Printer className="w-6 h-6 text-white" />
         </div>
         <div className="text-left">
@@ -43,20 +43,20 @@ export function KioskQR({ shopId, shopName, location, compact }: KioskQRProps) {
       </div>
 
       {/* QR — clean, no heavy shadow, plain border to sit well on white */}
-      <div className="bg-white p-5 rounded-3xl border border-zinc-200 flex items-center justify-center">
+      <div className="bg-white p-6 rounded-[2rem] border border-black/[0.08] shadow-[0_18px_55px_rgba(0,0,0,0.07)] flex items-center justify-center">
         <QRCodeSVG
           value={qrUrl}
           size={size}
           level="M"
           marginSize={0}
           bgColor="#FFFFFF"
-          fgColor="#0F172A"
+          fgColor="#1D1D1F"
         />
       </div>
 
       {/* Taglines */}
-      <div className="mt-6 space-y-1">
-        <p className="text-base font-semibold text-zinc-900 tracking-tight">
+      <div className="mt-7 space-y-1.5">
+        <p className="text-lg font-semibold text-zinc-900 tracking-tight">
           Scan to print
         </p>
         <p className="text-sm text-zinc-500">

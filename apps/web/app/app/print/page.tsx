@@ -15,6 +15,7 @@ import {
   newSessionId,
   type KioskEvent,
 } from "@/lib/kiosk-events";
+import { clearPendingShare, getPendingShare } from "@/lib/pending-share";
 import {
   ArrowLeft,
   Plus,
@@ -26,7 +27,6 @@ import {
   AlertCircle,
   Check,
   QrCode,
-  ChevronRight,
   Banknote,
   CreditCard,
 } from "lucide-react";
@@ -360,6 +360,8 @@ function PrintContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const shopId = searchParams.get("shop");
+  const isSharedEntry = searchParams.get("shared") === "1";
+  const sharedEntryError = searchParams.get("shared_error") === "1";
 
   const [shopData, setShopData] = useState<ShopData | null>(null);
   const [shopError, setShopError] = useState<string | null>(null);
@@ -373,6 +375,9 @@ function PrintContent() {
   useEffect(() => { rawFilesRef.current = rawFiles; }, [rawFiles]);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [showUploadSheet, setShowUploadSheet] = useState(false);
+  const [pendingSharedFiles, setPendingSharedFiles] = useState<File[]>([]);
+  const [sharedImportError, setSharedImportError] = useState<string | null>(null);
+  const sharedImportStartedRef = useRef(false);
 
   const [config, setConfig] = useState<Config | null>(null);
   const [priceState, setPriceState] = useState<"idle" | "fetching" | "ready" | "error">("idle");
@@ -628,12 +633,54 @@ function PrintContent() {
       setUploadError(err instanceof Error ? err.message : "Upload failed");
       setShowUploadSheet(false);
     }
-  }, [mergeFilesIntoPdf]);
+  }, [broadcast, mergeFilesIntoPdf]);
 
-  const handleFileSelect = useCallback(
-    (file: File) => handleFilesSelect([file]),
-    [handleFilesSelect]
-  );
+  // Files received from Android/Chrome's system share sheet are placed in
+  // IndexedDB by the service worker. Keep them local until a shop is scanned;
+  // only then do they enter the existing signed-upload and pricing flow.
+  useEffect(() => {
+    if (!isSharedEntry || sharedImportStartedRef.current) return;
+    sharedImportStartedRef.current = true;
+
+    let active = true;
+    void getPendingShare()
+      .then((pending) => {
+        if (!active) return;
+        if (!pending || pending.files.length === 0) {
+          setSharedImportError("The shared file is no longer available. Please share it again.");
+          return;
+        }
+
+        // Shared documents are intentionally short-lived on the device.
+        if (Date.now() - pending.receivedAt > 30 * 60 * 1000) {
+          void clearPendingShare();
+          setSharedImportError("The shared file expired for privacy. Please share it again.");
+          return;
+        }
+
+        setPendingSharedFiles(pending.files);
+        setRawFiles(
+          pending.files.map((file) => ({ file, name: file.name, mime: file.type }))
+        );
+
+        if (shopId) {
+          void handleFilesSelect(pending.files);
+        }
+      })
+      .catch(() => {
+        if (active) setSharedImportError("PrintBuddy could not read the shared file.");
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [handleFilesSelect, isSharedEntry, shopId]);
+
+  useEffect(() => {
+    if (isSharedEntry && uploadState === "done") {
+      void clearPendingShare();
+    }
+  }, [isSharedEntry, uploadState]);
 
   // Razorpay pay
   const handlePay = useCallback(async () => {
@@ -767,11 +814,37 @@ function PrintContent() {
         </div>
       )}
 
+      {(sharedEntryError || sharedImportError) && (
+        <div className="mx-4 mt-3 flex items-start gap-2 bg-red-50 border border-red-100 rounded-xl p-3 text-xs text-red-700">
+          <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />
+          <span>{sharedImportError ?? "The shared file could not be received. Please open it and choose Share with PrintBuddy again."}</span>
+        </div>
+      )}
+
       {/* Scrollable body */}
       <div className={`flex-1 overflow-y-auto ${shopData?.shop.cash_payments_enabled ? "pb-52" : "pb-36"}`}>
         {/* Upload zone / File preview */}
         <div className="px-4 pt-4">
-          {!shopId ? (
+          {!shopId && pendingSharedFiles.length > 0 ? (
+            <div className="w-full rounded-2xl border border-green-200 bg-green-50/70 p-5 shadow-sm">
+              <div className="flex items-start gap-3">
+                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-green-100 text-green-700">
+                  <FileText className="h-5 w-5" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-bold text-gray-900">
+                    {pendingSharedFiles.length === 1 ? "Document ready" : `${pendingSharedFiles.length} documents ready`}
+                  </p>
+                  <p className="mt-1 truncate text-xs text-gray-600">
+                    {pendingSharedFiles.map((file) => file.name).join(", ")}
+                  </p>
+                  <p className="mt-2 text-xs font-medium text-green-700">
+                    Scan a PrintBuddy kiosk to upload, price and print securely.
+                  </p>
+                </div>
+              </div>
+            </div>
+          ) : !shopId ? (
             /* Locked — must scan QR first */
             <div className="w-full flex flex-col items-center justify-center gap-3 border-2 border-dashed border-gray-200 rounded-2xl bg-gray-50 p-10 text-center">
               <div className="w-14 h-14 rounded-2xl bg-blue-50 flex items-center justify-center">
@@ -1072,12 +1145,12 @@ function PrintContent() {
           {!shopId ? (
             <button
               type="button"
-              onClick={() => router.push("/app/scan")}
+              onClick={() => router.push(isSharedEntry ? "/app/scan?shared=1" : "/app/scan")}
               style={{ touchAction: "manipulation" }}
               className="w-full min-h-[52px] rounded-2xl bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white font-semibold text-base flex items-center justify-center gap-2 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 shadow-sm"
             >
               <QrCode className="w-5 h-5" />
-              Scan Kiosk
+              {isSharedEntry ? "Scan Now" : "Scan Kiosk"}
             </button>
           ) : (
             <button

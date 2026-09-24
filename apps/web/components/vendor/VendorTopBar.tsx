@@ -45,7 +45,7 @@ export function VendorTopBar({ shopName, shopStatus }: ShopBadgeProps) {
       .sort((a, b) => b[0].length - a[0].length)[0]?.[1] ?? "Partner Portal";
 
   return (
-    <header className="h-16 flex items-center justify-between px-6 lg:px-8 bg-white border-b border-zinc-100 shrink-0">
+    <header className="pb-glass-bar sticky top-0 z-20 h-16 flex items-center justify-between px-6 lg:px-8 border-b shrink-0">
       {/* Page title — leave space for hamburger on mobile */}
       <h1 className="text-base font-semibold text-zinc-900 ml-12 lg:ml-0">{title}</h1>
 

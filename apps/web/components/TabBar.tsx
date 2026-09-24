@@ -27,10 +27,10 @@ export function TabBar() {
   return (
     <nav
       aria-label="Bottom Navigation"
-      className="fixed bottom-0 inset-x-0 z-40 bg-white border-t border-gray-100"
+      className="pb-glass-bar fixed bottom-0 inset-x-0 z-40 border-t"
       style={{ paddingBottom: "max(8px, env(safe-area-inset-bottom))" }}
     >
-      <div className="max-w-lg mx-auto flex items-stretch justify-around h-16 px-1">
+      <div className="max-w-lg mx-auto flex items-stretch justify-around h-[4.25rem] px-2">
         {TABS.map((tab) => {
           const isActive =
             pathname === tab.href ||
@@ -45,14 +45,11 @@ export function TabBar() {
               style={{ touchAction: "manipulation" }}
               aria-current={isActive ? "page" : undefined}
               aria-label={tab.name}
-              className={`flex-1 flex flex-col items-center justify-center gap-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0C831F] rounded-xl transition-colors ${
+              className={`flex-1 flex flex-col items-center justify-center gap-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0C831F] rounded-2xl transition-colors ${
                 isActive ? "text-[#0C831F]" : "text-gray-400"
               }`}
             >
-              <div className={`w-1 h-1 rounded-full mb-0.5 transition-all ${
-                isActive ? "bg-[#0C831F]" : "opacity-0"
-              }`} aria-hidden />
-              <Icon className="w-5 h-5" aria-hidden />
+              <Icon className={`w-[21px] h-[21px] ${isActive ? "stroke-[2.4]" : "stroke-2"}`} aria-hidden />
               <span className={`text-[10px] font-medium leading-none ${
                 isActive ? "text-[#0C831F] font-semibold" : "text-gray-500"
               }`}>

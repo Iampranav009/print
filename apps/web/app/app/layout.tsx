@@ -18,9 +18,9 @@ export default async function AppLayout({
   }
 
   return (
-    <div className="min-h-dvh h-dvh flex flex-col bg-white text-gray-900 overflow-hidden">
-      <main className="flex-1 overflow-y-auto">
-        {children}
+    <div className="pb-mobile-shell min-h-dvh h-dvh flex flex-col overflow-hidden">
+      <main className="flex-1 overflow-y-auto scroll-smooth-ios">
+        <div className="pb-mobile-content min-h-full">{children}</div>
       </main>
       <TabBar />
     </div>

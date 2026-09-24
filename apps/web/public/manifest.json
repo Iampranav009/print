@@ -2,12 +2,45 @@
   "name": "PrintBuddy — Digital Print Software & Wireless Printing ATM Machine",
   "short_name": "PrintBuddy",
   "description": "PrintBuddy is digital software transforming any printer into a wireless printing machine and self-serve printing ATM machine. Scan QR, upload document, pay via UPI, and collect print in Yotmal and across India.",
-  "start_url": "/",
+  "id": "/",
+  "start_url": "/app/home",
+  "scope": "/",
   "display": "standalone",
   "background_color": "#0E1117",
   "theme_color": "#0C831F",
   "orientation": "portrait-primary",
   "categories": ["business", "productivity", "utilities"],
+  "shortcuts": [
+    {
+      "name": "Scan a printer",
+      "short_name": "Scan now",
+      "url": "/app/scan",
+      "icons": [{ "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml" }]
+    }
+  ],
+  "share_target": {
+    "action": "/share-target",
+    "method": "POST",
+    "enctype": "multipart/form-data",
+    "params": {
+      "title": "title",
+      "text": "text",
+      "files": [
+        {
+          "name": "files",
+          "accept": [
+            "application/pdf",
+            ".pdf",
+            "image/jpeg",
+            ".jpg",
+            ".jpeg",
+            "image/png",
+            ".png"
+          ]
+        }
+      ]
+    }
+  },
   "icons": [
     {
       "src": "/icon.svg",

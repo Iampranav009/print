@@ -512,7 +512,7 @@ export default function KioskPage({
 
   if (loading) {
     return (
-      <main className="min-h-dvh bg-white text-zinc-900 flex items-center justify-center p-8">
+      <main className="pb-kiosk-shell min-h-dvh text-zinc-900 flex items-center justify-center p-8">
         <Loader2 className="w-10 h-10 animate-spin text-indigo-500" />
       </main>
     );
@@ -520,7 +520,7 @@ export default function KioskPage({
 
   if (error || !shop) {
     return (
-      <main className="min-h-dvh bg-white text-zinc-900 flex flex-col items-center justify-center p-8 text-center">
+      <main className="pb-kiosk-shell min-h-dvh text-zinc-900 flex flex-col items-center justify-center p-8 text-center">
         <div className="w-16 h-16 rounded-full bg-red-50 border border-red-200 flex items-center justify-center mb-4 text-red-500">
           <AlertCircle className="w-8 h-8" />
         </div>
@@ -553,7 +553,7 @@ export default function KioskPage({
     !!printerStatus && printerStatus.mode === "real" && !printerStatus.online;
 
   return (
-    <main className="h-dvh bg-white text-zinc-900 flex flex-col overflow-hidden relative">
+    <main className="pb-kiosk-shell h-dvh text-zinc-900 flex flex-col overflow-hidden relative">
       {showOfflineBanner && (
         <div
           role="alert"

@@ -2,26 +2,39 @@
 
 :root {
   /* Base */
-  --background: #ffffff;
-  --foreground: #111827;
+  --background: #f5f5f7;
+  --foreground: #1d1d1f;
   --card: #ffffff;
   --card-foreground: #111827;
   --popover: #ffffff;
   --popover-foreground: #111827;
-  --primary: #0C831F;
+  --primary: #0c831f;
   --primary-foreground: #ffffff;
-  --secondary: #f3f4f6;
-  --secondary-foreground: #111827;
-  --muted: #f3f4f6;
-  --muted-foreground: #6b7280;
-  --accent: #f3f4f6;
-  --accent-foreground: #111827;
+  --secondary: #f2f2f7;
+  --secondary-foreground: #1d1d1f;
+  --muted: #f2f2f7;
+  --muted-foreground: #6e6e73;
+  --accent: #eaf6ec;
+  --accent-foreground: #086618;
   --destructive: #ef4444;
   --destructive-foreground: #ffffff;
-  --border: #e5e7eb;
-  --input: #e5e7eb;
-  --ring: #0C831F;
-  --radius: 0.75rem;
+  --border: #d2d2d7;
+  --input: #d2d2d7;
+  --ring: #0c831f;
+  --radius: 1rem;
+
+  /* PrintBuddy surfaces */
+  --pb-canvas: #f5f5f7;
+  --pb-surface: #ffffff;
+  --pb-surface-raised: rgba(255, 255, 255, 0.88);
+  --pb-label: #1d1d1f;
+  --pb-secondary-label: #6e6e73;
+  --pb-tertiary-label: #8e8e93;
+  --pb-separator: rgba(60, 60, 67, 0.14);
+  --pb-brand: #0c831f;
+  --pb-brand-pressed: #086618;
+  --pb-brand-soft: #eaf6ec;
+  --pb-shadow: 0 1px 2px rgba(0, 0, 0, 0.03), 0 8px 30px rgba(0, 0, 0, 0.05);
 
   /* Gradient / Chart colors */
   --color-primary: #10b981;
@@ -73,14 +86,117 @@
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
+  --color-brand: var(--pb-brand);
+  --color-brand-pressed: var(--pb-brand-pressed);
+  --color-brand-soft: var(--pb-brand-soft);
+  --color-canvas: var(--pb-canvas);
+  --color-surface: var(--pb-surface);
+  --color-label: var(--pb-label);
+  --color-secondary-label: var(--pb-secondary-label);
+
+  /* Existing indigo utilities now resolve to the single product hue. */
+  --color-indigo-50: #f1faf2;
+  --color-indigo-100: #dff3e2;
+  --color-indigo-200: #bfe7c6;
+  --color-indigo-300: #91d29d;
+  --color-indigo-400: #58b769;
+  --color-indigo-500: #24963a;
+  --color-indigo-600: #0c831f;
+  --color-indigo-700: #086618;
+  --color-indigo-800: #095117;
+  --color-indigo-900: #084313;
+  --color-indigo-950: #032609;
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "Segoe UI", sans-serif;
+  letter-spacing: -0.01em;
   -webkit-tap-highlight-color: transparent;
   overscroll-behavior: none;
+}
+
+::selection {
+  background: rgba(12, 131, 31, 0.18);
+}
+
+:focus-visible {
+  outline: 3px solid rgba(12, 131, 31, 0.28);
+  outline-offset: 2px;
+}
+
+button,
+a,
+input,
+select,
+textarea {
+  -webkit-tap-highlight-color: transparent;
+}
+
+button,
+[role="button"] {
+  touch-action: manipulation;
+}
+
+input,
+select,
+textarea {
+  border-radius: 0.875rem;
+}
+
+.pb-mobile-shell,
+.pb-vendor-shell,
+.pb-admin-shell {
+  background: var(--pb-canvas);
+  color: var(--pb-label);
+}
+
+.pb-mobile-shell main {
+  background: var(--pb-canvas);
+}
+
+.pb-mobile-content {
+  width: 100%;
+  max-width: 42rem;
+  margin-inline: auto;
+}
+
+.pb-glass-bar {
+  background: rgba(255, 255, 255, 0.82);
+  border-color: var(--pb-separator);
+  -webkit-backdrop-filter: saturate(180%) blur(22px);
+  backdrop-filter: saturate(180%) blur(22px);
+}
+
+.pb-dashboard-main {
+  background:
+    radial-gradient(circle at 100% 0%, rgba(12, 131, 31, 0.055), transparent 30rem),
+    var(--pb-canvas);
+}
+
+.pb-kiosk-shell {
+  background:
+    radial-gradient(circle at 15% 10%, rgba(12, 131, 31, 0.055), transparent 34rem),
+    #fff;
+}
+
+.pb-surface {
+  background: var(--pb-surface);
+  border: 1px solid var(--pb-separator);
+  border-radius: 1.25rem;
+  box-shadow: var(--pb-shadow);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }
 
 /* Smooth scrolling for inner scrollable areas */

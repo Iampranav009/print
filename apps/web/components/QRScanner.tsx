@@ -70,7 +70,12 @@ export function QRScanner() {
         if (streamRef.current) {
           streamRef.current.getTracks().forEach((track) => track.stop());
         }
-        router.push(`/app/print?shop=${encodeURIComponent(shopId)}`);
+        const shared =
+          typeof window !== "undefined" &&
+          new URLSearchParams(window.location.search).get("shared") === "1";
+        router.push(
+          `/app/print?shop=${encodeURIComponent(shopId)}${shared ? "&shared=1" : ""}`
+        );
       } else {
         showInvalidToast("This isn't a PrintBuddy code");
       }
@@ -441,6 +446,13 @@ export function QRScanner() {
         <button
           type="button"
           onClick={() => {
+            const shared =
+              typeof window !== "undefined" &&
+              new URLSearchParams(window.location.search).get("shared") === "1";
+            if (shared) {
+              router.push("/app/print?shared=1");
+              return;
+            }
             if (typeof window !== "undefined" && window.history.length > 1) {
               router.back();
             } else {
@@ -503,6 +515,13 @@ export function QRScanner() {
               <button
                 type="button"
                 onClick={() => {
+                  const shared =
+                    typeof window !== "undefined" &&
+                    new URLSearchParams(window.location.search).get("shared") === "1";
+                  if (shared) {
+                    router.push("/app/print?shared=1");
+                    return;
+                  }
                   if (typeof window !== "undefined" && window.history.length > 1) {
                     router.back();
                   } else {

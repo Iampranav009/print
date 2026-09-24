@@ -118,7 +118,7 @@ function SidebarContent({
       <div className="px-4 pt-6 pb-5 shrink-0">
         <div className="flex items-center gap-2">
           <span className="text-xl font-bold text-zinc-900 tracking-tight">PrintBuddy</span>
-          <span className="text-[10px] font-semibold uppercase tracking-widest bg-indigo-50 text-indigo-600 px-1.5 py-0.5 rounded-md">
+          <span className="text-[10px] font-semibold uppercase tracking-widest bg-brand-soft text-brand px-2 py-1 rounded-full">
             Partner
           </span>
         </div>

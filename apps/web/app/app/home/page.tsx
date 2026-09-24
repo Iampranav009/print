@@ -2,86 +2,64 @@
 
 import React from "react";
 import Link from "next/link";
-import { Printer, ChevronRight } from "lucide-react";
+import { ChevronRight, MapPin, Printer, ShieldCheck, Sparkles } from "lucide-react";
 
 export default function HomePage() {
   return (
-    <div className="min-h-full bg-white pb-24">
-      {/* Page Header */}
-      <div className="px-4 pt-4 pb-2">
+    <div className="min-h-full bg-canvas pb-28">
+      <header className="px-5 pb-4 pt-[max(1.25rem,env(safe-area-inset-top))]">
         <div className="flex items-center justify-between">
           <div>
-            <p className="text-xs text-gray-500 font-medium">Good morning</p>
-            <h1 className="text-xl font-bold text-gray-900">PrintBuddy</h1>
+            <p className="text-[13px] font-medium text-secondary-label">Good morning</p>
+            <h1 className="mt-0.5 text-[28px] font-bold tracking-[-0.035em] text-label">PrintBuddy</h1>
           </div>
-          <div className="w-9 h-9 rounded-full bg-green-100 flex items-center justify-center">
-            <span className="text-green-600 font-bold text-sm">P</span>
+          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-brand-soft ring-1 ring-brand/10">
+            <span className="text-sm font-bold text-brand">P</span>
           </div>
         </div>
-      </div>
+      </header>
 
-      <div className="px-4 space-y-4 pt-2">
-        {/* Hero Banner — Print at Kiosk (Enlarged) */}
-        <Link
-          href="/app/scan"
-          style={{ touchAction: "manipulation" }}
-          aria-label="Scan a printer QR code to start"
-          className="block"
-        >
-          <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-gray-700 to-gray-900 p-7 min-h-[220px] flex flex-col justify-between shadow-sm">
-            {/* Background decorative circles */}
-            <div className="absolute top-0 right-0 w-44 h-44 rounded-full bg-white/5 -translate-y-12 translate-x-12" />
-            <div className="absolute bottom-0 right-12 w-28 h-28 rounded-full bg-white/5 translate-y-8" />
-
-            {/* Kiosk illustration placeholder */}
-            <div className="absolute right-5 bottom-6 w-28 h-32 flex items-end justify-center opacity-85">
-              <div className="relative">
-                {/* Kiosk body */}
-                <div className="w-20 h-24 bg-gray-600 rounded-xl border border-gray-500 flex flex-col items-center justify-start pt-2 gap-1.5 shadow-lg">
-                  <div className="w-14 h-10 bg-blue-500 rounded flex items-center justify-center">
-                    <Printer className="w-6 h-6 text-white" />
-                  </div>
-                  <div className="w-12 h-1 bg-white/30 rounded" />
-                  <div className="w-12 h-1 bg-white/30 rounded" />
-                </div>
-                {/* Base */}
-                <div className="w-24 h-3 bg-gray-500 rounded-b-xl mt-0 mx-auto" />
+      <main className="space-y-5 px-4">
+        <Link href="/app/scan" style={{ touchAction: "manipulation" }} aria-label="Scan a printer QR code to start" className="group block overflow-hidden rounded-[1.75rem] bg-brand text-white shadow-[0_14px_40px_rgba(12,131,31,0.18)] transition-transform active:scale-[0.99]">
+          <div className="relative min-h-[260px] overflow-hidden p-7">
+            <div className="absolute -right-20 -top-24 h-64 w-64 rounded-full bg-white/10" />
+            <div className="absolute -bottom-24 right-10 h-52 w-52 rounded-full bg-black/10" />
+            <div className="relative z-10 flex h-full min-h-[206px] flex-col justify-between">
+              <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-white/16 ring-1 ring-white/20 backdrop-blur-sm">
+                <Printer className="h-7 w-7" aria-hidden="true" />
               </div>
-            </div>
-
-            <div className="relative z-10">
-              <h2 className="text-white font-bold text-2xl sm:text-3xl leading-snug">Print at Kiosk</h2>
-              <p className="text-gray-300 text-sm mt-1">Scan / Locate</p>
-            </div>
-
-            <div className="relative z-10 mt-8">
-              <div
-                className="inline-flex items-center gap-2 bg-white hover:bg-white/90 active:bg-white/80 text-gray-900 font-bold text-sm rounded-full px-5 py-2.5 transition-colors shadow-md"
-              >
-                Print Now
-                <ChevronRight className="w-4 h-4" />
+              <div>
+                <p className="mb-2 text-[13px] font-semibold uppercase tracking-[0.12em] text-white/70">Ready in minutes</p>
+                <h2 className="max-w-xs text-[32px] font-bold leading-[1.05] tracking-[-0.04em]">Scan. Pay. Print.</h2>
+                <p className="mt-3 max-w-[17rem] text-[15px] leading-6 text-white/78">Connect to a nearby printer and get your pages without waiting at the counter.</p>
+                <span className="mt-6 inline-flex min-h-12 items-center gap-2 rounded-full bg-white px-5 text-sm font-semibold text-brand shadow-sm transition-transform group-active:scale-[0.98]">
+                  Start printing
+                  <ChevronRight className="h-4 w-4" aria-hidden="true" />
+                </span>
               </div>
             </div>
           </div>
         </Link>
 
-        {/* Delivery Promo Banner */}
-        <div className="relative overflow-hidden rounded-2xl bg-gray-600 p-5 min-h-[120px]">
-          {/* Scooter illustration placeholder */}
-          <div className="absolute right-4 bottom-4 w-20 h-16 flex items-end justify-center opacity-70">
-            <div className="relative">
-              <div className="w-14 h-8 bg-cyan-400 rounded-lg" />
-              <div className="absolute -top-4 right-1 w-8 h-8 rounded-full bg-gray-400 border-2 border-white/50" />
+        <section aria-labelledby="quick-actions-title">
+          <h2 id="quick-actions-title" className="mb-2.5 px-1 text-[13px] font-semibold text-secondary-label">Quick actions</h2>
+          <div className="overflow-hidden rounded-2xl bg-white ring-1 ring-black/[0.055]">
+            <Link href="/app/nearby" className="flex min-h-[64px] items-center gap-3 px-4 transition-colors active:bg-zinc-50">
+              <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-brand-soft text-brand"><MapPin className="h-[18px] w-[18px]" aria-hidden="true" /></span>
+              <span className="flex-1"><span className="block text-[15px] font-semibold text-label">Find a printer</span><span className="block text-[12px] text-secondary-label">See available PrintBuddy shops nearby</span></span>
+              <ChevronRight className="h-4 w-4 text-zinc-300" aria-hidden="true" />
+            </Link>
+            <div className="ml-16 h-px bg-black/[0.06]" />
+            <div className="flex min-h-[64px] items-center gap-3 px-4">
+              <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-zinc-100 text-zinc-500"><Sparkles className="h-[18px] w-[18px]" aria-hidden="true" /></span>
+              <span className="flex-1"><span className="block text-[15px] font-semibold text-label">Doorstep delivery</span><span className="block text-[12px] text-secondary-label">Coming soon</span></span>
+              <span className="rounded-full bg-zinc-100 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide text-zinc-500">Soon</span>
             </div>
           </div>
-          <div className="relative z-10 max-w-[55%]">
-            <h3 className="text-white font-bold text-base leading-snug">
-              Get your Prints Delivered to your Doorstep
-            </h3>
-            <p className="text-gray-300 text-xs mt-1">(Coming Soon)</p>
-          </div>
-        </div>
-      </div>
+        </section>
+
+        <div className="flex items-center justify-center gap-2 pb-2 text-xs text-secondary-label"><ShieldCheck className="h-4 w-4 text-brand" aria-hidden="true" />Files are removed after printing</div>
+      </main>
     </div>
   );
 }

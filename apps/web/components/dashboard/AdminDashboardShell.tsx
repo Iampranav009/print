@@ -94,7 +94,7 @@ export function AdminDashboardShell({ adminEmail }: Props) {
   }, []);
 
   return (
-    <div className="min-h-screen flex bg-zinc-50">
+    <div className="pb-admin-shell min-h-screen flex">
       <AdminSidebar
         active={section}
         onSelect={setSection}
@@ -104,14 +104,14 @@ export function AdminDashboardShell({ adminEmail }: Props) {
       />
 
       <div className="flex-1 flex flex-col min-w-0">
-        <header className="h-16 flex items-center justify-between px-6 lg:px-8 bg-white border-b border-zinc-100 shrink-0">
+        <header className="pb-glass-bar sticky top-0 z-20 h-16 flex items-center justify-between px-6 lg:px-8 border-b shrink-0">
           <h1 className="text-base font-semibold text-zinc-900 ml-12 lg:ml-0">{SECTION_TITLES[section]}</h1>
           <span className="rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-700">
             Admin Portal
           </span>
         </header>
 
-        <main className="flex-1 px-4 py-6 lg:px-8">
+        <main className="pb-dashboard-main flex-1 px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
           <div className="max-w-7xl mx-auto">
             {section === "overview" && <DashboardClient />}
             {section === "analytics" && <AdminAnalytics />}

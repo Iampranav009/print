@@ -165,7 +165,7 @@ export function KioskStatus({
           <div className={`mt-8 w-full ${centered ? "max-w-xl" : "max-w-lg"}`}>
             <div className="h-2.5 bg-zinc-100 rounded-full overflow-hidden">
               <div
-                className="h-full bg-blue-500 transition-all duration-200"
+                className="h-full bg-brand transition-all duration-200"
                 style={{ width: `${Math.min(100, Math.max(0, liveActivity.percent))}%` }}
               />
             </div>
