@@ -105,7 +105,7 @@ function getStatusConfig(status: JobStatus, paymentMethod: "online" | "cash" = "
       };
     case "downloading":
       return {
-        icon: <Loader2 className="w-10 h-10 text-blue-500 animate-spin" />,
+        icon: <Loader2 className="w-10 h-10 text-green-600 animate-spin" />,
         headline: "Preparing your file…",
         sub: "Rasterizing and sending document to printer.",
         color: "blue",
@@ -120,7 +120,7 @@ function getStatusConfig(status: JobStatus, paymentMethod: "online" | "cash" = "
       };
     case "printing":
       return {
-        icon: <Printer className="w-10 h-10 text-blue-600 animate-pulse" />,
+        icon: <Printer className="w-10 h-10 text-green-600 animate-pulse" />,
         headline: "Printing now…",
         sub: "Your document is printing automatically. Collect it from the printer tray once done.",
         color: "blue",

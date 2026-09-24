@@ -306,9 +306,11 @@ export function KioskStatus({
       break;
   }
 
-  const isPrinted = activeJob.status === "printed";
+  const isTerminal = ["printed", "payment_failed", "print_failed", "refunded", "cancelled", "expired"].includes(
+    activeJob.status
+  );
   const showCountdown =
-    isPrinted && typeof returnCountdown === "number" && returnCountdown > 0;
+    isTerminal && typeof returnCountdown === "number" && returnCountdown > 0;
 
   return (
     <div className="flex h-full w-full">
@@ -375,7 +377,7 @@ export function KioskStatus({
               </span>
             </div>
             <span>
-              Updating the screen in {returnCountdown}s
+              Returning to the queue in {returnCountdown}s
             </span>
           </div>
         )}

@@ -167,7 +167,7 @@ function UploadProgressSheet({
               <Check className="w-10 h-10 text-green-500" strokeWidth={3} />
             </div>
             <h3 className="text-lg font-bold text-gray-900">Document Successfully Uploaded</h3>
-            <p className="text-xs text-rose-500 mt-2">We delete your uploaded files once job is done</p>
+            <p className="text-xs text-green-600 mt-2">We delete your uploaded files once job is done</p>
           </div>
         ) : (
           <div className="flex flex-col items-center text-center py-2">
@@ -186,14 +186,14 @@ function UploadProgressSheet({
             <div className="w-full mt-5 mb-2">
               <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
                 <div
-                  className="h-full bg-rose-500 rounded-full transition-all duration-300"
+                  className="h-full bg-green-600 rounded-full transition-all duration-300"
                   style={{ width: `${progress}%` }}
                 />
               </div>
             </div>
             <p className="text-sm font-semibold text-gray-700 self-end">{progress}%</p>
 
-            <p className="text-xs text-rose-500 mt-3 font-medium">
+            <p className="text-xs text-green-600 mt-3 font-medium">
               We delete your uploaded files once delivered
             </p>
 
@@ -248,9 +248,9 @@ function OptionPair<T extends string>({
               disabled={isOptDisabled}
               style={{ touchAction: "manipulation" }}
               title={opt.disabledReason}
-              className={`flex items-center gap-2.5 px-3 py-3 rounded-xl border-2 text-sm font-semibold transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 ${
+              className={`flex items-center gap-2.5 px-3 py-3 rounded-xl border-2 text-sm font-semibold transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-green-600 ${
                 active
-                  ? "border-blue-700 bg-white text-gray-900"
+                  ? "border-green-700 bg-white text-gray-900"
                   : "border-gray-200 bg-gray-50 text-gray-700 hover:border-gray-300"
               } ${isOptDisabled ? "opacity-40 cursor-not-allowed" : "cursor-pointer"}`}
               aria-pressed={active}
@@ -296,9 +296,9 @@ function ChipStrip<T extends string | number>({
               onClick={() => !disabled && onChange(opt)}
               disabled={disabled}
               style={{ touchAction: "manipulation" }}
-              className={`px-3.5 py-1.5 rounded-full text-sm font-semibold border-2 transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 ${
+              className={`px-3.5 py-1.5 rounded-full text-sm font-semibold border-2 transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-green-600 ${
                 active
-                  ? "border-blue-700 bg-blue-50 text-blue-800"
+                  ? "border-green-700 bg-green-50 text-green-800"
                   : "border-gray-200 bg-gray-50 text-gray-600 hover:border-gray-300"
               } ${disabled ? "opacity-40 cursor-not-allowed" : "cursor-pointer"}`}
               aria-pressed={active}
@@ -847,8 +847,8 @@ function PrintContent() {
           ) : !shopId ? (
             /* Locked — must scan QR first */
             <div className="w-full flex flex-col items-center justify-center gap-3 border-2 border-dashed border-gray-200 rounded-2xl bg-gray-50 p-10 text-center">
-              <div className="w-14 h-14 rounded-2xl bg-blue-50 flex items-center justify-center">
-                <QrCode className="w-7 h-7 text-blue-400" />
+              <div className="w-14 h-14 rounded-2xl bg-green-50 flex items-center justify-center">
+                <QrCode className="w-7 h-7 text-green-600" />
               </div>
               <div>
                 <p className="text-sm font-semibold text-gray-900">Scan a kiosk QR code first</p>
@@ -928,7 +928,7 @@ function PrintContent() {
                   <p className="text-xs text-gray-500 mt-0.5">File 1 ({fileState.totalPages} page{fileState.totalPages !== 1 ? "s" : ""})</p>
                 )}
               </div>
-              <div className="flex items-center gap-0 bg-gradient-to-r from-blue-500 to-blue-600 rounded-xl overflow-hidden">
+              <div className="flex items-center gap-0 bg-gradient-to-r from-green-500 to-green-700 rounded-xl overflow-hidden">
                 <button
                   type="button"
                   onClick={() => setConfig((c) => c ? { ...c, copies: Math.max(1, c.copies - 1) } : c)}
@@ -964,7 +964,7 @@ function PrintContent() {
                       onClick={() => setConfig((c) => c ? { ...c, useCustomRange: pg === "Custom" } : c)}
                       style={{ touchAction: "manipulation" }}
                       className={`px-4 py-1.5 rounded-full text-sm font-semibold transition-colors focus-visible:outline-none ${
-                        isActive ? "bg-blue-500 text-white shadow-sm" : "text-gray-500 hover:text-gray-700"
+                        isActive ? "bg-green-600 text-white shadow-sm" : "text-gray-500 hover:text-gray-700"
                       }`}
                     >
                       {pg}
@@ -981,7 +981,7 @@ function PrintContent() {
                 placeholder="e.g. 1-3, 5, 7-9"
                 value={config.pageRange}
                 onChange={(e) => setConfig((c) => c ? { ...c, pageRange: e.target.value } : c)}
-                className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-green-600"
               />
             )}
 
@@ -1108,7 +1108,7 @@ function PrintContent() {
               role="radio"
               aria-checked={paymentMethod === "online"}
               onClick={() => setPaymentMethod("online")}
-              className={`min-h-10 rounded-xl border px-3 text-xs font-semibold flex items-center justify-center gap-2 transition-colors ${paymentMethod === "online" ? "border-blue-500 bg-blue-50 text-blue-700" : "border-gray-200 text-gray-600"}`}
+              className={`min-h-10 rounded-xl border px-3 text-xs font-semibold flex items-center justify-center gap-2 transition-colors ${paymentMethod === "online" ? "border-green-600 bg-green-50 text-green-700" : "border-gray-200 text-gray-600"}`}
             >
               <CreditCard className="w-4 h-4" /> Online
             </button>
@@ -1131,7 +1131,7 @@ function PrintContent() {
           </div>
           <div className="text-right">
             {priceState === "ready" && rawPriceResult ? (
-              <p className="text-xl font-bold text-blue-600">{formatPaise(rawPriceResult.pricePaise)}</p>
+              <p className="text-xl font-bold text-green-700">{formatPaise(rawPriceResult.pricePaise)}</p>
             ) : priceState === "fetching" ? (
               <Loader2 className="w-5 h-5 text-gray-400 animate-spin" />
             ) : (
@@ -1147,7 +1147,7 @@ function PrintContent() {
               type="button"
               onClick={() => router.push(isSharedEntry ? "/app/scan?shared=1" : "/app/scan")}
               style={{ touchAction: "manipulation" }}
-              className="w-full min-h-[52px] rounded-2xl bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white font-semibold text-base flex items-center justify-center gap-2 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 shadow-sm"
+              className="w-full min-h-[52px] rounded-2xl bg-green-600 hover:bg-green-700 active:bg-green-800 text-white font-semibold text-base flex items-center justify-center gap-2 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-green-600 shadow-sm"
             >
               <QrCode className="w-5 h-5" />
               {isSharedEntry ? "Scan Now" : "Scan Kiosk"}

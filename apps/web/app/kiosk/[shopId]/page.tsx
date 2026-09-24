@@ -84,9 +84,8 @@ export default function KioskPage({
     reason: string;
   } | null>(null);
 
-  // After a successful print, count down from 3s and refresh the display
-  // so the QR reappears for the next customer. Only runs on print:completed
-  // — payment_failed / print_failed stay on screen until a new session.
+  // After any terminal result, count down from 3s and refresh the display so
+  // the durable queue can show the next job (or the QR for a new customer).
   const [returnCountdown, setReturnCountdown] = useState<number | null>(null);
   const countdownTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const clearReturnCountdown = useCallback(() => {
@@ -380,6 +379,7 @@ export default function KioskPage({
             setRetryPrompt({ jobId: evt.jobId, reason: evt.reason ?? "Payment was rejected" });
             showToast("error", "Payment rejected");
             fetchLatestJobs();
+            startReturnCountdown(3);
             break;
           }
 
@@ -427,9 +427,7 @@ export default function KioskPage({
             setLiveActivity(null);
             showToast("success", "Print complete");
             fetchLatestJobs();
-            // Start the visible 5s "Returning to home in Xs" countdown.
-            // Success is the ONLY state that auto-returns — failures stay
-            // on screen until a new session.
+            // Return to the durable queue after showing the result briefly.
             startReturnCountdown(3);
             break;
           }
@@ -450,6 +448,7 @@ export default function KioskPage({
             );
             showToast("error", "Print failed");
             fetchLatestJobs();
+            startReturnCountdown(3);
             break;
           }
         }
@@ -484,6 +483,11 @@ export default function KioskPage({
       } else if (activeJob.status === "payment_failed") {
         showToast("error", "Payment rejected");
         setLiveActivity(null);
+        startReturnCountdown(3);
+      } else if (["print_failed", "refunded", "cancelled", "expired"].includes(activeJob.status)) {
+        showToast("error", activeJob.status === "print_failed" ? "Print failed" : "Job closed");
+        setLiveActivity(null);
+        startReturnCountdown(3);
       }
       return;
     }
@@ -503,12 +507,21 @@ export default function KioskPage({
       case "payment_failed":
         showToast("error", "Payment rejected");
         setLiveActivity(null);
+        startReturnCountdown(3);
         break;
       case "print_failed":
         showToast("error", "Print failed");
+        startReturnCountdown(3);
+        break;
+      case "refunded":
+      case "cancelled":
+      case "expired":
+        showToast("info", "Job closed");
+        setLiveActivity(null);
+        startReturnCountdown(3);
         break;
     }
-  }, [activeJob, showToast]);
+  }, [activeJob, showToast, startReturnCountdown]);
 
   if (loading) {
     return (
@@ -665,7 +678,7 @@ export default function KioskPage({
               Dismiss
             </button>
             <p className="text-xs text-zinc-400 mt-4">
-              The rejection stays on screen. A new scan will start a fresh session.
+              Returning to the queue{typeof returnCountdown === "number" ? ` in ${returnCountdown}s` : " shortly"}.
             </p>
           </div>
         </div>

@@ -288,7 +288,7 @@ export function DocumentPreview({
         className={`w-full bg-gray-50 rounded-2xl flex flex-col items-center justify-center gap-3 ${className}`}
         style={{ aspectRatio: containerAspect, maxHeight: maxH }}
       >
-        <Loader2 className="w-6 h-6 text-blue-500 animate-spin" />
+        <Loader2 className="w-6 h-6 text-green-600 animate-spin" />
         <p className="text-xs text-gray-500">Preparing preview…</p>
       </div>
     );
@@ -444,7 +444,7 @@ export function DocumentPreview({
               disabled={current === 0}
               style={{ touchAction: "manipulation" }}
               aria-label="Previous page"
-              className="absolute left-2 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-white/90 shadow flex items-center justify-center disabled:opacity-30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+              className="absolute left-2 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-white/90 shadow flex items-center justify-center disabled:opacity-30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-green-600"
             >
               <ChevronLeft className="w-4 h-4 text-gray-700" />
             </button>
@@ -454,7 +454,7 @@ export function DocumentPreview({
               disabled={current + numberUp >= pages.length}
               style={{ touchAction: "manipulation" }}
               aria-label="Next page"
-              className="absolute right-2 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-white/90 shadow flex items-center justify-center disabled:opacity-30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+              className="absolute right-2 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-white/90 shadow flex items-center justify-center disabled:opacity-30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-green-600"
             >
               <ChevronRight className="w-4 h-4 text-gray-700" />
             </button>
@@ -486,7 +486,7 @@ export function DocumentPreview({
               style={{ touchAction: "manipulation" }}
               aria-label={`Go to page ${i + 1}`}
               className={`h-1.5 rounded-full transition-all ${
-                i === current ? "w-6 bg-blue-500" : "w-1.5 bg-gray-300 hover:bg-gray-400"
+                i === current ? "w-6 bg-green-600" : "w-1.5 bg-gray-300 hover:bg-gray-400"
               }`}
             />
           ))}

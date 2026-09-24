@@ -190,8 +190,8 @@ export function ProfileClient({ user, stats }: ProfileProps) {
 
         <section className="grid grid-cols-2 gap-3 mt-4">
           <div className="bg-white rounded-2xl border border-gray-100 p-4 shadow-sm">
-            <div className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center mb-3">
-              <Printer className="w-5 h-5 text-blue-600" />
+            <div className="w-10 h-10 rounded-xl bg-green-50 flex items-center justify-center mb-3">
+              <Printer className="w-5 h-5 text-green-600" />
             </div>
             <p className="text-2xl font-bold text-gray-950 tabular-nums">{stats.totalPrints}</p>
             <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mt-1">Prints</p>

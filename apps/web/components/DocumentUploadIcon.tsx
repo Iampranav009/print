@@ -23,14 +23,14 @@ export function DocumentUploadIcon({ size = "md", className = "" }: DocumentUplo
     <div className={`inline-flex items-center justify-center ${className}`} aria-hidden>
       <div className="relative">
         <div
-          className={`${s.doc} bg-blue-100 rounded-lg border-2 border-blue-200 flex flex-col items-center justify-end ${s.pad}`}
+          className={`${s.doc} bg-green-100 rounded-lg border-2 border-green-200 flex flex-col items-center justify-end ${s.pad}`}
         >
-          <div className={`${s.bar} bg-blue-300 rounded`} />
-          <div className={`${s.bar} bg-blue-300 rounded`} />
-          <div className={`${s.barShort} bg-blue-300 rounded`} />
+          <div className={`${s.bar} bg-green-300 rounded`} />
+          <div className={`${s.bar} bg-green-300 rounded`} />
+          <div className={`${s.barShort} bg-green-300 rounded`} />
         </div>
         <div
-          className={`absolute ${s.badge} left-1/2 -translate-x-1/2 rounded-full bg-blue-500 flex items-center justify-center shadow-md shadow-blue-500/30`}
+          className={`absolute ${s.badge} left-1/2 -translate-x-1/2 rounded-full bg-green-600 flex items-center justify-center shadow-md shadow-green-600/30`}
         >
           <Upload className={`${s.arrow} text-white`} />
         </div>
