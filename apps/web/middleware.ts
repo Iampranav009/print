@@ -19,11 +19,25 @@ export async function middleware(req: NextRequest) {
   const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
   if (!url || !key) return res;
 
-  const ONE_YEAR = 60 * 60 * 24 * 365;
+  let pendingCookies: Array<{
+    name: string;
+    value: string;
+    options: CookieOptions;
+  }> = [];
+
+  const applyPendingCookies = <T extends NextResponse>(response: T): T => {
+    pendingCookies.forEach(({ name, value, options }) => {
+      // Preserve Supabase's exact options. In particular, stale auth-cookie
+      // chunks are removed with Max-Age=0; replacing that with a long lifetime
+      // leaves dead chunks in the browser and can eventually exceed Vercel's
+      // request-header limit.
+      response.cookies.set(name, value, options);
+    });
+    return response;
+  };
 
   const supabase = createServerClient(url, key, {
     cookieOptions: {
-      maxAge: ONE_YEAR,
       sameSite: "lax",
       path: "/",
       secure: process.env.NODE_ENV === "production",
@@ -33,40 +47,25 @@ export async function middleware(req: NextRequest) {
         return req.cookies.getAll();
       },
       setAll(cookiesToSet: { name: string; value: string; options: CookieOptions }[]) {
+        pendingCookies = cookiesToSet;
         cookiesToSet.forEach(({ name, value }) => req.cookies.set(name, value));
         res = NextResponse.next({
           request: {
             headers: requestHeaders,
           },
         });
-        cookiesToSet.forEach(({ name, value, options }) =>
-          res.cookies.set(name, value, {
-            ...options,
-            maxAge: options?.maxAge ?? ONE_YEAR,
-            sameSite: options?.sameSite ?? "lax",
-            path: options?.path ?? "/",
-            secure: process.env.NODE_ENV === "production",
-          })
-        );
+        applyPendingCookies(res);
       },
     },
   });
 
-  const { data: { user } } = await supabase.auth.getUser();
+  const { data: claimsData } = await supabase.auth.getClaims();
+  const authenticated = !!claimsData?.claims?.sub;
 
   const { pathname } = req.nextUrl;
 
   const createRedirect = (redirectUrl: URL | string) => {
-    const redirectRes = NextResponse.redirect(redirectUrl);
-    res.cookies.getAll().forEach((cookie) => {
-      redirectRes.cookies.set(cookie.name, cookie.value, {
-        maxAge: ONE_YEAR,
-        sameSite: "lax",
-        path: "/",
-        secure: process.env.NODE_ENV === "production",
-      });
-    });
-    return redirectRes;
+    return applyPendingCookies(NextResponse.redirect(redirectUrl));
   };
 
   // Safety net: If Supabase falls back to Site URL with ?code=..., forward to /auth/callback
@@ -80,7 +79,7 @@ export async function middleware(req: NextRequest) {
   // Vendor login route handling
   const isVendorLogin = pathname === "/vendor/login" || pathname.startsWith("/vendor/login");
   if (isVendorLogin) {
-    if (user) {
+    if (authenticated) {
       const next = req.nextUrl.searchParams.get("next") || "/vendor";
       const redirectUrl = req.nextUrl.clone();
       redirectUrl.pathname = next.startsWith("/") ? next.split("?")[0] : "/vendor";
@@ -93,7 +92,7 @@ export async function middleware(req: NextRequest) {
   // Customer app + vendor portal + admin dashboard all need a signed-in
   // user. Middleware just checks presence — role/admin allowlist is
   // enforced by the layouts and API routes themselves.
-  if ((pathname === "/vendor" || pathname.startsWith("/vendor/")) && !user) {
+  if ((pathname === "/vendor" || pathname.startsWith("/vendor/")) && !authenticated) {
     const vendorLoginUrl = req.nextUrl.clone();
     vendorLoginUrl.pathname = "/vendor/login";
     vendorLoginUrl.searchParams.set("next", pathname + req.nextUrl.search);
@@ -101,14 +100,14 @@ export async function middleware(req: NextRequest) {
   }
 
   const AUTHED_ROOTS = ["/app", "/dashboard"];
-  if (AUTHED_ROOTS.some((p) => pathname === p || pathname.startsWith(p + "/")) && !user) {
+  if (AUTHED_ROOTS.some((p) => pathname === p || pathname.startsWith(p + "/")) && !authenticated) {
     const loginUrl = req.nextUrl.clone();
     loginUrl.pathname = "/login";
     loginUrl.searchParams.set("next", pathname + req.nextUrl.search);
     return createRedirect(loginUrl);
   }
 
-  if (pathname === "/login" && user) {
+  if (pathname === "/login" && authenticated) {
     const next = req.nextUrl.searchParams.get("next") || "/app/print";
     const redirectUrl = req.nextUrl.clone();
     redirectUrl.pathname = next.startsWith("/") ? next.split("?")[0] : "/app/print";
@@ -121,7 +120,12 @@ export async function middleware(req: NextRequest) {
 
 export const config = {
   matcher: [
-    // Run on everything except static assets, favicons, and image files
-    "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico)$).*)",
+    // Refresh auth only where a session is actually read. Avoid rewriting
+    // chunked auth cookies for public pages, static files and unrelated APIs.
+    "/app/:path*",
+    "/vendor/:path*",
+    "/dashboard/:path*",
+    "/login",
+    "/auth/callback",
   ],
 };

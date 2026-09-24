@@ -10,7 +10,6 @@ export function createClient() {
 
   return createBrowserClient(url, anonKey, {
     cookieOptions: {
-      maxAge: 60 * 60 * 24 * 365, // 1 year remember me
       sameSite: "lax",
       path: "/",
       secure: process.env.NODE_ENV === "production",
