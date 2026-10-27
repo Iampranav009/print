@@ -4,7 +4,7 @@ import re
 from urllib.parse import urlparse
 import requests
 
-TRUSTED_HOST = "print-kro-five.vercel.app"
+TRUSTED_HOST = "himmer.vercel.app"
 
 
 def parse_link(link: str) -> tuple[str, str]:

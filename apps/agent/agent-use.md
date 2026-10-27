@@ -34,7 +34,7 @@ The Windows app stores its token using Windows DPAPI for the signed-in user in `
 - Apply `supabase/migrations/20260915041012_agent_pairing_and_printer_routing.sql` before deploying the web routes.
 - Deploy the website and distribute the new EXE together. Existing shops retain their current printer for both routes after migration.
 - This build is unsigned; SmartScreen or organizational policy may warn or block it. Never disable Windows protections as an installation step.
-- The copy-and-paste connection link intentionally targets `print-kro-five.vercel.app`. Change `TRUSTED_HOST` in `pairing.py` when the official production domain changes and rebuild.
+- The copy-and-paste connection link intentionally targets `himmer.vercel.app`. Change `TRUSTED_HOST` in `pairing.py` when the official production domain changes and rebuild.
 
 ## Diagnostics and tests
 
