@@ -1,9 +1,9 @@
-# PrintBuddy — Project Agent Instructions (`.agent`)
+# HIMMER — Project Agent Instructions (`.agent`)
 
 This repository follows the architecture and guidelines defined below:
 
 ## 1. Project Overview & Mission
-**PrintBuddy** is a software platform turning existing local Xerox/print shops into connected, automated, self-serve print nodes without requiring proprietary hardware kiosks.
+**HIMMER** is a software platform turning existing local Xerox/print shops into connected, automated, self-serve print nodes without requiring proprietary hardware kiosks.
 - **Tier 0 (Core / Zero Hardware):** Shop's existing PC + Printer + Internet. Requires only the Print Agent software and a QR sticker.
 - **Tier 1 (Headless Node):** Raspberry Pi running Print Agent for shops without a usable PC.
 - **Tier 2 (Ad Node):** Pi + Monitor for QR, live status, and local idle ads (optional add-on, not in MVP).

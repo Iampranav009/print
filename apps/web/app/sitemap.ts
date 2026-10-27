@@ -1,10 +1,11 @@
 import type { MetadataRoute } from "next";
 
 export default function sitemap(): MetadataRoute.Sitemap {
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "https://printbuddy.in";
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "https://himmer.vercel.app";
   const lastModified = new Date();
 
   return [
+    { url: `${baseUrl}/support`, changeFrequency: "monthly", priority: 0.6 },
     {
       url: baseUrl,
       lastModified,
@@ -22,30 +23,6 @@ export default function sitemap(): MetadataRoute.Sitemap {
       lastModified,
       changeFrequency: "weekly",
       priority: 0.9,
-    },
-    {
-      url: `${baseUrl}/app/nearby`,
-      lastModified,
-      changeFrequency: "daily",
-      priority: 0.8,
-    },
-    {
-      url: `${baseUrl}/app/print`,
-      lastModified,
-      changeFrequency: "weekly",
-      priority: 0.8,
-    },
-    {
-      url: `${baseUrl}/terms`,
-      lastModified,
-      changeFrequency: "monthly",
-      priority: 0.5,
-    },
-    {
-      url: `${baseUrl}/support`,
-      lastModified,
-      changeFrequency: "monthly",
-      priority: 0.5,
     },
   ];
 }

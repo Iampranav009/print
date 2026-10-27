@@ -1,4 +1,4 @@
-# PrintBuddy design-sync notes
+# HIMMER design-sync notes
 
 - Repo shape: apps/web is a Next.js app, not a publishable package. No `dist/`,
   no `main`/`module`/`exports` in `apps/web/package.json` -> the converter runs
@@ -81,7 +81,7 @@ exclusion requires keeping the file out of the mirrored source tree that
 - `NearbyMap.tsx` — `export default function NearbyMap()` with **no named
   export**. The synth entry re-exports every mirrored file via
   `export * from './File.tsx'`, which silently drops default exports, so
-  `NearbyMap` never reaches `window.PrintBuddy` (`[BUNDLE_EXPORT] 1/36 not a
+  `NearbyMap` never reaches `window.HIMMER` (`[BUNDLE_EXPORT] 1/36 not a
   component: NearbyMap`) even though ts-morph's separate discovery pass
   still found it and generated its card metadata. Real fix if this component
   is wanted later: add a named export alongside the default in the real

@@ -668,7 +668,7 @@ function PrintContent() {
         }
       })
       .catch(() => {
-        if (active) setSharedImportError("PrintBuddy could not read the shared file.");
+        if (active) setSharedImportError("HIMMER could not read the shared file.");
       });
 
     return () => {
@@ -737,7 +737,7 @@ function PrintContent() {
         order_id: orderId,
         amount,
         currency,
-        name: "PrintBuddy",
+        name: "HIMMER",
         description: fileState.file.name,
         prefill: {},
         theme: { color: "#22c55e" },
@@ -817,7 +817,7 @@ function PrintContent() {
       {(sharedEntryError || sharedImportError) && (
         <div className="mx-4 mt-3 flex items-start gap-2 bg-red-50 border border-red-100 rounded-xl p-3 text-xs text-red-700">
           <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />
-          <span>{sharedImportError ?? "The shared file could not be received. Please open it and choose Share with PrintBuddy again."}</span>
+          <span>{sharedImportError ?? "The shared file could not be received. Please open it and choose Share with HIMMER again."}</span>
         </div>
       )}
 
@@ -839,7 +839,7 @@ function PrintContent() {
                     {pendingSharedFiles.map((file) => file.name).join(", ")}
                   </p>
                   <p className="mt-2 text-xs font-medium text-green-700">
-                    Scan a PrintBuddy kiosk to upload, price and print securely.
+                    Scan a HIMMER kiosk to upload, price and print securely.
                   </p>
                 </div>
               </div>

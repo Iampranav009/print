@@ -1,25 +1,31 @@
 import type { Metadata, Viewport } from "next";
 import Script from "next/script";
+import { Manrope } from "next/font/google";
 import { RegisterSW } from "@/app/components/register-sw";
 import "./globals.css";
+import "./marketing.css";
 
-const siteUrl = process.env.NEXT_PUBLIC_APP_URL || "https://printbuddy.in";
+const manrope = Manrope({ subsets: ["latin"], display: "swap", variable: "--font-himmer" });
+
+const siteUrl = process.env.NEXT_PUBLIC_APP_URL || "https://himmer.vercel.app";
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
   title: {
-    default: "PrintBuddy — Smart Print Software & Wireless Printing ATM Machine",
-    template: "%s | PrintBuddy",
+    default: "HIMMER — Effortless Printing Software",
+    template: "%s | HIMMER",
   },
   description:
-    "PrintBuddy is revolutionary digital software that converts any shop printer into an automated wireless printing machine and self-serve printing ATM machine. Scan QR, upload files, pay via UPI, and print instantly in Yotmal and across India.",
-  applicationName: "PrintBuddy",
+    "HIMMER makes everyday printing effortless. Scan a QR code, upload documents, pay securely via UPI, and print from connected local shops across India.",
+  applicationName: "HIMMER",
   keywords: [
     "Yotmal",
     "Yotmal xerox shop",
     "Yavatmal print software",
     "digital software",
-    "Print Buddy",
+    "HIMMER",
+    "easy printing software",
+    "effortless printing software",
     "Print Software",
     "wireless printing machine",
     "printing ATM machine",
@@ -32,9 +38,9 @@ export const metadata: Metadata = {
     "touchless printing solution",
     "cloud print agent India",
   ],
-  authors: [{ name: "PrintBuddy", url: siteUrl }],
-  creator: "PrintBuddy",
-  publisher: "PrintBuddy",
+  authors: [{ name: "HIMMER", url: siteUrl }],
+  creator: "HIMMER",
+  publisher: "HIMMER",
   formatDetection: {
     email: false,
     address: false,
@@ -44,19 +50,19 @@ export const metadata: Metadata = {
     canonical: "/",
   },
   openGraph: {
-    title: "PrintBuddy — Smart Print Software & Wireless Printing ATM Machine",
+    title: "HIMMER — Effortless Printing Software",
     description:
-      "Transform any printer into a wireless printing machine and automated printing ATM machine. Scan QR, pay via UPI, and print. Serving Yotmal and print shops across India.",
+      "Printing, made effortless. Scan a QR code, upload documents, pay via UPI, and print through connected local shops across India.",
     url: siteUrl,
-    siteName: "PrintBuddy",
+    siteName: "HIMMER",
     locale: "en_IN",
     type: "website",
   },
   twitter: {
     card: "summary_large_image",
-    title: "PrintBuddy — Smart Print Software & Wireless Printing ATM Machine",
+    title: "HIMMER — Effortless Printing Software",
     description:
-      "Transform standard printers into self-service wireless printing machines and printing vending machines. Live in Yotmal and throughout India.",
+      "Printing, made effortless. Upload, pay, and print securely through connected local shops.",
   },
   robots: {
     index: true,
@@ -79,7 +85,6 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
-  maximumScale: 1,
   viewportFit: "cover",
   themeColor: "#0C831F",
 };
@@ -90,7 +95,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" className="h-full antialiased font-sans">
+    <html lang="en" className={`${manrope.variable} h-full antialiased font-sans`}>
       <head>
         <link rel="preconnect" href="https://checkout.razorpay.com" />
         <link rel="dns-prefetch" href="https://api.razorpay.com" />

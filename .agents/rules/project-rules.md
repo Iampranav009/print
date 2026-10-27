@@ -1,6 +1,6 @@
-# PrintBuddy Workspace Rules
+# HIMMER Workspace Rules
 
-These guidelines are automatically applied by the agent across the PrintBuddy project.
+These guidelines are automatically applied by the agent across the HIMMER project.
 
 ## Core Architectural Guardrails
 1. **Never print on client-side payment confirmation:** Only dispatch print jobs after server-to-server Razorpay webhook signature verification.

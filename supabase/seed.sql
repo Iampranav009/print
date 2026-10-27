@@ -1,4 +1,4 @@
--- PrintBuddy pilot seed
+-- HIMMER pilot seed
 -- Run this AFTER the migrations (0001, 0002).
 --
 -- The agent token below is generated with:

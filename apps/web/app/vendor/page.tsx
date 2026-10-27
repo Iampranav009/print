@@ -159,12 +159,12 @@ export default function VendorOverviewPage() {
       ctx.fillStyle = "#4F46E5"; // indigo-600
       ctx.fillRect(0, 0, W, 8);
 
-      // ── HEADER: "Print Buddy" ──────────────────────────
+      // ── HEADER: "HIMMER" ──────────────────────────
       const headerY = 60;
       ctx.fillStyle = "#4F46E5";
       ctx.font = "bold 52px 'Segoe UI', system-ui, sans-serif";
       ctx.textAlign = "center";
-      ctx.fillText("Print Buddy", W / 2, headerY);
+      ctx.fillText("HIMMER", W / 2, headerY);
 
       // Sub-tagline
       ctx.fillStyle = "#6B7280";
@@ -294,7 +294,7 @@ export default function VendorOverviewPage() {
         ctx.fillStyle = "#9CA3AF";
         ctx.font = "13px 'Segoe UI', system-ui, sans-serif";
         ctx.textAlign = "center";
-        ctx.fillText("Powered by Print Buddy · printbuddy.in", W / 2, H - 28);
+        ctx.fillText("Powered by HIMMER · himmer.vercel.app", W / 2, H - 28);
 
         // Bottom accent bar
         ctx.fillStyle = "#4F46E5";

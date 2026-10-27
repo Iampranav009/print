@@ -1,4 +1,4 @@
-# PrintBuddy — Partner Dashboard v2
+# HIMMER — Partner Dashboard v2
 
 You're evolving the existing **Vendor Dashboard** into the **Partner Dashboard**. Everywhere the current UI says "Vendor" it should read "Partner" — same account, same routes, same person, better name. Also adding three concrete features: a wallet chip in the top nav, printer feature toggles + custom pricing on the printer page, and an auto-populated OS-printer-name dropdown that reads from the local agent.
 
@@ -103,10 +103,10 @@ discovered_at:      string | null    // ISO timestamp of the last agent report
 **UX**
 - If `discovered_printers.length > 0`:
   - Render a native `<select>` (or your existing dropdown component) at the top of the field. First option: `— Select a printer —`. Then one option per discovered printer, showing `name` in bold and `driver` in muted small text underneath. Mark the `isDefault: true` one with a tiny "Default" pill.
-  - Below the dropdown, a subtle caption: "Auto-detected from your PrintBuddy agent (last updated 2 min ago)" — relative time from `discovered_at`.
+  - Below the dropdown, a subtle caption: "Auto-detected from your HIMMER agent (last updated 2 min ago)" — relative time from `discovered_at`.
   - Below that, an expandable "Type manually" section for cases where the printer isn't discovered yet.
 - If `discovered_printers.length === 0`:
-  - Show a warning card instead of the dropdown: `bg-amber-50 border border-amber-200 rounded-xl p-4`. Icon `AlertCircle`. Copy: "No printers detected yet. Install and start the PrintBuddy agent on the shop machine, or type the printer name manually below."
+  - Show a warning card instead of the dropdown: `bg-amber-50 border border-amber-200 rounded-xl p-4`. Icon `AlertCircle`. Copy: "No printers detected yet. Install and start the HIMMER agent on the shop machine, or type the printer name manually below."
   - Below the card, show the manual text input directly.
 
 On modal Save: `os_printer_name` from the selected option (or the manually typed value) goes into `PUT /api/vendor/printer` alongside the other connection fields as before.

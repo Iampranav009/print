@@ -1,4 +1,4 @@
-"""Parse a private one-time link and exchange it only with the trusted PrintBuddy host."""
+"""Parse a private one-time link and exchange it only with the trusted HIMMER host."""
 from __future__ import annotations
 import re
 from urllib.parse import urlparse
@@ -12,7 +12,7 @@ def parse_link(link: str) -> tuple[str, str]:
     if (url.scheme != "https" or url.hostname != TRUSTED_HOST or url.port not in (None, 443)
             or url.username or url.password or url.path != "/agent/connect" or url.query
             or not re.fullmatch(r"[a-f0-9]{64}", url.fragment)):
-        raise ValueError("Paste the complete connection link from your PrintBuddy dashboard.")
+        raise ValueError("Paste the complete connection link from your HIMMER dashboard.")
     return f"https://{TRUSTED_HOST}", url.fragment
 
 

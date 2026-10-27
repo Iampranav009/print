@@ -15,6 +15,7 @@ const PAGE_TITLES: Record<string, string> = {
   "/vendor/payouts": "Wallet",
   "/vendor/shop": "Shop",
   "/vendor/printer": "Printer",
+  "/vendor/agent-download": "Print agent",
   "/vendor/bank": "Bank Details",
   "/vendor/profile": "Profile",
   "/vendor/onboarding": "Onboarding",
@@ -45,7 +46,7 @@ export function VendorTopBar({ shopName, shopStatus }: ShopBadgeProps) {
       .sort((a, b) => b[0].length - a[0].length)[0]?.[1] ?? "Partner Portal";
 
   return (
-    <header className="pb-glass-bar sticky top-0 z-20 h-16 flex items-center justify-between px-6 lg:px-8 border-b shrink-0">
+    <header className="pb-glass-bar sticky top-0 z-20 min-h-16 flex flex-wrap items-center justify-between gap-2 px-4 py-3 lg:px-8 border-b shrink-0">
       {/* Page title — leave space for hamburger on mobile */}
       <h1 className="text-base font-semibold text-zinc-900 ml-12 lg:ml-0">{title}</h1>
 
@@ -55,7 +56,7 @@ export function VendorTopBar({ shopName, shopStatus }: ShopBadgeProps) {
         <PrinterStatusPill isLink={true} />
 
         {shopName && (
-          <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-zinc-50 border border-zinc-100">
+          <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-full bg-zinc-50 border border-zinc-100">
             <StatusDot status={shopStatus} />
             <span className="text-sm font-medium text-zinc-700 max-w-[160px] truncate">
               {shopName}

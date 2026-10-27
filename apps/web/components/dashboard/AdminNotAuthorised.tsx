@@ -22,13 +22,13 @@ export function AdminNotAuthorised({ email }: { email: string | null }) {
         <div>
           <h1 className="text-xl font-bold text-zinc-900">Not authorised</h1>
           <p className="text-sm text-zinc-500 mt-2">
-            Signed in as <span className="font-semibold text-zinc-800">{email ?? "unknown"}</span>. Contact PrintBuddy if this is a mistake.
+            Signed in as <span className="font-semibold text-zinc-800">{email ?? "unknown"}</span>. Contact HIMMER if this is a mistake.
           </p>
         </div>
         <button
           onClick={handleSignOut}
           className="inline-flex items-center justify-center gap-2 w-full py-2.5 rounded-xl border border-zinc-200 hover:bg-zinc-50 text-sm font-medium text-zinc-700 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600"
-          aria-label="Sign out of PrintBuddy"
+          aria-label="Sign out of HIMMER"
         >
           <LogOut className="w-4 h-4 text-zinc-500" />
           Sign out

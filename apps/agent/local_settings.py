@@ -8,7 +8,7 @@ import os
 from pathlib import Path
 import sys
 
-CONFIG_DIR = Path(os.environ.get("LOCALAPPDATA", str(Path.home() / ".config"))) / "PrintBuddy"
+CONFIG_DIR = Path(os.environ.get("LOCALAPPDATA", str(Path.home() / ".config"))) / "HIMMER"
 
 
 class Blob(ctypes.Structure):

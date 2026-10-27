@@ -22,7 +22,7 @@ class LegacyTests(unittest.TestCase):
     def test_logon_registration_is_per_user_and_quotes_path(self):
         registry=MagicMock()
         with patch.object(windows_setup,'legacy_windows',return_value=True),patch.dict(sys.modules,{'winreg':registry}),patch.object(windows_setup,'powershell') as powershell:
-            windows_setup.register_startup(Path('C:/Shop PC/PrintBuddy.exe'))
+            windows_setup.register_startup(Path('C:/Shop PC/HIMMER.exe'))
             command=registry.SetValueEx.call_args[0][-1]
             self.assertIn('"',command)
             self.assertIn('--background',command)

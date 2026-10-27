@@ -43,12 +43,12 @@ export function PrinterAssignments({ printers, bw, color, discoveredAt, onSaved 
   return <section className="space-y-5 rounded-2xl border border-zinc-100 bg-white p-6 shadow-sm">
     <div className="flex flex-wrap items-start justify-between gap-3"><div>
       <h2 className="text-lg font-semibold">Your printers</h2>
-      <p className="mt-1 text-sm text-zinc-500">Printers are detected automatically by the PrintBuddy app.</p>
+      <p className="mt-1 text-sm text-zinc-500">Printers are detected automatically by the HIMMER app.</p>
     </div><Link href="/vendor/agent-download" className="text-sm font-semibold text-indigo-600">Download / connect app</Link></div>
     <p role="status" className={`text-sm ${stale ? "text-amber-700" : "text-emerald-700"}`}>
       {stale ? "Waiting for the shop app. Previously detected printers may be unavailable." : `${printers.length} printers detected · updates automatically`}
     </p>
-    {!printers.length && <p className="text-sm text-zinc-500">Open PrintBuddy on the shop computer. Its printer list appears before setup; link the shop once to show it here. Printers must be installed in Windows or CUPS.</p>}
+    {!printers.length && <p className="text-sm text-zinc-500">Open HIMMER on the shop computer. Its printer list appears before setup; link the shop once to show it here. Printers must be installed in Windows or CUPS.</p>}
     <label className="block space-y-2 text-sm font-medium">Black-and-white printer
       <select aria-label="Black-and-white printer" className="w-full rounded-xl border p-3" value={blackWhite} onChange={e => setBlackWhite(e.target.value)}>{choices(blackWhite)}</select>
     </label>

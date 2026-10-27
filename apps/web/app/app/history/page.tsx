@@ -76,7 +76,7 @@ export default async function HistoryPage() {
         return {
           id: item.id,
           shop_id: item.shop_id,
-          shop_name: item.shops?.name || "PrintBuddy Shop",
+          shop_name: item.shops?.name || "HIMMER Shop",
           user_id: item.user_id,
           status: item.status,
           price_paise: item.price_paise,

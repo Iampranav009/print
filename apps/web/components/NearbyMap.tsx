@@ -544,7 +544,7 @@ export default function NearbyMap() {
   /* ── Share ── */
   const shareShop = useCallback(async (shop: Shop) => {
     const url = `https://maps.google.com/maps?q=${shop.latitude},${shop.longitude}`;
-    const text = `${shop.name}${shop.location ? ` · ${shop.location}` : ""} — PrintBuddy`;
+    const text = `${shop.name}${shop.location ? ` · ${shop.location}` : ""} — HIMMER`;
     try {
       if (navigator.share) {
         await navigator.share({ title: shop.name, text, url });

@@ -1,4 +1,4 @@
-"""PrintBuddy's Windows setup window and background tray app."""
+"""HIMMER's Windows setup window and background tray app."""
 from __future__ import annotations
 import json
 import os
@@ -16,7 +16,7 @@ from pairing import parse_link, redeem_link, TRUSTED_HOST
 from printing.discovery import get_discovered_printers
 
 
-class PrintBuddyWindow:
+class HimmerWindow:
     def __init__(self, root: tk.Tk, background: bool = False):
         self.root = root
         self.events = queue.Queue()
@@ -34,7 +34,7 @@ class PrintBuddyWindow:
             self.settings = load_settings()
         except Exception:
             self.settings_error = "Saved connection could not be opened. Paste a new connection link."
-        root.title("PrintBuddy")
+        root.title("HIMMER")
         root.geometry("740x720")
         root.minsize(700, 680)
         root.configure(bg="#f5f5fa")
@@ -42,7 +42,7 @@ class PrintBuddyWindow:
         ttk.Style().configure("TButton", padding=9)
         frame = ttk.Frame(root, padding=26)
         frame.pack(fill="both", expand=True)
-        ttk.Label(frame, text="PrintBuddy", font=("Segoe UI", 26, "bold")).pack(anchor="w")
+        ttk.Label(frame, text="HIMMER", font=("Segoe UI", 26, "bold")).pack(anchor="w")
         ttk.Label(frame, text="Your shop, ready to print.", font=("Segoe UI", 11)).pack(anchor="w", pady=(0, 18))
         ttk.Label(frame, text="Printers on this computer", font=("Segoe UI", 12, "bold")).pack(anchor="w")
         self.printer_list = tk.Listbox(frame, height=5, font=("Segoe UI", 10), relief="flat", bd=0, selectbackground="#5036ed")
@@ -59,7 +59,7 @@ class PrintBuddyWindow:
         self.entry.pack(fill="x", pady=8)
         ttk.Label(frame, text="Copy the connection link from your dashboard and paste it here.", wraplength=600).pack(anchor="w")
         self.consent = tk.BooleanVar(value=False)
-        ttk.Checkbutton(frame, text="Install PrintBuddy and PDF printing support; start after Windows sign-in.", variable=self.consent).pack(anchor="w", pady=12)
+        ttk.Checkbutton(frame, text="Install HIMMER and PDF printing support; start after Windows sign-in.", variable=self.consent).pack(anchor="w", pady=12)
         row = ttk.Frame(frame)
         row.pack(fill="x")
         self.connect_button = ttk.Button(row, text="Install and connect", command=self.connect)
@@ -72,7 +72,7 @@ class PrintBuddyWindow:
         root.protocol("WM_DELETE_WINDOW", self.close)
         root.after(100, self.pump)
         root.after(10, self.scan)
-        installed = Path(sys.executable).resolve() == (CONFIG_DIR / "PrintBuddy.exe").resolve()
+        installed = Path(sys.executable).resolve() == (CONFIG_DIR / "HIMMER.exe").resolve()
         if self.settings.get("AGENT_TOKEN") and (installed or background):
             self.start_runtime()
             if background:
@@ -94,7 +94,7 @@ class PrintBuddyWindow:
 
     def connect(self):
         if self.runtime:
-            messagebox.showinfo("Already connected", "This computer is connected. Quit PrintBuddy from the tray before changing shops.")
+            messagebox.showinfo("Already connected", "This computer is connected. Quit HIMMER from the tray before changing shops.")
             return
         if self.connect_busy:
             return
@@ -106,7 +106,7 @@ class PrintBuddyWindow:
             self.status.set("Tick the installation permission above to continue."); return
         self.connect_busy = True
         self.connect_button.configure(state="disabled")
-        self.status.set("Installing PrintBuddy and preparing PDF printing…")
+        self.status.set("Installing HIMMER and preparing PDF printing…")
         link = self.link.get()
         def work():
             try:
@@ -128,7 +128,7 @@ class PrintBuddyWindow:
                 self.events.put(("connected", settings))
             except Exception as error:
                 # Never display request objects or connection URLs containing credentials.
-                text = str(error) if not isinstance(error, requests.RequestException) else "Could not reach PrintBuddy. Check the internet connection, then try again. If your link was used, create a new one."
+                text = str(error) if not isinstance(error, requests.RequestException) else "Could not reach HIMMER. Check the internet connection, then try again. If your link was used, create a new one."
                 self.events.put(("error", text))
         threading.Thread(target=work, daemon=True).start()
 
@@ -136,7 +136,7 @@ class PrintBuddyWindow:
         def work():
             try:
                 from audio.announcer import WindowsSpeechEngine
-                WindowsSpeechEngine(70).speak("PrintBuddy is ready. Payment announcements will play here.")
+                WindowsSpeechEngine(70).speak("HIMMER is ready. Payment announcements will play here.")
                 self.events.put(("status", "Speaker test completed. Did you hear the spoken message?"))
             except Exception:
                 self.events.put(("status", "Speaker test failed. Check the Windows output device and installed speech voice."))
@@ -147,7 +147,7 @@ class PrintBuddyWindow:
         if not selected:
             self.status.set("Select a printer in the list above to print a test page."); return
         if not (CONFIG_DIR / "SumatraPDF.exe").exists():
-            self.status.set("Connect PrintBuddy first so it can install PDF printing support."); return
+            self.status.set("Connect HIMMER first so it can install PDF printing support."); return
         printer = self.printers[selected[0]]["name"]
         self.status.set(f"Sending one test page to {printer}…")
         def work():
@@ -179,11 +179,11 @@ class PrintBuddyWindow:
         draw.rectangle((20, 10, 44, 26), fill="white")
         def quit_app():
             self.events.put(("quit", None))
-        self.tray = pystray.Icon("PrintBuddy", icon, "PrintBuddy", menu=pystray.Menu(
-            pystray.MenuItem("Open PrintBuddy", lambda: self.events.put(("show", None)), default=True),
+        self.tray = pystray.Icon("HIMMER", icon, "HIMMER", menu=pystray.Menu(
+            pystray.MenuItem("Open HIMMER", lambda: self.events.put(("show", None)), default=True),
             pystray.MenuItem("Open dashboard", self.dashboard),
             pystray.MenuItem("Test speaker", self.test_speaker),
-            pystray.MenuItem("Quit PrintBuddy", quit_app)))
+            pystray.MenuItem("Quit HIMMER", quit_app)))
         threading.Thread(target=self.tray.run, daemon=True).start()
         def worker():
             try:
@@ -263,7 +263,7 @@ class PrintBuddyWindow:
             return
         popup = tk.Toplevel(self.root)
         self.cash_windows[job_id] = popup
-        popup.title("PrintBuddy cash payment")
+        popup.title("HIMMER cash payment")
         popup.attributes("-topmost", True)
         popup.resizable(False, False)
         width, height = 390, 330
@@ -323,7 +323,7 @@ def main():
         path.write_text(json.dumps({"ok": True, "printers": get_discovered_printers(), "test_pdf": make_test_page().startswith(b"%PDF")}), encoding="utf-8")
         return
     root = tk.Tk()
-    app = PrintBuddyWindow(root, background="--background" in sys.argv)
+    app = HimmerWindow(root, background="--background" in sys.argv)
     root.mainloop()
     raise SystemExit(app.exit_code)
 

@@ -306,7 +306,7 @@ function StepShop({
             required
             value={inviteInput}
             onChange={(e) => setInviteInput(e.target.value)}
-            placeholder="https://printbuddy.app/vendor/claim?token=... or token"
+            placeholder="https://himmer.vercel.app/vendor/claim?token=... or token"
             className="w-full px-3.5 py-2.5 rounded-xl border border-zinc-200 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600"
             aria-required="true"
           />
@@ -348,11 +348,11 @@ function StepShop({
             Need an invite?
           </div>
           <p>
-            Shops on PrintBuddy are currently onboarded by our operations team. If you operate a print shop and wish to join the network, please contact us at{" "}
+            Shops on HIMMER are currently onboarded by our operations team. If you operate a print shop and wish to join the network, please contact us at{" "}
             <a href="mailto:support@printbuddy.app" className="underline font-medium">
               support@printbuddy.app
             </a>{" "}
-            or speak to your PrintBuddy administrator to receive your invite link.
+            or speak to your HIMMER administrator to receive your invite link.
           </p>
         </div>
       )}
@@ -615,7 +615,7 @@ export default function OnboardingPage() {
 
   return (
     <div className="w-full max-w-[560px] bg-white rounded-3xl shadow-md p-8">
-      {/* PrintBuddy Wordmark */}
+      {/* HIMMER Wordmark */}
       <div className="flex items-center gap-2 mb-6">
         <span className="text-2xl font-black tracking-tight text-indigo-600">Print</span>
         <span className="text-2xl font-black tracking-tight text-zinc-900">Buddy</span>

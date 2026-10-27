@@ -4,7 +4,7 @@ from datetime import datetime
 
 
 def make_test_page() -> bytes:
-    text = f"PrintBuddy test page - {datetime.now():%Y-%m-%d %H:%M}"
+    text = f"HIMMER test page - {datetime.now():%Y-%m-%d %H:%M}"
     content = f"BT /F1 20 Tf 60 760 Td ({text}) Tj 0 -40 Td /F1 12 Tf (Your printer is connected to this computer.) Tj ET".encode("ascii")
     objects = [
         b"<< /Type /Catalog /Pages 2 0 R >>",

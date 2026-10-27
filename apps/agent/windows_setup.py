@@ -56,14 +56,14 @@ def ensure_print_support() -> Path:
 
 def install_app() -> Path:
     if not getattr(sys, "frozen", False):
-        raise RuntimeError("Use the Windows download to install PrintBuddy.")
+        raise RuntimeError("Use the Windows download to install HIMMER.")
     CONFIG_DIR.mkdir(parents=True, exist_ok=True)
-    destination = CONFIG_DIR / "PrintBuddy.exe"
+    destination = CONFIG_DIR / "HIMMER.exe"
     if Path(sys.executable).resolve() != destination.resolve():
         try:
             shutil.copy2(sys.executable, destination)
         except PermissionError:
-            raise RuntimeError("PrintBuddy is already open. Quit it from the Windows tray, then reopen this installer.") from None
+            raise RuntimeError("HIMMER is already open. Quit it from the Windows tray, then reopen this installer.") from None
     ensure_print_support()
     return destination
 
@@ -77,7 +77,7 @@ def register_startup(executable: Path) -> None:
         import winreg
         # Per-user logon startup is supported on Win7 without admin rights or PS3.
         with winreg.CreateKey(winreg.HKEY_CURRENT_USER, r"Software\Microsoft\Windows\CurrentVersion\Run") as key:
-            winreg.SetValueEx(key, "PrintBuddy Agent", 0, winreg.REG_SZ, subprocess.list2cmdline([str(executable), "--background"]))
+            winreg.SetValueEx(key, "HIMMER Agent", 0, winreg.REG_SZ, subprocess.list2cmdline([str(executable), "--background"]))
         return
     powershell("""
       $p=[Console]::In.ReadToEnd() | ConvertFrom-Json;
@@ -86,19 +86,19 @@ def register_startup(executable: Path) -> None:
       $trigger=New-ScheduledTaskTrigger -AtLogOn -User $user;
       $principal=New-ScheduledTaskPrincipal -UserId $user -LogonType Interactive -RunLevel Limited;
       $settings=New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -StartWhenAvailable -RestartCount 999 -RestartInterval (New-TimeSpan -Minutes 1) -ExecutionTimeLimit ([TimeSpan]::Zero) -MultipleInstances IgnoreNew;
-      Register-ScheduledTask -TaskName 'PrintBuddy Agent' -Action $action -Trigger $trigger -Principal $principal -Settings $settings -Force | Out-Null;
+      Register-ScheduledTask -TaskName 'HIMMER Agent' -Action $action -Trigger $trigger -Principal $principal -Settings $settings -Force | Out-Null;
       $shell=New-Object -ComObject WScript.Shell;
-      $shortcut=$shell.CreateShortcut((Join-Path ([Environment]::GetFolderPath('Programs')) 'PrintBuddy.lnk'));
+      $shortcut=$shell.CreateShortcut((Join-Path ([Environment]::GetFolderPath('Programs')) 'HIMMER.lnk'));
       $shortcut.TargetPath=$p.exe; $shortcut.WorkingDirectory=$p.directory; $shortcut.Save();
     """, {"exe": str(executable), "directory": str(CONFIG_DIR)})
 
 
 def start_installed() -> None:
     if legacy_windows():
-        subprocess.Popen([str(CONFIG_DIR / "PrintBuddy.exe"), "--background"], creationflags=subprocess.CREATE_NO_WINDOW)
+        subprocess.Popen([str(CONFIG_DIR / "HIMMER.exe"), "--background"], creationflags=subprocess.CREATE_NO_WINDOW)
         return
     # Start via the task so Windows can restart a failed process.
-    powershell("Start-ScheduledTask -TaskName 'PrintBuddy Agent'")
+    powershell("Start-ScheduledTask -TaskName 'HIMMER Agent'")
 
 
 def uninstall_startup() -> None:
@@ -106,8 +106,8 @@ def uninstall_startup() -> None:
         import winreg
         try:
             with winreg.OpenKey(winreg.HKEY_CURRENT_USER, r"Software\Microsoft\Windows\CurrentVersion\Run", 0, winreg.KEY_SET_VALUE) as key:
-                winreg.DeleteValue(key, "PrintBuddy Agent")
+                winreg.DeleteValue(key, "HIMMER Agent")
         except FileNotFoundError:
             pass
         return
-    powershell("Unregister-ScheduledTask -TaskName 'PrintBuddy Agent' -Confirm:$false -ErrorAction SilentlyContinue")
+    powershell("Unregister-ScheduledTask -TaskName 'HIMMER Agent' -Confirm:$false -ErrorAction SilentlyContinue")

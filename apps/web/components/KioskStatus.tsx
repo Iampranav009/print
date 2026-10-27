@@ -274,7 +274,7 @@ export function KioskStatus({
       tone = "success";
       iconNode = <CheckCircle2 className="w-14 h-14" />;
       headline = `${activeJob.display_name || "Customer"}’s print is complete`;
-      sub = "Enjoy — thanks for using PrintBuddy.";
+      sub = "Enjoy — thanks for using HIMMER.";
       break;
 
     case "payment_failed":

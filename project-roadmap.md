@@ -1,4 +1,4 @@
-# PrintBuddy — Project Design Document
+# HIMMER — Project Design Document
 
 **Version:** 0.1 (Foundational)
 **Status:** Pre-build / architecture locked, MVP scoping
@@ -16,7 +16,7 @@ Every order needs the shopkeeper's hands and attention. This is slow, error-pron
 
 ## 2. Solution
 
-PrintBuddy replaces the manual loop with a self-serve digital one. The customer does the configuration and payment from their own phone; the print happens automatically.
+HIMMER replaces the manual loop with a self-serve digital one. The customer does the configuration and payment from their own phone; the print happens automatically.
 
 ```
 Customer scans QR (sticker on the wall / on the monitor)

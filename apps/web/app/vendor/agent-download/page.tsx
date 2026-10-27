@@ -28,18 +28,18 @@ export default function AgentDownloadPage() {
   }
   return <main className="mx-auto max-w-2xl space-y-7 p-6">
     <Link href="/vendor/printer" className="text-indigo-600">← Your printers</Link>
-    <div><h1 className="text-3xl font-bold">PrintBuddy for Windows</h1><p className="mt-2 text-zinc-500">Connect your shop once. Printing takes care of itself.</p></div>
+    <div><h1 className="text-3xl font-bold">HIMMER for Windows</h1><p className="mt-2 text-zinc-500">Connect your shop once. Printing takes care of itself.</p></div>
     <section className="space-y-4 rounded-2xl border bg-white p-6"><h2 className="text-lg font-semibold">1. Download and open the app</h2>
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="flex flex-col rounded-xl border border-indigo-200 bg-indigo-50/40 p-4">
           <h3 className="font-semibold">Windows 10 / 11</h3>
           <p className="mt-1 mb-4 text-sm text-zinc-600">For 64-bit Windows PCs.</p>
-          <a href="/downloads/PrintBuddy-Setup.exe" download onClick={checkDownload} className="mt-auto inline-flex min-h-12 items-center justify-center rounded-xl bg-indigo-600 px-4 py-3 text-center font-semibold text-white hover:bg-indigo-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600">Download Windows 10 / 11</a>
+          <a href="/downloads/HIMMER-Setup.exe" download onClick={checkDownload} className="mt-auto inline-flex min-h-12 items-center justify-center rounded-xl bg-indigo-600 px-4 py-3 text-center font-semibold text-white hover:bg-indigo-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600">Download Windows 10 / 11</a>
         </div>
         <div className="flex flex-col rounded-xl border border-zinc-200 p-4">
           <h3 className="font-semibold">Windows 7 SP1</h3>
           <p className="mt-1 mb-4 text-sm text-zinc-600">Legacy edition for 32-bit and 64-bit PCs. Includes the PDF printing engine.</p>
-          <a href="/downloads/PrintBuddy-Windows7-Setup.exe" download className="mt-auto inline-flex min-h-12 items-center justify-center rounded-xl border border-indigo-600 px-4 py-3 text-center font-semibold text-indigo-700 hover:bg-indigo-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600">Download Windows 7</a>
+          <a href="/downloads/HIMMER-Windows7-Setup.exe" download className="mt-auto inline-flex min-h-12 items-center justify-center rounded-xl border border-indigo-600 px-4 py-3 text-center font-semibold text-indigo-700 hover:bg-indigo-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600">Download Windows 7</a>
         </div>
       </div>
       <p className="text-sm text-zinc-500">No separate Python installation or manual credentials. Download the edition matching the shop PC, open it, then paste your connection link.</p>
@@ -49,7 +49,7 @@ export default function AgentDownloadPage() {
         <p className="mt-2">If the old installer showed python314.dll or api-ms-win-core-path-l1-1-0.dll errors, download the Windows 7 edition above. Do not copy DLLs from download websites.</p>
       </details>
     </section>
-    <section className="space-y-4 rounded-2xl border bg-white p-6"><h2 className="text-lg font-semibold">2. Paste your connection link into PrintBuddy</h2>
+    <section className="space-y-4 rounded-2xl border bg-white p-6"><h2 className="text-lg font-semibold">2. Paste your connection link into HIMMER</h2>
       <button disabled={busy} onClick={createLink} className="rounded-xl border px-5 py-3 font-semibold disabled:opacity-50">{busy ? "Preparing…" : link ? "Create a new link" : "Get my connection link"}</button>
       {link && <div className="space-y-3"><input aria-label="Shop connection link" readOnly value={link} onFocus={e => e.target.select()} className="w-full rounded-lg border p-3 text-sm" />
         <button className="text-sm font-semibold text-indigo-600" onClick={async () => { try { await navigator.clipboard.writeText(link); setCopied(true); } catch { setError("Select and copy the link above."); } }}>{copied ? "Copied" : "Copy link"}</button>

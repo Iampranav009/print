@@ -115,7 +115,7 @@ function getStatusConfig(status: JobStatus) {
           </div>
         ),
         headline: "Printed! Collect from tray",
-        sub: "Your document has printed. Thanks for using PrintBuddy!",
+        sub: "Your document has printed. Thanks for using HIMMER!",
         color: "emerald",
       };
     case "payment_failed":

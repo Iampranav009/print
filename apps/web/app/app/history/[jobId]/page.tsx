@@ -135,7 +135,7 @@ function getStatusConfig(status: JobStatus, paymentMethod: "online" | "cash" = "
           </div>
         ),
         headline: "Printed! Collect from tray",
-        sub: "Your document has printed. Thank you for using PrintBuddy!",
+        sub: "Your document has printed. Thank you for using HIMMER!",
         color: "green",
       };
     case "payment_failed":

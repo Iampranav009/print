@@ -1,6 +1,8 @@
 "use client";
 
 import { cn } from "@/lib/utils";
+import { Brand } from "@/components/Brand";
+import Link from "next/link";
 import React, {
   useState,
   useRef,
@@ -30,7 +32,7 @@ import {
   Printer,
 } from "lucide-react";
 // Importing animation components from framer-motion
-import { AnimatePresence, motion, useInView, type Variants, type Transition } from "framer-motion";
+import { AnimatePresence, motion, type Variants, type Transition } from "framer-motion";
 
 // --- CONFETTI LOGIC ---
 import type { ReactNode } from "react";
@@ -164,35 +166,8 @@ interface BlurFadeProps {
 function BlurFade({
   children,
   className,
-  variant,
-  duration = 0.4,
-  delay = 0,
-  yOffset = 6,
-  inView = true,
-  inViewMargin = "-50px",
-  blur = "6px",
 }: BlurFadeProps) {
-  const ref = useRef(null);
-  const inViewResult = useInView(ref, { once: true, margin: inViewMargin as any });
-  const isInView = !inView || inViewResult;
-  const defaultVariants: Variants = {
-    hidden: { y: yOffset, opacity: 0, filter: `blur(${blur})` },
-    visible: { y: -yOffset, opacity: 1, filter: "blur(0px)" },
-  };
-  const combinedVariants = variant || defaultVariants;
-  return (
-    <motion.div
-      ref={ref}
-      initial="hidden"
-      animate={isInView ? "visible" : "hidden"}
-      exit="hidden"
-      variants={combinedVariants}
-      transition={{ delay: 0.04 + delay, duration, ease: "easeOut" }}
-      className={className}
-    >
-      {children}
-    </motion.div>
-  );
+  return <div className={className}>{children}</div>;
 }
 
 // --- GOOGLE ICON ---
@@ -414,7 +389,7 @@ export interface AuthComponentProps {
 
 export const AuthComponent = ({
   logo = <DefaultLogo />,
-  brandName = "PrintBuddy",
+  brandName = "HIMMER",
   title,
   subtitle,
   initialMode = "signin",
@@ -664,7 +639,7 @@ export const AuthComponent = ({
   );
 
   return (
-    <div className="bg-background min-h-screen w-screen flex flex-col">
+    <div className="hm-auth bg-background min-h-screen w-full flex flex-col">
       <style>{`
         input[type="password"]::-ms-reveal, input[type="password"]::-ms-clear { display: none !important; }
         input[type="password"]::-webkit-credentials-auto-fill-button, input[type="password"]::-webkit-strong-password-auto-fill-button { display: none !important; }
@@ -708,25 +683,22 @@ export const AuthComponent = ({
       <Confetti ref={confettiRef} manualstart className="fixed top-0 left-0 w-full h-full pointer-events-none z-[999]" />
       <Modal />
 
-      <div className={cn("fixed top-4 left-4 z-20 flex items-center gap-2", "md:left-1/2 md:-translate-x-1/2")}>
-        {logo}
-        <h1 className="text-base font-bold text-foreground">{brandName}</h1>
+      <div className="hm-auth-header">
+        <Brand />
+        <Link href="/support" className="text-xs font-medium text-secondary-label">Need a hand? ↗</Link>
       </div>
 
-      <div className={cn("flex w-full flex-1 h-full items-center justify-center bg-card", "relative overflow-hidden min-h-screen py-16")}>
-        <div className="absolute inset-0 z-0">
-          <GradientBackground />
-        </div>
+      <div className="hm-auth-body flex w-full flex-1 items-center justify-center relative py-16">
 
         <fieldset
           disabled={modalStatus !== "closed"}
-          className="relative z-10 flex flex-col items-center gap-6 w-full max-w-[340px] mx-auto px-4 py-2"
+          className="hm-auth-card relative z-10 flex flex-col items-center gap-6 w-full mx-auto"
         >
           <AnimatePresence mode="wait">
             {authStep === "email" && (
               <motion.div
                 key="email-content"
-                initial={{ y: 6, opacity: 0 }}
+                initial={false}
                 animate={{ y: 0, opacity: 1 }}
                 exit={{ opacity: 0 }}
                 transition={{ duration: 0.3, ease: "easeOut" }}
@@ -734,9 +706,10 @@ export const AuthComponent = ({
               >
                 <BlurFade delay={0.25 * 1} className="w-full">
                   <div className="text-center">
-                    <p className="font-serif font-light text-4xl sm:text-5xl tracking-tight text-foreground whitespace-nowrap">
+                    <p className="mb-3 text-[10px] uppercase tracking-[.15em] text-secondary-label">{brandName}</p>
+                    <h1 className="font-semibold text-3xl sm:text-4xl tracking-tight text-foreground">
                       {title || defaultTitle}
-                    </p>
+                    </h1>
                   </div>
                 </BlurFade>
 
@@ -776,7 +749,7 @@ export const AuthComponent = ({
             {authStep === "password" && (
               <motion.div
                 key="password-title"
-                initial={{ y: 6, opacity: 0 }}
+                initial={false}
                 animate={{ y: 0, opacity: 1 }}
                 exit={{ opacity: 0 }}
                 transition={{ duration: 0.3, ease: "easeOut" }}
@@ -802,7 +775,7 @@ export const AuthComponent = ({
             {authStep === "confirmPassword" && (
               <motion.div
                 key="confirm-title"
-                initial={{ y: 6, opacity: 0 }}
+                initial={false}
                 animate={{ y: 0, opacity: 1 }}
                 exit={{ opacity: 0 }}
                 transition={{ duration: 0.3, ease: "easeOut" }}

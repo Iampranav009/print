@@ -142,7 +142,7 @@ export default function BankPage() {
         title="Re-verification required"
       >
         <p className="text-sm text-zinc-600 mb-5">
-          Saving new payout details will require re-verification by the PrintBuddy team. Payouts will be paused until verified. Continue?
+          Saving new payout details will require re-verification by the HIMMER team. Payouts will be paused until verified. Continue?
         </p>
         <div className="flex gap-3">
           <button

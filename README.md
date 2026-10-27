@@ -1,4 +1,4 @@
-# PrintBuddy
+# HIMMER
 
 Self-serve print platform — customers scan a shop QR code, upload a document, configure print options, pay via UPI, and pick up their printout.
 
@@ -240,6 +240,6 @@ In `simulate` mode, default capabilities are used (all features enabled).
 ### Production (systemd on Pi)
 
 ```bash
-sudo cp install/printbuddy-agent.service /etc/systemd/system/
-sudo systemctl enable --now printbuddy-agent
+sudo cp install/himmer-agent.service /etc/systemd/system/
+sudo systemctl enable --now himmer-agent
 ```

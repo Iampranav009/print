@@ -20,7 +20,7 @@ export async function POST(req: Request) {
     agent_id: agent.id, token_hash: createHash("sha256").update(token).digest("hex"),
     expires_at: expiresAt, used_at: null,
   }, { onConflict: "agent_id" });
-  if (error) return Response.json({ error: "Connection links are unavailable. Please contact PrintBuddy support." }, { status: 503 });
+  if (error) return Response.json({ error: "Connection links are unavailable. Please contact HIMMER support." }, { status: 503 });
   const origin = new URL(req.url).origin;
   return Response.json({ link: `${origin}/agent/connect#${token}`, expiresAt }, { headers: { "Cache-Control": "no-store" } });
 }

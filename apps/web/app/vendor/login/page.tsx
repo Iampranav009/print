@@ -33,9 +33,9 @@ function VendorLoginContent() {
   return (
     <AuthComponent
       logo={<VendorLogo />}
-      brandName="PrintBuddy Partner"
-      title="Partner Portal"
-      subtitle="Manage your shop, live queue, and earnings"
+      brandName="HIMMER Partner"
+      title="Welcome to your shop."
+      subtitle="Printing, made effortless for your shop"
       nextUrl={nextParam}
       initialMode="signin"
       footerExtra={

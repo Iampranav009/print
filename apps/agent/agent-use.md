@@ -1,9 +1,9 @@
-# PrintBuddy Windows app
+# HIMMER Windows app
 
 ## Shop owner setup
 
 1. Open **Printer settings → Download / connect app**.
-2. Download **PrintBuddy-Setup.exe** and open it. The app immediately discovers installed printers; pairing and printer selection are not prerequisites for discovery.
+2. Download **HIMMER-Setup.exe** and open it. The app immediately discovers installed printers; pairing and printer selection are not prerequisites for discovery.
 3. Generate a connection link on the website, paste it in the app, tick the installation permission, and click **Install and connect**.
 4. Return to the dashboard. The list refreshes automatically. Select a black-and-white printer and either use it for color too or select a separate color printer. Click **Save printer choices**.
 5. Use **Test speaker** and **Print a test page** in the app. A test page prints only when explicitly requested.
@@ -14,7 +14,7 @@ The installer bundles Python and the app dependencies. PDF printing support is d
 
 ## Running in the background
 
-PrintBuddy runs from the Windows notification tray. Closing the window hides it; **Quit PrintBuddy** finishes any active job and stops the app. It starts after Windows sign-in through the **PrintBuddy Agent** scheduled task and provides a Start-menu shortcut. Keep the PC awake, signed in, online, and connected to its printers. The browser/dashboard may stay closed.
+HIMMER runs from the Windows notification tray. Closing the window hides it; **Quit HIMMER** finishes any active job and stops the app. It starts after Windows sign-in through the **HIMMER Agent** scheduled task and provides a Start-menu shortcut. Keep the PC awake, signed in, online, and connected to its printers. The browser/dashboard may stay closed.
 
 A heartbeat scans and reports printers every 10 seconds independently of physical printing. The dashboard refreshes every 5 seconds. Empty discovery results clear old printers. A stale list is visibly marked, and unavailable printers are never silently substituted.
 
@@ -22,14 +22,14 @@ Color/B&W selections are server-side settings. Each paid job response supplies i
 
 ## Connection security
 
-Connection links expire in 10 minutes, are single-use, and are stored as SHA-256 hashes in the server-only `agent_pairings` table. A replacement link invalidates the previous outstanding link. Redeeming it replaces the device credential for the selected shop agent. The app accepts only the trusted PrintBuddy HTTPS host.
+Connection links expire in 10 minutes, are single-use, and are stored as SHA-256 hashes in the server-only `agent_pairings` table. A replacement link invalidates the previous outstanding link. Redeeming it replaces the device credential for the selected shop agent. The app accepts only the trusted HIMMER HTTPS host.
 
-The Windows app stores its token using Windows DPAPI for the signed-in user in `%LOCALAPPDATA%/PrintBuddy/config.json`. Credentials are never bundled in the EXE or shown in the dashboard response. No inbound HTTP service or shop port forwarding is used.
+The Windows app stores its token using Windows DPAPI for the signed-in user in `%LOCALAPPDATA%/HIMMER/config.json`. Credentials are never bundled in the EXE or shown in the dashboard response. No inbound HTTP service or shop port forwarding is used.
 
 ## Build and release
 
 - Build on Windows: `powershell -NoProfile -File scripts/build-agent.ps1`.
-- Output: `apps/web/public/downloads/PrintBuddy-Setup.exe`.
+- Output: `apps/web/public/downloads/HIMMER-Setup.exe`.
 - Build dependencies are declared in `apps/agent/requirements-build.txt`; install the frozen lock with `requirements-build-lock.txt` for repeatable builds.
 - Apply `supabase/migrations/20260915041012_agent_pairing_and_printer_routing.sql` before deploying the web routes.
 - Deploy the website and distribute the new EXE together. Existing shops retain their current printer for both routes after migration.
@@ -38,19 +38,19 @@ The Windows app stores its token using Windows DPAPI for the signed-in user in `
 
 ## Diagnostics and tests
 
-Logs: `%LOCALAPPDATA%/PrintBuddy/agent.log` (rotated). Windows speech uses the default Windows output device and an installed voice. Linux uses the Python agent with CUPS and its speech dependencies; the EXE is Windows-only.
+Logs: `%LOCALAPPDATA%/HIMMER/agent.log` (rotated). Windows speech uses the default Windows output device and an installed voice. Linux uses the Python agent with CUPS and its speech dependencies; the EXE is Windows-only.
 
 - Python regressions: `python -m unittest discover -s apps/agent -p "test_*.py"`.
-- Packaged smoke test: `PrintBuddy-Setup.exe --self-test <absolute-json-output-path>`; no installation, pairing, payment or physical printing occurs.
+- Packaged smoke test: `HIMMER-Setup.exe --self-test <absolute-json-output-path>`; no installation, pairing, payment or physical printing occurs.
 - Isolated PostgreSQL migration tests: install `@electric-sql/pglite@0.3.14` under `.agent-build/test-runtime`, then run `node scripts/test-agent-migration.mjs`.
 - TypeScript/build: `npm run build`.
 
-To stop automatic startup, disable **PrintBuddy Agent** in Windows Task Scheduler. Quit the tray app before replacing its installed EXE. To remove the app, remove that task and the PrintBuddy Start-menu shortcut, then remove `%LOCALAPPDATA%/PrintBuddy` after any active job has finished.
+To stop automatic startup, disable **HIMMER Agent** in Windows Task Scheduler. Quit the tray app before replacing its installed EXE. To remove the app, remove that task and the HIMMER Start-menu shortcut, then remove `%LOCALAPPDATA%/HIMMER` after any active job has finished.
 
 ## Windows downloads
 
-- `PrintBuddy-Setup.exe`: Windows 10/11 x64, CPython 3.14.
-- `PrintBuddy-Windows7-Setup.exe`: legacy Windows 7 SP1 x86/x64 target,
+- `HIMMER-Setup.exe`: Windows 10/11 x64, CPython 3.14.
+- `HIMMER-Windows7-Setup.exe`: legacy Windows 7 SP1 x86/x64 target,
   CPython 3.8.10 x86, PyInstaller 4.10, and bundled SumatraPDF 3.6.1 x86.
   Requires applicable Windows runtime updates and an installed printer driver.
   These older runtimes are end-of-life. Windows 7 hardware acceptance testing

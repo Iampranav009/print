@@ -44,7 +44,7 @@ export default async function ProfilePage() {
       const shopCounts: Record<string, { count: number; name: string }> = {};
       for (const job of userJobs) {
         const sId = job.shop_id;
-        const sName = job.shops?.name || "PrintBuddy Shop";
+        const sName = job.shops?.name || "HIMMER Shop";
         if (!shopCounts[sId]) {
           shopCounts[sId] = { count: 0, name: sName };
         }
@@ -68,7 +68,7 @@ export default async function ProfilePage() {
       user?.user_metadata?.full_name ||
       user?.user_metadata?.name ||
       user?.email?.split("@")[0] ||
-      "PrintBuddy User",
+      "HIMMER User",
     avatarUrl: user?.user_metadata?.avatar_url || user?.user_metadata?.picture,
     contactPhone: user?.user_metadata?.contact_phone || user?.phone,
   };

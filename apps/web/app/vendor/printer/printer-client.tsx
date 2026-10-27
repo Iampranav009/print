@@ -294,7 +294,7 @@ export function PrinterClient({ initialData }: PrinterClientProps) {
     } catch {
       setVerifyResult({
         ok: false,
-        message: "Failed to connect to PrintBuddy verification service. Please retry.",
+        message: "Failed to connect to HIMMER verification service. Please retry.",
       });
     } finally {
       setVerifying(false);
@@ -553,7 +553,7 @@ export function PrinterClient({ initialData }: PrinterClientProps) {
           <div className="flex items-start justify-between gap-4">
             <div>
               <h2 className="text-lg font-semibold text-zinc-900">Customer payments</h2>
-              <p className="text-sm text-zinc-500 mt-1">Online payments remain automatic. Cash jobs wait for confirmation in the Windows PrintBuddy app.</p>
+              <p className="text-sm text-zinc-500 mt-1">Online payments remain automatic. Cash jobs wait for confirmation in the Windows HIMMER app.</p>
             </div>
             <button
               type="button"

@@ -1,4 +1,4 @@
--- PrintBuddy Phase 1 schema
+-- HIMMER Phase 1 schema
 -- ---------------------------------------------------------
 -- The Next.js backend connects with the SERVICE-ROLE key,
 -- which bypasses RLS. RLS is enabled on every table with a

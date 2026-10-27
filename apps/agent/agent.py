@@ -1,4 +1,4 @@
-"""PrintBuddy Print Agent — polls the API for jobs and prints them.
+"""HIMMER Print Agent — polls the API for jobs and prints them.
 
 Supports three print modes (PRINTBUDDY_PRINT_MODE):
   simulate — log the command that would run, sleep, report printed
@@ -436,7 +436,7 @@ def main(stop_event: threading.Event | None = None) -> None:
             import fcntl
             fcntl.flock(lock.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
     except OSError:
-        log.error("PrintBuddy Agent is already running for this user.")
+        log.error("HIMMER Agent is already running for this user.")
         lock.close()
         return
     handler = RotatingFileHandler(CONFIG_DIR / "agent.log", maxBytes=1_000_000, backupCount=2, encoding="utf-8")
@@ -444,7 +444,7 @@ def main(stop_event: threading.Event | None = None) -> None:
     logging.getLogger().addHandler(handler)
 
     log.info(
-        "PrintBuddy Agent starting — mode=%s printer=%s shop_id=%s poll=%ds",
+        "HIMMER Agent starting — mode=%s printer=%s shop_id=%s poll=%ds",
         PRINT_MODE,
         PRINTER_NAME,
         SHOP_ID[:8] + "...",
@@ -494,7 +494,7 @@ def main(stop_event: threading.Event | None = None) -> None:
 
             stop_event.wait(POLL_INTERVAL)
     except KeyboardInterrupt:
-        log.info("PrintBuddy Agent stopped cleanly by user.")
+        log.info("HIMMER Agent stopped cleanly by user.")
     finally:
         stop_event.set()
         if audio._instance is not None:

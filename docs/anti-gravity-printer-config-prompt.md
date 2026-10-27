@@ -1,4 +1,4 @@
-# PrintBuddy — Vendor Printer Page + Config Modal UI Prompt
+# HIMMER — Vendor Printer Page + Config Modal UI Prompt
 
 You're extending the vendor portal at `/vendor/*` with a new **Printer** section: a test/real mode toggle, printer configuration (Wi-Fi / USB / Network via a modal), a "Verify connectivity" button, and a persistent connection status indicator in the vendor top nav.
 
@@ -26,7 +26,7 @@ Big segmented control: **Test** · **Real**.
 
 Copy:
 - Card title: **"Printer mode"** (`text-lg font-semibold`)
-- Sub: *"Test mode uses PrintBuddy's virtual printer — pay-per-print flow works end-to-end without real hardware. Switch to Real to connect the printer at your shop."*
+- Sub: *"Test mode uses HIMMER's virtual printer — pay-per-print flow works end-to-end without real hardware. Switch to Real to connect the printer at your shop."*
 - The segmented control below sub, ~360px wide.
 - Both options render as pills; active pill has `bg-zinc-900 text-white`, inactive is `bg-zinc-100 text-zinc-600`. Padding `py-2 px-5`.
 - To the right of the segmented control, a small **Status pill** — reflects the derived online/offline state (green dot + "Online" or red dot + "Offline"). In Test mode always green + "Test mode".
@@ -72,7 +72,7 @@ Opened by the "Configure printer" button. Overlay dialog, max width 560px, `roun
 
 Header:
 - Title **"Configure printer"** (`text-xl font-bold`)
-- Sub *"Choose how your printer connects to PrintBuddy."*
+- Sub *"Choose how your printer connects to HIMMER."*
 - Close button (`X` icon) top-right
 
 **Tabs** (segmented control): **Wi-Fi** · **USB** · **Network**. Default to whatever is currently saved, otherwise Wi-Fi.
@@ -95,13 +95,13 @@ Below the fields, a collapsed instructions accordion (`ChevronRight` rotates 90�
 
 ### USB tab
 
-*"For a printer plugged into a PC or Raspberry Pi over USB. You'll need to run the PrintBuddy Agent app on that machine — it forwards jobs to the printer over your OS's print system."*
+*"For a printer plugged into a PC or Raspberry Pi over USB. You'll need to run the HIMMER Agent app on that machine — it forwards jobs to the printer over your OS's print system."*
 
 Fields:
 - **OS printer name** — required, placeholder `HP_LaserJet_Pro_MFP_M148fw`, helper *"The exact name your operating system uses for the printer. Windows: Control Panel → Devices and Printers. macOS: System Settings → Printers & Scanners. Linux: `lpstat -p`."*
 
 Below, expanded instructions block:
-1. Install the PrintBuddy Agent (link: `/vendor/agent-download` — placeholder for now).
+1. Install the HIMMER Agent (link: `/vendor/agent-download` — placeholder for now).
 2. When it starts, paste in the shop's **Agent Token** (visible in your Shop settings) and click Connect.
 3. The agent runs quietly in the background, sends heartbeats every 30 seconds, and forwards paid print jobs to the OS printer above.
 4. Back on this page, click **Verify connectivity** — the status pill should turn green.
@@ -114,7 +114,7 @@ Fields:
 - **IP address or hostname** — required, placeholder `printer.shop.local` or `10.0.0.15`
 - **Port** — number input, default `9100`
 
-Below, a one-line note: *"If your network printer uses a different protocol (LPD, IPP), let PrintBuddy support know and we'll add support."*
+Below, a one-line note: *"If your network printer uses a different protocol (LPD, IPP), let HIMMER support know and we'll add support."*
 
 ### Modal footer
 
@@ -226,4 +226,4 @@ Do NOT add any package dependencies — everything above uses what's already ins
 
 ## Copy tone
 
-Clear, actionable, no jargon unless immediately explained. Never say "endpoint" or "API" — say "PrintBuddy". Never say "the backend" — say "PrintBuddy". Fields have visible units in helpers (e.g. "port", "IP address"). Errors state what to do next, not what went wrong internally.
+Clear, actionable, no jargon unless immediately explained. Never say "endpoint" or "API" — say "HIMMER". Never say "the backend" — say "HIMMER". Fields have visible units in helpers (e.g. "port", "IP address"). Errors state what to do next, not what went wrong internally.

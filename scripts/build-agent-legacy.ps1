@@ -14,6 +14,6 @@ if (!(Test-Path -LiteralPath $zip)) { Invoke-WebRequest -Uri 'https://www.sumatr
 if ((Get-FileHash -LiteralPath $zip -Algorithm SHA256).Hash -ne '670E694A5C91633D28AB0DF689B4DBF92021183CFE82270AE552CB617A0A07ED') { throw 'PDF engine download checksum mismatch' }
 Expand-Archive -LiteralPath $zip -DestinationPath (Join-Path $assets 'sumatra') -Force
 Copy-Item -LiteralPath (Join-Path $assets 'sumatra/SumatraPDF-3.6.1-32.exe') -Destination (Join-Path $assets 'SumatraPDF.exe')
-& $PythonPath -m PyInstaller --noconfirm --clean --onefile --windowed --noupx --name PrintBuddy-Windows7-Setup --paths (Join-Path $repo 'apps/agent') --workpath (Join-Path $assets 'work') --specpath $assets --distpath (Join-Path $repo 'apps/web/public/downloads') --hidden-import pystray._win32 --hidden-import win32print --add-binary ((Join-Path $assets 'SumatraPDF.exe')+';.') --exclude-module pyttsx3 (Join-Path $repo 'apps/agent/desktop.py')
+& $PythonPath -m PyInstaller --noconfirm --clean --onefile --windowed --noupx --name HIMMER-Windows7-Setup --paths (Join-Path $repo 'apps/agent') --workpath (Join-Path $assets 'work') --specpath $assets --distpath (Join-Path $repo 'apps/web/public/downloads') --hidden-import pystray._win32 --hidden-import win32print --add-binary ((Join-Path $assets 'SumatraPDF.exe')+';.') --exclude-module pyttsx3 (Join-Path $repo 'apps/agent/desktop.py')
 if ($LASTEXITCODE -ne 0) { throw 'Legacy Windows app build failed' }
-Get-FileHash (Join-Path $repo 'apps/web/public/downloads/PrintBuddy-Windows7-Setup.exe') -Algorithm SHA256
+Get-FileHash (Join-Path $repo 'apps/web/public/downloads/HIMMER-Windows7-Setup.exe') -Algorithm SHA256

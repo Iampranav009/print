@@ -1,6 +1,6 @@
 $ErrorActionPreference = 'Stop'
 $source = Split-Path -Parent $PSScriptRoot
-$destination = Join-Path $env:LOCALAPPDATA 'PrintBuddy'
+$destination = Join-Path $env:LOCALAPPDATA 'HIMMER'
 $configSource = Join-Path $source 'printbuddy-shop.json'
 if (!(Test-Path -LiteralPath $configSource)) {
     throw 'Download your shop settings from Printer setup and put printbuddy-shop.json beside agent.py, then run setup again.'
@@ -15,8 +15,8 @@ New-Item -ItemType Directory -Path $destination -Force | Out-Null
 $identity = [System.Security.Principal.WindowsIdentity]::GetCurrent().Name
 & icacls.exe $destination /inheritance:r /grant:r "${identity}:(OI)(CI)F" 'SYSTEM:(OI)(CI)F' | Out-Null
 if ($LASTEXITCODE -ne 0) { throw 'Could not protect agent settings.' }
-if (Get-ScheduledTask -TaskName 'PrintBuddy Agent' -ErrorAction SilentlyContinue) {
-    Stop-ScheduledTask -TaskName 'PrintBuddy Agent'
+if (Get-ScheduledTask -TaskName 'HIMMER Agent' -ErrorAction SilentlyContinue) {
+    Stop-ScheduledTask -TaskName 'HIMMER Agent'
 }
 foreach ($entry in @('agent.py', 'config.py', 'requirements.txt', 'audio', 'printing', 'assets')) {
     Copy-Item -LiteralPath (Join-Path $source $entry) -Destination $destination -Recurse -Force
@@ -34,6 +34,6 @@ $action = New-ScheduledTaskAction -Execute $pythonw -Argument "`"$agentPath`"" -
 $trigger = New-ScheduledTaskTrigger -AtLogOn -User $identity
 $principal = New-ScheduledTaskPrincipal -UserId $identity -LogonType Interactive -RunLevel Limited
 $taskSettings = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -StartWhenAvailable -RestartCount 999 -RestartInterval (New-TimeSpan -Minutes 1) -ExecutionTimeLimit ([TimeSpan]::Zero)
-Register-ScheduledTask -TaskName 'PrintBuddy Agent' -Action $action -Trigger $trigger -Principal $principal -Settings $taskSettings -Force | Out-Null
-Start-ScheduledTask -TaskName 'PrintBuddy Agent'
-Write-Host 'PrintBuddy is installed and running. It starts automatically when this Windows user signs in. Select your printer in the dashboard. Install SumatraPDF before printing.'
+Register-ScheduledTask -TaskName 'HIMMER Agent' -Action $action -Trigger $trigger -Principal $principal -Settings $taskSettings -Force | Out-Null
+Start-ScheduledTask -TaskName 'HIMMER Agent'
+Write-Host 'HIMMER is installed and running. It starts automatically when this Windows user signs in. Select your printer in the dashboard. Install SumatraPDF before printing.'

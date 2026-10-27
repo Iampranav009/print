@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { Brand } from "@/components/Brand";
 import { useRouter } from "next/navigation";
 import {
   LayoutDashboard,
@@ -105,11 +106,12 @@ function SidebarContent({
     <div className="flex flex-col h-full bg-white border-r border-zinc-100">
       <div className="px-4 pt-6 pb-5 shrink-0">
         <div className="flex items-center gap-2">
-          <span className="text-xl font-bold text-zinc-900 tracking-tight">PrintBuddy</span>
+          <Brand />
           <span className="text-[10px] font-semibold uppercase tracking-widest bg-brand-soft text-brand px-2 py-1 rounded-full">
             Admin
           </span>
         </div>
+        <p className="mt-1 text-[11px] font-medium text-zinc-400">Printing, made effortless.</p>
       </div>
 
       <nav className="flex-1 px-3 space-y-0.5 overflow-y-auto [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden overscroll-contain" aria-label="Admin navigation">

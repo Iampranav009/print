@@ -1,4 +1,4 @@
-"""PrintBuddy soundbox: queued audio announcements for the local agent.
+"""HIMMER soundbox: queued audio announcements for the local agent.
 
 Architecture
 ------------

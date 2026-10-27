@@ -6,7 +6,7 @@ import { usePathname } from "next/navigation";
 export function AppTopBar() {
   const pathname = usePathname();
 
-  let title = "PrintBuddy";
+  let title = "HIMMER";
   if (pathname.startsWith("/app/print")) {
     title = "Print";
   } else if (pathname.startsWith("/app/scan")) {

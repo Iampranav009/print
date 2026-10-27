@@ -11,6 +11,6 @@ if (!(Test-Path -LiteralPath $python)) {
 if ($LASTEXITCODE -ne 0) { throw 'Incompatible build interpreter. Create the build environment with CPython 3.14 x64.' }
 & $python -m pip install -r (Join-Path $repo 'apps/agent/requirements-build-lock.txt')
 if ($LASTEXITCODE -ne 0) { throw 'Could not install build dependencies.' }
-& $python -m PyInstaller --noconfirm --onefile --windowed --noupx --name PrintBuddy-Setup --paths (Join-Path $repo 'apps/agent') --workpath (Join-Path $repo '.agent-build/work') --specpath (Join-Path $repo '.agent-build') --distpath (Join-Path $repo 'apps/web/public/downloads') --hidden-import pystray._win32 --exclude-module pyttsx3 (Join-Path $repo 'apps/agent/desktop.py')
+& $python -m PyInstaller --noconfirm --onefile --windowed --noupx --name HIMMER-Setup --paths (Join-Path $repo 'apps/agent') --workpath (Join-Path $repo '.agent-build/work') --specpath (Join-Path $repo '.agent-build') --distpath (Join-Path $repo 'apps/web/public/downloads') --hidden-import pystray._win32 --exclude-module pyttsx3 (Join-Path $repo 'apps/agent/desktop.py')
 if ($LASTEXITCODE -ne 0) { throw 'Windows app build failed.' }
-Get-FileHash (Join-Path $repo 'apps/web/public/downloads/PrintBuddy-Setup.exe') -Algorithm SHA256
+Get-FileHash (Join-Path $repo 'apps/web/public/downloads/HIMMER-Setup.exe') -Algorithm SHA256

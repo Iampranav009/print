@@ -1,7 +1,7 @@
 {
-  "name": "PrintBuddy — Digital Print Software & Wireless Printing ATM Machine",
-  "short_name": "PrintBuddy",
-  "description": "PrintBuddy is digital software transforming any printer into a wireless printing machine and self-serve printing ATM machine. Scan QR, upload document, pay via UPI, and collect print in Yotmal and across India.",
+  "name": "HIMMER — Printing, made effortless.",
+  "short_name": "HIMMER",
+  "description": "HIMMER is effortless printing software for scanning a shop QR, uploading documents, paying securely via UPI, and collecting prints.",
   "id": "/",
   "start_url": "/app/home",
   "scope": "/",

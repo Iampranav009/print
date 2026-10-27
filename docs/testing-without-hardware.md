@@ -1,6 +1,6 @@
 # Testing end-to-end without hardware
 
-This guide walks through validating the complete PrintBuddy chain — upload → price → pay → webhook → dispatch → release → print — using Razorpay **test mode** and the agent's **simulate mode**. No phone, no physical printer required.
+This guide walks through validating the complete HIMMER chain — upload → price → pay → webhook → dispatch → release → print — using Razorpay **test mode** and the agent's **simulate mode**. No phone, no physical printer required.
 
 ---
 
@@ -74,7 +74,7 @@ In the `apps/agent/` directory, make sure `.env` contains:
 PRINTBUDDY_PRINT_MODE=simulate
 AGENT_TOKEN=<token from seed output>
 API_BASE=http://localhost:3000
-PRINTER_NAME=PrintBuddy-PDF   # any name — ignored in simulate mode
+PRINTER_NAME=HIMMER-PDF   # any name — ignored in simulate mode
 ```
 
 Then start the agent:
@@ -118,7 +118,7 @@ pnpm tsx scripts/e2e-sim.ts
 Expected output — every line green:
 
 ```
-PrintBuddy E2E Dry Run
+HIMMER E2E Dry Run
   API:     http://localhost:3000
   Mode:    happy
 

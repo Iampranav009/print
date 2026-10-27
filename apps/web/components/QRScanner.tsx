@@ -32,7 +32,7 @@ export function QRScanner() {
   const [torchAvailable, setTorchAvailable] = useState(false);
   const [torchOn, setTorchOn] = useState(false);
   const [invalidToast, setInvalidToast] = useState(false);
-  const [invalidMessage, setInvalidMessage] = useState<string>("This isn't a PrintBuddy code");
+  const [invalidMessage, setInvalidMessage] = useState<string>("This isn't a HIMMER code");
   const toastTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
@@ -77,7 +77,7 @@ export function QRScanner() {
           `/app/print?shop=${encodeURIComponent(shopId)}${shared ? "&shared=1" : ""}`
         );
       } else {
-        showInvalidToast("This isn't a PrintBuddy code");
+        showInvalidToast("This isn't a HIMMER code");
       }
     },
     [router]
@@ -330,7 +330,7 @@ export function QRScanner() {
         </div>
         <h2 className="text-xl font-semibold mb-2">Camera access needed to scan</h2>
         <p className="text-sm text-zinc-400 mb-6 max-w-xs leading-relaxed">
-          Please allow camera access in your browser settings so PrintBuddy can scan the QR code on the printer.
+          Please allow camera access in your browser settings so HIMMER can scan the QR code on the printer.
         </p>
         <button
           type="button"
@@ -480,7 +480,7 @@ export function QRScanner() {
                 Camera Access Needed
               </h2>
               <p className="text-sm text-zinc-500 dark:text-zinc-400 leading-relaxed">
-                PrintBuddy needs access to your camera to scan the QR code on the print kiosk.
+                HIMMER needs access to your camera to scan the QR code on the print kiosk.
               </p>
             </div>
 

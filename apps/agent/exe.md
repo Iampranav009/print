@@ -4,7 +4,7 @@ Yes — this is the right move, and it's a mature, well-trodden path on Windows.
 
 **PyInstaller** turns the Python code + all its dependencies + a bundled Python interpreter into a single `.exe`. Nobody needs Python installed. It has a `--noconsole` flag that builds without a terminal window, so it runs silently in the background exactly like a native app. Output is typically 30–50 MB — reasonable for a one-time download.
 
-**Inno Setup** (free) wraps that `.exe` into a familiar Windows installer (`PrintBuddyAgent-Setup.exe`). Handles: install into `Program Files`, create Start-menu entry, register the auto-start hook, create an uninstaller. Give it a script, get a signed installer.
+**Inno Setup** (free) wraps that `.exe` into a familiar Windows installer (`HIMMERAgent-Setup.exe`). Handles: install into `Program Files`, create Start-menu entry, register the auto-start hook, create an uninstaller. Give it a script, get a signed installer.
 
 Optional but nice: **code-signing certificate** ($100–300/year from a CA like DigiCert or Sectigo). Without it, Windows SmartScreen shows a scary "unknown publisher" warning on first run. Every user gets past it, but it's not a great first impression. Add this once you have paying partners; skip it for MVP.
 
@@ -26,7 +26,7 @@ The agent needs the shop's AGENT_TOKEN so it knows which shop it belongs to. Bak
 
 The clean pattern is a **pairing flow** that echoes how Chromecasts or Fire TV Sticks pair:
 
-1. Partner clicks "Download agent" on their `/vendor/printer` page → gets the generic `PrintBuddyAgent-Setup.exe`.
+1. Partner clicks "Download agent" on their `/vendor/printer` page → gets the generic `HIMMERAgent-Setup.exe`.
 2. They run the installer. First launch, agent has no token. It opens the default browser to `https://print-kro-five.vercel.app/agent/pair?code=A7K-42P` — a short pairing code baked into that agent install.
 3. The partner is already signed in on their dashboard, so the pair page just says "Link agent A7K-42P to this shop? [Yes]". One click.
 4. The backend writes the agent's shop_id + token. The agent polls `/api/agent/pair-status` every 3 seconds, sees it's linked, saves the token to a local config file, and starts working.
@@ -38,7 +38,7 @@ This is 30–40 lines of code total, and the UX is "download, click, click, done
 Two ways to host the `.exe`:
 
 - **GitHub Releases** — you tag a version, GitHub Actions runs PyInstaller + Inno Setup on a Windows runner, uploads the setup.exe as a release artifact. Free, versioned, easy to link from the dashboard. Users see a github.com URL though, which some find weird.
-- **`public/downloads/` on the Vercel app** — you commit the setup.exe (or fetch it from GitHub Releases at build time) so the download link is `https://print-kro-five.vercel.app/downloads/PrintBuddyAgent-Setup.exe`. Feels more first-party. Recommended.
+- **`public/downloads/` on the Vercel app** — you commit the setup.exe (or fetch it from GitHub Releases at build time) so the download link is `https://print-kro-five.vercel.app/downloads/HIMMERAgent-Setup.exe`. Feels more first-party. Recommended.
 
 Then the partner's Printer page grows a **"Download for Windows"** button next to the Configuration button, with a subtle version label ("v1.0.3, ~40 MB").
 

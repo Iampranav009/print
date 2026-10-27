@@ -10,11 +10,12 @@ export default function HomePage() {
       <header className="px-5 pb-4 pt-[max(1.25rem,env(safe-area-inset-top))]">
         <div className="flex items-center justify-between">
           <div>
-            <p className="text-[13px] font-medium text-secondary-label">Good morning</p>
-            <h1 className="mt-0.5 text-[28px] font-bold tracking-[-0.035em] text-label">PrintBuddy</h1>
+            <p className="text-[13px] font-medium text-secondary-label">Your everyday print, simplified</p>
+            <h1 className="mt-0.5 text-[28px] font-bold tracking-[-0.035em] text-label">HIMMER</h1>
+            <p className="mt-0.5 text-[12px] font-medium text-secondary-label">Printing, made effortless.</p>
           </div>
           <div className="flex h-10 w-10 items-center justify-center rounded-full bg-brand-soft ring-1 ring-brand/10">
-            <span className="text-sm font-bold text-brand">P</span>
+            <span className="text-sm font-bold text-brand">H</span>
           </div>
         </div>
       </header>
@@ -46,7 +47,7 @@ export default function HomePage() {
           <div className="overflow-hidden rounded-2xl bg-white ring-1 ring-black/[0.055]">
             <Link href="/app/nearby" className="flex min-h-[64px] items-center gap-3 px-4 transition-colors active:bg-zinc-50">
               <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-brand-soft text-brand"><MapPin className="h-[18px] w-[18px]" aria-hidden="true" /></span>
-              <span className="flex-1"><span className="block text-[15px] font-semibold text-label">Find a printer</span><span className="block text-[12px] text-secondary-label">See available PrintBuddy shops nearby</span></span>
+              <span className="flex-1"><span className="block text-[15px] font-semibold text-label">Find a printer</span><span className="block text-[12px] text-secondary-label">See available HIMMER shops nearby</span></span>
               <ChevronRight className="h-4 w-4 text-zinc-300" aria-hidden="true" />
             </Link>
             <div className="ml-16 h-px bg-black/[0.06]" />

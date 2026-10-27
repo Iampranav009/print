@@ -1,6 +1,6 @@
-# PrintBuddy — UI Build Prompt for Anti Gravity
+# HIMMER — UI Build Prompt for Anti Gravity
 
-You are building the user-facing UI for **PrintBuddy**, a QR-to-print service that turns any nearby printer into a self-serve printing kiosk. A screen next to the printer displays a QR code; the customer scans it, uploads their file, pays via Razorpay, and picks up the printout with a release code.
+You are building the user-facing UI for **HIMMER**, a QR-to-print service that turns any nearby printer into a self-serve printing kiosk. A screen next to the printer displays a QR code; the customer scans it, uploads their file, pays via Razorpay, and picks up the printout with a release code.
 
 You are building **two surfaces**:
 
@@ -86,7 +86,7 @@ Full-bleed camera viewfinder. This is the in-app QR scanner alternative to using
 - **QR overlay**: dim the rest of the screen with a semi-transparent black scrim, cut out a centered rounded-2xl viewfinder (~260×260px). Add 4 white L-shaped corner brackets around the viewfinder.
 - **Top instructions** (above the viewfinder, white text on scrim): "Scan the QR code on the printer's screen".
 - **Bottom controls** (below viewfinder): a torch/flashlight toggle (circular icon button) — only shown if `getCapabilities().torch` is available. A "Cancel" button that switches back to the Print tab.
-- **On decode**: use `jsQR` (add via `npm install jsqr`). Loop `requestAnimationFrame` → grab canvas frame → decode. When a match is a URL to `/s/<shopId>` on our own origin, extract `<shopId>` and route to `/app/print?shop=<shopId>`. If the QR is unrecognized, show a red toast "This isn't a PrintBuddy code" and keep scanning.
+- **On decode**: use `jsQR` (add via `npm install jsqr`). Loop `requestAnimationFrame` → grab canvas frame → decode. When a match is a URL to `/s/<shopId>` on our own origin, extract `<shopId>` and route to `/app/print?shop=<shopId>`. If the QR is unrecognized, show a red toast "This isn't a HIMMER code" and keep scanning.
 - **Permission denied**: full-screen error state with the icon `CameraOff`, "Camera access needed to scan", and a button that opens the browser settings guidance.
 
 ### Tab 3 — History (`/app/history`)
@@ -126,7 +126,7 @@ List of the signed-in user's past print jobs.
 - Centered vertically.
 - Shop logo/name at top: printer emoji in an indigo rounded square (72×72), then shop name (`text-3xl font-bold text-white`), then shop location (`text-lg text-zinc-400`).
 - **QR code**: rendered client-side with `qrcode.react`, encoding `https://<domain>/s/<shopId>`. Size: 340×340px. Rendered in a white rounded-3xl card with `p-6` padding. QR itself is black on white for max scannability.
-- Below the QR: "Scan to print" tagline (`text-xl text-zinc-300`), and beneath it a small helper line: "Scan with your phone camera or the PrintBuddy app".
+- Below the QR: "Scan to print" tagline (`text-xl text-zinc-300`), and beneath it a small helper line: "Scan with your phone camera or the HIMMER app".
 
 **Right half — live status area:**
 - Padding `p-12`, vertically centered content.
@@ -168,7 +168,7 @@ Stack vertically: QR block on top, status area on bottom. Same content, resized.
 
 ## Auth flow
 
-- Route `/login` — a clean centered card, PrintBuddy wordmark at top, one big button: "Continue with Google" (Google-branded per Google's guidelines — white button with the Google G logo). Below: fine print about terms/privacy.
+- Route `/login` — a clean centered card, HIMMER wordmark at top, one big button: "Continue with Google" (Google-branded per Google's guidelines — white button with the Google G logo). Below: fine print about terms/privacy.
 - Click → `supabase.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: '/app/print' }})`.
 - After callback, land on `/app/print`.
 - Any route under `/app` runs an auth guard (server-side check via `createServerClient`) and redirects to `/login` if unauthenticated.

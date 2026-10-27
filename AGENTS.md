@@ -1,8 +1,8 @@
-# PrintBuddy — AI Agent Guidelines & Project Instructions (`AGENTS.md`)
+# HIMMER — AI Agent Guidelines & Project Instructions (`AGENTS.md`)
 
 ## 1. Project Overview & Mission
 
-**PrintBuddy** is an automated, self-serve print platform that transforms existing local printing/Xerox shops into connected print nodes without requiring expensive proprietary hardware.
+**HIMMER** is an automated, self-serve print platform that transforms existing local printing/Xerox shops into connected print nodes without requiring expensive proprietary hardware.
 
 ### Core Philosophy & Positioning
 - **Software-First, Not a Kiosk:** Defensibility and moat come from shop density, repeat student/customer habits, and software network effects—not manufactured hardware kiosks.

@@ -172,7 +172,7 @@ export default function VendorPayoutsPage() {
               <div className="flex-1">
                 <p className="text-sm font-semibold text-zinc-900">Add payout details to request payouts</p>
                 <p className="text-xs text-zinc-500 mt-1">
-                  We need your account and UPI details to route funds. The PrintBuddy team will verify them
+                  We need your account and UPI details to route funds. The HIMMER team will verify them
                   within 24 hours.
                 </p>
                 <Link
@@ -189,7 +189,7 @@ export default function VendorPayoutsPage() {
               <div className="flex-1">
                 <p className="text-sm font-semibold text-zinc-900">Payout details pending admin verification</p>
                 <p className="text-xs text-zinc-500 mt-1">
-                  Payouts unlock once the PrintBuddy team verifies your account details — usually within 24
+                  Payouts unlock once the HIMMER team verifies your account details — usually within 24
                   hours of submission.
                 </p>
               </div>

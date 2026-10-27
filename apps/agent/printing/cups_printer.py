@@ -1,4 +1,4 @@
-"""CUPS option builder and print function for PrintBuddy."""
+"""CUPS option builder and print function for HIMMER."""
 from __future__ import annotations
 
 import logging
@@ -136,7 +136,7 @@ def print_cups(
         cmd = format_cups_command(printer_name, file_path, options)
         log.info("[%s] CUPS command: %s", str(job.get("id", "?"))[:8], cmd)
 
-        cups_job_id = conn.printFile(printer_name, file_path, "PrintBuddy Job", options)
+        cups_job_id = conn.printFile(printer_name, file_path, "HIMMER Job", options)
         log.info("[%s] CUPS job submitted: %d", str(job.get("id", "?"))[:8], cups_job_id)
 
         for _ in range(120):

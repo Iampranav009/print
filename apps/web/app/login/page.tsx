@@ -33,9 +33,9 @@ function LoginContent() {
   return (
     <AuthComponent
       logo={<CustomerLogo />}
-      brandName="PrintBuddy"
-      title="PrintBuddy"
-      subtitle="Self-serve printing · Scan · Pay · Print"
+      brandName="HIMMER"
+      title="Your next print starts here."
+      subtitle="Printing, made effortless. Scan · Pay · Print"
       nextUrl={nextParam}
       initialMode="signin"
       footerExtra={

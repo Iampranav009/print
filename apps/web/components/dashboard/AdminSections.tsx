@@ -565,7 +565,7 @@ function InvitesSection() {
             </div>
             <div className="flex flex-wrap gap-2">
               <a
-                href={`https://wa.me/?text=${encodeURIComponent(`You've been invited to PrintBuddy: ${generatedLink}`)}`}
+                href={`https://wa.me/?text=${encodeURIComponent(`You've been invited to HIMMER: ${generatedLink}`)}`}
                 target="_blank"
                 rel="noreferrer"
                 className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-zinc-200 text-sm font-medium text-zinc-700 hover:border-green-400 hover:text-green-700 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600"
@@ -574,7 +574,7 @@ function InvitesSection() {
                 <ExternalLink className="w-3.5 h-3.5" /> WhatsApp
               </a>
               <a
-                href={`mailto:?subject=PrintBuddy%20Vendor%20Invite&body=${encodeURIComponent(`You've been invited to PrintBuddy as a vendor.\n\nClick here to get started: ${generatedLink}`)}`}
+                href={`mailto:?subject=HIMMER%20Vendor%20Invite&body=${encodeURIComponent(`You've been invited to HIMMER as a vendor.\n\nClick here to get started: ${generatedLink}`)}`}
                 className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-zinc-200 text-sm font-medium text-zinc-700 hover:border-indigo-300 hover:text-indigo-700 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600"
                 aria-label="Share via email"
               >

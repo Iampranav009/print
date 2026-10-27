@@ -379,7 +379,7 @@ function ShopContent() {
             <div className="bg-white rounded-2xl shadow-sm border border-zinc-100 p-6 opacity-60">
               <h2 className="text-base font-semibold text-zinc-400 mb-2">Danger zone</h2>
               <p className="text-sm text-zinc-400">
-                Contact PrintBuddy partner support to suspend or reassign your printer shop node.
+                Contact HIMMER partner support to suspend or reassign your printer shop node.
               </p>
             </div>
           </div>

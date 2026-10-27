@@ -1,6 +1,6 @@
-# PrintBuddy — Vendor Portal & Admin Extensions UI Prompt
+# HIMMER — Vendor Portal & Admin Extensions UI Prompt
 
-You're extending the PrintBuddy app with a **vendor portal** (`/vendor/*`) — the seller-side dashboard where a print-shop owner manages their shop, printer location, bank details, and sees analytics on prints and revenue. You're also adding **admin extensions** to the existing `/dashboard` for creating shops and generating vendor invite links.
+You're extending the HIMMER app with a **vendor portal** (`/vendor/*`) — the seller-side dashboard where a print-shop owner manages their shop, printer location, bank details, and sees analytics on prints and revenue. You're also adding **admin extensions** to the existing `/dashboard` for creating shops and generating vendor invite links.
 
 The mobile customer app (`/app/*`), login (`/login`), and kiosk (`/kiosk/*`) already exist and are shipping — do not touch them.
 
@@ -45,7 +45,7 @@ Same clean-white aesthetic as the mobile app. **Vendor portal is desktop-first**
 **Layout structure** (desktop):
 - Full-height 2-column grid: **sidebar** (240px) + **content**.
 - Sidebar (left):
-  - Top: PrintBuddy wordmark + small "Seller" tag.
+  - Top: HIMMER wordmark + small "Seller" tag.
   - Nav sections, each with icon + label, showing active state as indigo bg + white text:
     - `Overview` (LayoutDashboard) → `/vendor`
     - `Analytics` (BarChart3) → `/vendor/analytics`
@@ -69,7 +69,7 @@ Client component. A first-time vendor lands here whenever `onboarded=false` or `
 - Step indicator at the top: three dots + labels — **Profile** · **Shop** · **Bank** (last one skippable).
 - Progressive form:
   1. **Profile step** — full name (required), phone (required, 10-digit Indian format), address (optional textarea). "Continue" calls `PUT /api/vendor/me`.
-  2. **Shop step** — asks: "Have you been invited to a shop? Paste your invite link or token." Input + "Claim shop" button — extracts `?token=…` if URL, else uses the raw text. Calls `POST /api/vendor/claim { token }`. On success: show the shop name + location + "Continue". If they say "I don't have one," show a card explaining they need to contact PrintBuddy for an invite.
+  2. **Shop step** — asks: "Have you been invited to a shop? Paste your invite link or token." Input + "Claim shop" button — extracts `?token=…` if URL, else uses the raw text. Calls `POST /api/vendor/claim { token }`. On success: show the shop name + location + "Continue". If they say "I don't have one," show a card explaining they need to contact HIMMER for an invite.
   3. **Bank step** — collects `account_holder_name`, `account_number`, `ifsc_code` (auto-uppercase, live IFSC format check `^[A-Z]{4}0[A-Z0-9]{6}$`), `bank_name` (optional), `upi_id` (optional). "Save" calls `PUT /api/vendor/bank`. Also has a "Skip for now" link that goes straight to `/vendor` — bank isn't required to receive orders, only to receive payouts.
 - On completion, router.push to `/vendor`.
 
@@ -141,7 +141,7 @@ Fields:
 
 Save button calls `PUT /api/vendor/shop`. Toast on success.
 
-Below the form, a "Danger zone" section — greyed out for now with copy "Contact PrintBuddy support to suspend or delete your shop."
+Below the form, a "Danger zone" section — greyed out for now with copy "Contact HIMMER support to suspend or delete your shop."
 
 ---
 
@@ -197,7 +197,7 @@ Client component, extremely simple.
 - Success: `router.replace("/vendor/onboarding")` so they can fill in profile/bank.
 - Errors: friendly card for each shape returned by the API:
   - 404 → "Invite not found or already used."
-  - 410 → "This invite has expired. Contact PrintBuddy to get a new one."
+  - 410 → "This invite has expired. Contact HIMMER to get a new one."
   - 409 → the API's error message ("This account already owns another shop").
   - 403 → "This invite was sent to a different email — please sign in with the correct Google account." + "Sign out" button.
 
@@ -205,9 +205,9 @@ Client component, extremely simple.
 
 ## Admin extensions — update `/dashboard/page.tsx`
 
-The existing `/dashboard` becomes an internal PrintBuddy admin tool for the ops team (i.e. you, Pranav). Gate it in the page itself:
+The existing `/dashboard` becomes an internal HIMMER admin tool for the ops team (i.e. you, Pranav). Gate it in the page itself:
 
-- Server-fetch `getUser()`. If not `isAdmin(user)` (import from `@/lib/admin`), render a stark "Not authorised" screen with "Signed in as `<email>`. Contact PrintBuddy if this is a mistake." and a sign-out button. Do **not** redirect — a friendly refusal is better UX than a redirect loop.
+- Server-fetch `getUser()`. If not `isAdmin(user)` (import from `@/lib/admin`), render a stark "Not authorised" screen with "Signed in as `<email>`. Contact HIMMER if this is a mistake." and a sign-out button. Do **not** redirect — a friendly refusal is better UX than a redirect loop.
 
 Add two new sections to the existing dashboard, above whatever's already there:
 

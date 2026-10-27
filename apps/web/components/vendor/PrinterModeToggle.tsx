@@ -20,7 +20,7 @@ export function PrinterModeToggle({
       <div>
         <h2 className="text-lg font-semibold text-zinc-900">Printer mode</h2>
         <p className="text-sm text-zinc-500 mt-1 leading-relaxed max-w-2xl">
-          Test mode uses PrintBuddy&apos;s virtual printer — pay-per-print flow works end-to-end
+          Test mode uses HIMMER&apos;s virtual printer — pay-per-print flow works end-to-end
           without real hardware. Switch to Real to connect the printer at your shop.
         </p>
       </div>

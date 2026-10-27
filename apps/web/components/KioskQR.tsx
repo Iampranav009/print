@@ -21,7 +21,7 @@ function subscribe() {
 
 export function KioskQR({ shopId, shopName, location, compact }: KioskQRProps) {
   const origin = useSyncExternalStore(subscribe, getOrigin, () => "");
-  const qrUrl = origin ? `${origin}/s/${shopId}` : `https://printbuddy.app/s/${shopId}`;
+  const qrUrl = origin ? `${origin}/s/${shopId}` : `https://himmer.vercel.app/s/${shopId}`;
 
   const size = compact ? 220 : 320;
 
@@ -60,7 +60,7 @@ export function KioskQR({ shopId, shopName, location, compact }: KioskQRProps) {
           Scan to print
         </p>
         <p className="text-sm text-zinc-500">
-          Use your phone camera or the PrintBuddy app
+          Use your phone camera or the HIMMER app
         </p>
       </div>
     </div>

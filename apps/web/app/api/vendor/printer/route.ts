@@ -153,7 +153,7 @@ export async function PUT(req: NextRequest) {
     const { data: discovery } = await supabase.from("shops").select("discovered_printers, discovered_at").eq("id", shopId).single();
     const names = new Set((discovery?.discovered_printers ?? []).map((p: { name: string }) => p.name));
     if (!names.has(body.bw_os_printer_name) || !names.has(body.color_os_printer_name)) {
-      return Response.json({ error: "Select a printer detected by the PrintBuddy app. Wait for discovery to refresh." }, { status: 400 });
+      return Response.json({ error: "Select a printer detected by the HIMMER app. Wait for discovery to refresh." }, { status: 400 });
     }
     body.os_printer_name = body.bw_os_printer_name;
   }

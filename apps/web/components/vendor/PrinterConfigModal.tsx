@@ -190,7 +190,7 @@ export function PrinterConfigModal({
               Configure printer
             </h2>
             <p className="text-sm text-zinc-500 mt-1">
-              Choose how your printer connects to PrintBuddy.
+              Choose how your printer connects to HIMMER.
             </p>
           </div>
           <button
@@ -363,7 +363,7 @@ export function PrinterConfigModal({
           {activeTab === "usb" && (
             <div className="space-y-4 text-left">
               <p className="text-xs text-zinc-600 leading-relaxed bg-zinc-50 p-3.5 rounded-xl border border-zinc-100">
-                For a printer plugged into a PC or Raspberry Pi over USB. You&apos;ll need to run the PrintBuddy Agent app on that machine — it forwards jobs to the printer over your OS&apos;s print system.
+                For a printer plugged into a PC or Raspberry Pi over USB. You&apos;ll need to run the HIMMER Agent app on that machine — it forwards jobs to the printer over your OS&apos;s print system.
               </p>
 
               {/* Printer name input — dropdown or manual */}
@@ -415,7 +415,7 @@ export function PrinterConfigModal({
                       <div className="flex items-start gap-2.5 p-3 rounded-xl bg-amber-50 border border-amber-200 text-xs text-amber-800">
                         <AlertCircle className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
                         <span>
-                          No printers detected by the agent yet. Make sure the PrintBuddy Agent is running on the same PC as the printer, then come back here. You can still enter the name manually below.
+                          No printers detected by the agent yet. Make sure the HIMMER Agent is running on the same PC as the printer, then come back here. You can still enter the name manually below.
                         </span>
                       </div>
                     )}
@@ -437,10 +437,10 @@ export function PrinterConfigModal({
 
               {/* USB Instructions Block */}
               <div className="p-4 bg-indigo-50/70 border border-indigo-100 rounded-2xl space-y-2 text-xs text-indigo-900">
-                <p className="font-semibold text-indigo-950">How to set up the PrintBuddy Agent:</p>
+                <p className="font-semibold text-indigo-950">How to set up the HIMMER Agent:</p>
                 <ol className="list-decimal pl-4 space-y-1.5 leading-relaxed text-indigo-800">
                   <li>
-                    Install the PrintBuddy Agent (
+                    Install the HIMMER Agent (
                     <Link
                       href="/vendor/agent-download"
                       className="text-indigo-600 font-semibold underline underline-offset-2 hover:text-indigo-800"
@@ -498,7 +498,7 @@ export function PrinterConfigModal({
               </div>
 
               <p className="text-[11px] text-zinc-500 bg-zinc-50 p-3 rounded-xl border border-zinc-100">
-                If your network printer uses a different protocol (LPD, IPP), let PrintBuddy support know and we&apos;ll add support.
+                If your network printer uses a different protocol (LPD, IPP), let HIMMER support know and we&apos;ll add support.
               </p>
             </div>
           )}
