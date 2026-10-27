@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Brand } from "@/components/Brand";
+import { PrinterConnectionCard } from "./PrinterConnectionCard";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
@@ -152,6 +153,7 @@ function SidebarContent({
       </nav>
 
       {/* User section */}
+      <PrinterConnectionCard />
       <div className="px-3 pb-4 pt-2 shrink-0 border-t border-zinc-100">
         <div className="relative">
           <button

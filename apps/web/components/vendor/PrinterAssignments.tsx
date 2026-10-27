@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 
 interface Props {
-  printers: Array<{ name: string }>;
+  printers: Array<{ name: string; available?: boolean; isDefault?: boolean }>;
   bw: string;
   color: string;
   discoveredAt: string | null;
@@ -26,7 +26,7 @@ export function PrinterAssignments({ printers, bw, color, discoveredAt, onSaved 
   function choices(selected: string) {
     return <><option value="">Select a printer</option>
       {selected && !names.has(selected) && <option value={selected} disabled>{selected} (not detected)</option>}
-      {printers.map(p => <option key={p.name} value={p.name}>{p.name}</option>)}</>;
+      {printers.map(p => <option key={p.name} value={p.name}>{p.name}{p.available === false ? " (offline)" : ""}{p.isDefault ? " · Windows default" : ""}</option>)}</>;
   }
   async function save() {
     setBusy(true); setMessage("");
@@ -49,6 +49,7 @@ export function PrinterAssignments({ printers, bw, color, discoveredAt, onSaved 
       {stale ? "Waiting for the shop app. Previously detected printers may be unavailable." : `${printers.length} printers detected · updates automatically`}
     </p>
     {!printers.length && <p className="text-sm text-zinc-500">Open HIMMER on the shop computer. Its printer list appears before setup; link the shop once to show it here. Printers must be installed in Windows or CUPS.</p>}
+    {!!printers.length && <ul className="divide-y divide-zinc-100 rounded-xl border border-zinc-200 px-3" aria-label="Detected printers">{printers.map(p => <li key={p.name} className="flex items-center justify-between gap-3 py-3 text-sm"><span className="break-words">{p.name}{p.name === bw ? " · B&W" : ""}{p.name === color ? " · Color" : ""}</span><span className={`shrink-0 text-xs ${stale || p.available === false ? "text-amber-700" : "text-emerald-700"}`}>{stale ? "Last detected" : p.available === false ? "Offline" : "Installed"}</span></li>)}</ul>}
     <label className="block space-y-2 text-sm font-medium">Black-and-white printer
       <select aria-label="Black-and-white printer" className="w-full rounded-xl border p-3" value={blackWhite} onChange={e => setBlackWhite(e.target.value)}>{choices(blackWhite)}</select>
     </label>

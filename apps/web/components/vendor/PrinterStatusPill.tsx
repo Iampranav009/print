@@ -9,6 +9,8 @@ export interface PrinterStatusData {
   online: boolean;
   connection_type?: string | null;
   last_seen_at?: string | null;
+  printer_name?: string | null;
+  agent_connected?: boolean;
 }
 
 interface PrinterStatusPillProps {
@@ -39,7 +41,8 @@ export function PrinterStatusPill({
     let active = true;
     const fetchStatus = async () => {
       try {
-        const res = await fetch("/api/vendor/printer");
+        const res = await fetch("/api/vendor/printer", { cache: "no-store" });
+        if (!res.ok) throw new Error("Printer status unavailable");
         if (res.ok && active) {
           const data = await res.json();
           setStatus({
@@ -47,24 +50,28 @@ export function PrinterStatusPill({
             online: !!data.status?.online,
             connection_type: data.printer?.connection_type ?? null,
             last_seen_at: data.status?.last_seen_at ?? null,
+            printer_name: data.printer?.bw_os_printer_name || data.printer?.os_printer_name || null,
+            agent_connected: !!data.status?.agent_connected,
           });
         }
       } catch {
-        // Network error — leave previous status or fallback
+        if (active) setStatus(null);
       }
     };
 
     fetchStatus();
-    const interval = setInterval(fetchStatus, 30_000);
+    const interval = setInterval(fetchStatus, 5000);
+    window.addEventListener("focus", fetchStatus);
     return () => {
       active = false;
       clearInterval(interval);
+      window.removeEventListener("focus", fetchStatus);
     };
   }, [initialStatus]);
 
   // Derive visual state
   const isTest = status?.mode === "test";
-  const isConfigured = Boolean(status?.connection_type);
+  const isConfigured = Boolean(status?.printer_name || status?.connection_type || status?.online);
   const isOnline = Boolean(status?.online);
 
   let badgeClass = "bg-zinc-100 text-zinc-600 border-zinc-200/60";
@@ -80,7 +87,7 @@ export function PrinterStatusPill({
       dotOrIcon = <Printer className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />;
     } else if (!isConfigured) {
       badgeClass = "bg-zinc-100 text-zinc-600 border-zinc-200/60";
-      label = "Not configured";
+      label = status.agent_connected ? "Choose a printer" : "Connect shop app";
       dotOrIcon = <span className="w-1.5 h-1.5 rounded-full bg-zinc-400 shrink-0" />;
     } else if (isOnline) {
       badgeClass = "bg-emerald-100 text-emerald-700 border-emerald-200/60";

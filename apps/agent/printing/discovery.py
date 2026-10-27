@@ -12,7 +12,7 @@ def get_discovered_printers() -> list[dict]:
     if sys.platform == "win32" and sys.getwindowsversion().major >= 10:
         result = subprocess.run(
             ["powershell.exe", "-NoProfile", "-NonInteractive", "-Command",
-             "[Console]::OutputEncoding=[System.Text.Encoding]::UTF8; Get-Printer | Select-Object Name,DriverName,PrinterStatus | ConvertTo-Json -Compress"],
+             "$ErrorActionPreference='Stop'; [Console]::OutputEncoding=[System.Text.Encoding]::UTF8; Get-CimInstance Win32_Printer | Select-Object Name,DriverName,PrinterStatus,WorkOffline,Default | ConvertTo-Json -Compress"],
             capture_output=True, text=True, encoding="utf-8-sig", timeout=15,
             creationflags=subprocess.CREATE_NO_WINDOW,
         )
@@ -20,7 +20,10 @@ def get_discovered_printers() -> list[dict]:
             raise RuntimeError("Windows printer discovery failed. Check the Print Spooler service.")
         rows = json.loads(result.stdout) if result.stdout.strip() else []
         if isinstance(rows, dict): rows = [rows]
-        return [{"name": p["Name"], "driver": p.get("DriverName"), "status": str(p.get("PrinterStatus", "unknown"))} for p in rows if p.get("Name")]
+        return [{"name": p["Name"], "driver": p.get("DriverName"),
+                 "status": "offline" if p.get("WorkOffline") or p.get("PrinterStatus") == 7 else "ready",
+                 "available": not (p.get("WorkOffline") or p.get("PrinterStatus") == 7),
+                 "isDefault": bool(p.get("Default"))} for p in rows if p.get("Name")]
     if sys.platform == "win32":
         # EnumPrinters is available on Windows 7; Get-Printer requires Windows 8.
         import win32print
@@ -30,12 +33,14 @@ def get_discovered_printers() -> list[dict]:
         except win32print.error:
             default = None
         return [{"name": p["pPrinterName"], "driver": p.get("pDriverName"),
-                 "status": str(p.get("Status", "unknown")), "isDefault": p["pPrinterName"] == default}
+                 "status": "offline" if int(p.get("Status") or 0) & 0x80 else "ready",
+                 "available": not bool(int(p.get("Status") or 0) & 0x80), "isDefault": p["pPrinterName"] == default}
                 for p in win32print.EnumPrinters(flags, None, 2) if p.get("pPrinterName")]
     if sys.platform == "linux":
         import cups
         connection = cups.Connection()
         default = connection.getDefault()
-        return [{"name": name, "driver": value.get("printer-make-and-model"), "isDefault": name == default}
+        return [{"name": name, "driver": value.get("printer-make-and-model"), "isDefault": name == default,
+                 "available": value.get("printer-state") != 5, "status": "stopped" if value.get("printer-state") == 5 else "ready"}
                 for name, value in connection.getPrinters().items()]
     return []

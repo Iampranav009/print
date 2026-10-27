@@ -67,6 +67,7 @@ export interface PrinterClientProps {
       online: boolean;
       last_seen_at: string | null;
       heartbeat_window_seconds: number;
+      agent_connected?: boolean;
     };
   };
 }
@@ -410,6 +411,8 @@ export function PrinterClient({ initialData }: PrinterClientProps) {
     mode,
     online: isOnline,
     connection_type: printer?.connection_type ?? null,
+    printer_name: printer?.bw_os_printer_name || printer?.os_printer_name || null,
+    agent_connected: data.status?.agent_connected,
     last_seen_at: data.status?.last_seen_at ?? null,
   };
 

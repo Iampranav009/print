@@ -9,6 +9,7 @@
 import { NextRequest } from "next/server";
 import { createClient as createServerSupabase } from "@/lib/supabase/server";
 import { getSupabase } from "@/lib/supabase";
+import { printerReady } from "@/lib/printer-presence";
 
 const HEARTBEAT_WINDOW_MS = 90_000; // 90s grace
 
@@ -55,7 +56,7 @@ export async function GET(_req: NextRequest) {
 
   const supabase = getSupabase();
 
-  const [{ data: shop }, { data: printer }, { data: agents }] = await Promise.all([
+  const [{ data: shop, error: shopError }, { data: printer, error: printerError }, { data: agents, error: agentError }] = await Promise.all([
     supabase
       .from("shops")
       .select("id, name, virtual_mode, discovered_printers, discovered_at, sound_enabled, sound_language, sound_volume, cash_payments_enabled, default_payment_method")
@@ -74,11 +75,12 @@ export async function GET(_req: NextRequest) {
       .from("agents")
       .select("id, status, last_heartbeat, platform, agent_token")
       .eq("shop_id", shopId)
-      .order("last_heartbeat", { ascending: false })
+      .order("last_heartbeat", { ascending: false, nullsFirst: false })
       .limit(1),
   ]);
+  if (shopError || printerError || agentError) return Response.json({ error: "Could not load printer connection status" }, { status: 503 });
 
-  let agent = agents?.[0] ?? null;
+  let agent: NonNullable<typeof agents>[number] | null = agents?.[0] ?? null;
   if (!agent) {
     const token = crypto.randomUUID().replace(/-/g, "") + crypto.randomUUID().replace(/-/g, "");
     const { data: newAgent } = await supabase
@@ -102,8 +104,9 @@ export async function GET(_req: NextRequest) {
     : 0;
 
   const isTestMode = printer?.mode === "test" || shop?.virtual_mode === true;
-  const online =
-    isTestMode || (printer?.online === true && lastSeenMs > 0 && nowMs - lastSeenMs < HEARTBEAT_WINDOW_MS);
+  const agentConnected = !!agent?.last_heartbeat && nowMs - Date.parse(agent.last_heartbeat) < HEARTBEAT_WINDOW_MS;
+  const discoveryFresh = !!shop?.discovered_at && nowMs - Date.parse(shop.discovered_at) < HEARTBEAT_WINDOW_MS;
+  const online = isTestMode || (agentConnected && discoveryFresh && printerReady(printer, shop?.discovered_printers ?? []) && lastSeenMs > 0);
 
   return Response.json({
     shop: {
@@ -123,6 +126,8 @@ export async function GET(_req: NextRequest) {
     status: {
       mode: printer?.mode ?? (shop?.virtual_mode ? "test" : "real"),
       online,
+      agent_connected: agentConnected,
+      configured: !!(printer?.bw_os_printer_name || printer?.os_printer_name),
       last_seen_at: printer?.last_seen_at ?? agents?.[0]?.last_heartbeat ?? null,
       heartbeat_window_seconds: HEARTBEAT_WINDOW_MS / 1000,
     },

@@ -9,13 +9,7 @@
 import { getSupabase } from "@/lib/supabase";
 import { resolveAgentToken } from "@/lib/agent-auth";
 import { NextRequest } from "next/server";
-import { printerForJob } from "@/lib/printer-routing";
-
-interface DiscoveredPrinter {
-  name: string;
-  driver?: string;
-  isDefault?: boolean;
-}
+import { printerReady, type DiscoveredPrinter } from "@/lib/printer-presence";
 
 export async function POST(req: NextRequest) {
   const agent = await resolveAgentToken(req.headers.get("authorization"));
@@ -27,30 +21,29 @@ export async function POST(req: NextRequest) {
     printerStatus?: string;
     discoveredPrinters?: DiscoveredPrinter[];
     printerName?: string;
+    discoveryError?: boolean;
   };
 
   const now = new Date().toISOString();
   const supabase = getSupabase();
   const { data: printer, error: printerError } = await supabase
     .from("printers")
-    .select("id, os_printer_name, bw_os_printer_name, color_os_printer_name, color_enabled")
+    .select("id, os_printer_name, bw_os_printer_name, color_os_printer_name, color_enabled, mode")
     .eq("shop_id", agent.shopId)
     .order("id", { ascending: true })
     .limit(1)
     .maybeSingle();
   if (printerError) return Response.json({ error: "Could not load printer configuration" }, { status: 503 });
-  const discoveredNames = new Set((Array.isArray(body.discoveredPrinters) ? body.discoveredPrinters : []).filter(p => p && typeof p.name === "string").map(p => p.name.trim()));
-  const bwPrinter = printerForJob(printer, false);
-  const colorPrinter = printerForJob(printer, true);
-  const printerOnline = !!bwPrinter && discoveredNames.has(bwPrinter) &&
-    (!printer?.color_enabled || (!!colorPrinter && discoveredNames.has(colorPrinter)));
+  const discovered = (Array.isArray(body.discoveredPrinters) ? body.discoveredPrinters : []).filter(p => p && typeof p.name === "string").map(p => ({...p, name: p.name.trim()}));
+  const printerOnline = printerReady(printer, discovered);
 
-  await supabase
+  const { error: agentUpdateError } = await supabase
     .from("agents")
     .update({ last_heartbeat: now, status: "online" })
     .eq("id", agent.agentId);
+  if (agentUpdateError) return Response.json({ error: "Could not save computer heartbeat" }, { status: 503 });
 
-  await supabase
+  const { error: printerUpdateError } = await supabase
     .from("printers")
     .update({
       online: printerOnline,
@@ -58,6 +51,7 @@ export async function POST(req: NextRequest) {
       status: printerOnline ? "online" : "offline",
     })
     .eq("id", printer?.id ?? "00000000-0000-0000-0000-000000000000");
+  if (printerUpdateError) return Response.json({ error: "Could not save printer status" }, { status: 503 });
 
   if (Array.isArray(body.discoveredPrinters)) {
     const seen = new Set<string>();
@@ -77,15 +71,23 @@ export async function POST(req: NextRequest) {
         name: p.name.trim(),
         driver: typeof p.driver === "string" ? p.driver.trim() : null,
         isDefault: !!p.isDefault,
+        available: p.available !== false,
+        status: typeof p.status === "string" ? p.status.slice(0, 80) : "unknown",
       }));
 
-    await supabase
+    const { error: discoveryUpdateError } = await supabase
       .from("shops")
       .update({
         discovered_printers: cleaned,
         discovered_at: now,
       })
       .eq("id", agent.shopId);
+    if (discoveryUpdateError) return Response.json({ error: "Could not save detected printers" }, { status: 503 });
+  }
+
+  if (body.discoveryError) {
+    const { error } = await supabase.from("shops").update({ discovered_at: null }).eq("id", agent.shopId);
+    if (error) return Response.json({ error: "Could not update discovery status" }, { status: 503 });
   }
 
   // Read sound settings so the agent can pick up operator toggle changes.
@@ -105,6 +107,7 @@ export async function POST(req: NextRequest) {
 
   return Response.json({
     ok: true,
+    printerOnline,
     printerConfig: printer ?? { os_printer_name: null },
     soundSettings: {
       enabled: shop?.sound_enabled ?? false,

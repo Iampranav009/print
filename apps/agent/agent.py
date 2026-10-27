@@ -47,6 +47,7 @@ PENDING_STATUS_FILE = CONFIG_DIR / "pending-print-status.json"
 
 _last_known_caps: dict | None = None
 CASH_REQUEST_HANDLER = None
+CONNECTION_STATUS_HANDLER = None
 _seen_cash_requests: set[str] = set()
 
 
@@ -63,8 +64,13 @@ def heartbeat(printer_status: str = "online") -> dict:
     global PRINTER_NAME, _last_known_caps
     try:
         payload: dict = {"printerStatus": printer_status}
-        discovered = get_discovered_printers()
-        payload["discoveredPrinters"] = discovered
+        try:
+            discovered = get_discovered_printers()
+            payload["discoveredPrinters"] = discovered
+        except Exception:
+            discovered = []
+            payload["discoveryError"] = True
+            log.warning("Printer discovery failed; reporting the computer connection separately.")
         payload["printerName"] = PRINTER_NAME
         payload["printerStatus"] = ("online" if any(p["name"] == PRINTER_NAME for p in discovered) else "offline")
 
@@ -76,6 +82,8 @@ def heartbeat(printer_status: str = "online") -> dict:
         )
         resp.raise_for_status()
         data = resp.json()
+        if CONNECTION_STATUS_HANDLER:
+            CONNECTION_STATUS_HANDLER({**data, "connected": True, "discoveryError": payload.get("discoveryError", False)})
         config = data.get("printerConfig")
         if config is not None:
             selected = config.get("os_printer_name") or ""
@@ -86,6 +94,8 @@ def heartbeat(printer_status: str = "online") -> dict:
         log.info("Heartbeat sent to server (printer_status=%s)", printer_status)
         return data
     except Exception as e:
+        if CONNECTION_STATUS_HANDLER:
+            CONNECTION_STATUS_HANDLER({"connected": False})
         log.warning("Heartbeat failed: %s", e)
         return {}
 
@@ -474,7 +484,7 @@ def main(stop_event: threading.Event | None = None) -> None:
 
         # Discovery/heartbeat continues even while the print spooler is busy.
         def report_loop():
-            while not stop_event.wait(10):
+            while not stop_event.wait(5):
                 _apply_sound_settings(heartbeat())
         reporter = threading.Thread(target=report_loop, name="heartbeat-worker", daemon=True)
         reporter.start()

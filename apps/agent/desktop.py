@@ -49,6 +49,10 @@ class HimmerWindow:
         self.printer_list.pack(fill="x", pady=8)
         self.scan_status = tk.StringVar(value="Finding printers…")
         ttk.Label(frame, textvariable=self.scan_status, wraplength=600).pack(anchor="w")
+        self.connection_status = tk.StringVar(value="Shop not connected")
+        self.assignment_status = tk.StringVar(value="Choose your print destinations in the vendor panel after connecting.")
+        ttk.Label(frame, textvariable=self.connection_status, wraplength=600).pack(anchor="w", pady=(8, 0))
+        ttk.Label(frame, textvariable=self.assignment_status, wraplength=600).pack(anchor="w")
         printer_actions = ttk.Frame(frame)
         printer_actions.pack(anchor="w", pady=(7, 15))
         ttk.Button(printer_actions, text="Refresh printers", command=self.scan).pack(side="left")
@@ -87,9 +91,22 @@ class HimmerWindow:
         self.scan_busy = True
         def work():
             try:
-                self.events.put(("printers", get_discovered_printers()))
-            except Exception as error:
-                self.events.put(("scan_error", str(error)))
+                printers = get_discovered_printers()
+            except Exception:
+                self.events.put(("scan_error", "Cannot read printers. Check the Windows Print Spooler service."))
+                return
+            try:
+                if self.settings.get("AGENT_TOKEN") and not self.runtime:
+                    response = requests.post(f"{self.settings['PRINTBUDDY_API_BASE']}/api/agent/heartbeat",
+                        headers={"Authorization": f"Bearer {self.settings['AGENT_TOKEN']}"},
+                        json={"discoveredPrinters": printers}, timeout=10)
+                    response.raise_for_status()
+                    self.events.put(("connection", {**response.json(), "connected": True}))
+            except Exception:
+                if self.settings.get("AGENT_TOKEN") and not self.runtime:
+                    self.events.put(("connection", {"connected": False}))
+            finally:
+                self.events.put(("printers", printers))
         threading.Thread(target=work, daemon=True).start()
 
     def connect(self):
@@ -189,6 +206,7 @@ class HimmerWindow:
             try:
                 import agent
                 agent.CASH_REQUEST_HANDLER = lambda job: self.events.put(("cash_request", job))
+                agent.CONNECTION_STATUS_HANDLER = lambda state: self.events.put(("connection", state))
                 agent.main(stop_event=self.stop_event)
             except Exception:
                 self.events.put(("fatal", None))
@@ -213,13 +231,25 @@ class HimmerWindow:
                         self.printers = value
                         self.printer_list.delete(0, tk.END)
                         for index, printer in enumerate(value):
-                            self.printer_list.insert(tk.END, "  " + printer["name"])
+                            self.printer_list.insert(tk.END, "  " + printer["name"] + (" — Offline" if printer.get("available") is False else " — Installed") + (" (Windows default)" if printer.get("isDefault") else ""))
                             if printer["name"] == selected_name:
                                 self.printer_list.selection_set(index)
                         self.scan_status.set(f"{len(value)} printers found · refreshes automatically" if value else "No printers found. Add your printer in Windows Settings.")
                     else:
                         self.scan_status.set(value)
-                    self.root.after(10_000, self.scan)
+                    self.root.after(5_000, self.scan)
+                elif kind == "connection":
+                    self.connection_status.set(f"Connected to {self.settings.get('SHOP_NAME', 'your shop')}" if value.get("connected") else "Shop connection lost — check internet or reconnect with a new link.")
+                    config = value.get("printerConfig") or {}
+                    bw = config.get("bw_os_printer_name") or config.get("os_printer_name")
+                    color = config.get("color_os_printer_name") or config.get("os_printer_name")
+                    if value.get("connected"):
+                        readiness = "Ready" if value.get("printerOnline") else "Not ready — check printer power and saved assignments"
+                        if config.get("mode") == "test":
+                            readiness = "Test mode — switch to real mode in the vendor panel to print."
+                        self.assignment_status.set(f"B&W: {bw or 'Not selected'}\nColor: {color or 'Not selected'}\n{readiness}" if not value.get("discoveryError") else "Cannot read printers. Check the Windows Print Spooler service.")
+                    else:
+                        self.assignment_status.set("Printer readiness cannot be confirmed while disconnected.")
                 elif kind == "connected":
                     self.settings = value
                     self.connect_busy = False
