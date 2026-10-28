@@ -166,6 +166,9 @@ class HimmerWindow:
         if not (CONFIG_DIR / "SumatraPDF.exe").exists():
             self.status.set("Connect HIMMER first so it can install PDF printing support."); return
         printer = self.printers[selected[0]]["name"]
+        if self.printers[selected[0]].get("available") is False:
+            self.status.set(f'Cannot print: "{printer}" is offline in Windows. Turn it on, reconnect its cable, and print a Windows test page first.')
+            return
         self.status.set(f"Sending one test page to {printer}…")
         def work():
             from printing.test_page import make_test_page

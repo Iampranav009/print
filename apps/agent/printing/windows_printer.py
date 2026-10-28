@@ -3,6 +3,7 @@ import logging
 import os
 import shutil
 import subprocess
+from printing.discovery import printer_availability
 
 log = logging.getLogger("printbuddy-agent")
 
@@ -40,6 +41,9 @@ def print_windows(
     caps: dict | None = None,
 ) -> tuple[bool, str | None]:
     try:
+        available, unavailable_reason = printer_availability(printer_name)
+        if not available:
+            return False, unavailable_reason
         settings_parts: list[str] = []
         dropped: list[str] = []
 

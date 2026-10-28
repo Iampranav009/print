@@ -62,7 +62,7 @@ class DesktopTests(unittest.TestCase):
             self.assertEqual(printer.call_count, 2)  # No fallback to an unrelated printer.
 
     def test_windows_color_setting_is_explicit(self):
-        with patch("printing.windows_printer.get_sumatra_executable", return_value="SumatraPDF.exe"), patch("printing.windows_printer.subprocess.run", return_value=Mock(returncode=0)) as run:
+        with patch("printing.windows_printer.printer_availability", return_value=(True, "")), patch("printing.windows_printer.get_sumatra_executable", return_value="SumatraPDF.exe"), patch("printing.windows_printer.subprocess.run", return_value=Mock(returncode=0)) as run:
             for color, expected in [(True, "color"), (False, "monochrome")]:
                 print_windows("Chosen printer", "test.pdf", {"color": color})
                 args = run.call_args.args[0]

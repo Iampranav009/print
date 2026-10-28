@@ -1,6 +1,17 @@
 .hm-auth-header { display:flex; justify-content:space-between; align-items:center; gap:20px; padding:24px 40px; border-bottom:1px solid #dce2d8; }
 .hm-auth-body { background:#f6f7f2; min-height:calc(100svh - 85px); }
 .hm-auth-card { max-width:430px; padding:40px 36px; background:#fffefb; border:1px solid #dce2d8; border-radius:12px; box-shadow:0 12px 40px #17382c06; }
+.hm-auth-card { width:100%; }
+.hm-auth-label { display:block; margin-bottom:7px; font-size:13px; font-weight:600; }
+.hm-auth-input { width:100%; min-height:48px; padding:12px; border:1px solid #bac8bf; border-radius:7px; background:#fff; font-size:16px; }
+.hm-auth-input.pr-16 { padding-right:64px; }
+.hm-auth-google,.hm-auth-submit { display:flex; align-items:center; justify-content:center; gap:12px; width:100%; min-height:48px; border-radius:7px; padding:12px 16px; font-size:14px; font-weight:600; cursor:pointer; }
+.hm-auth-google { border:1px solid #bac8bf; background:white; }
+.hm-auth-submit { background:#126c38; color:white; }
+.hm-auth button:disabled,.hm-auth fieldset:disabled { opacity:.65; cursor:wait; }
+.hm-auth-input:focus-visible,.hm-auth button:focus-visible { outline:3px solid #76b990; outline-offset:3px; }
+.hm-auth-divider { display:flex; align-items:center; gap:12px; margin:24px 0; font-size:11px; text-transform:uppercase; color:#5b6961; }
+.hm-auth-divider::before,.hm-auth-divider::after { content:""; height:1px; background:#dce2d8; flex:1; }
 @media(max-width:500px) { .hm-auth-header { padding:20px; } .hm-auth-body { padding:32px 20px; align-items:flex-start; } .hm-auth-card { padding:28px 20px; } }
 .hm-site { --hm-paper:#f8f8f2; --hm-ink:#162d24; --hm-muted:#5b6961; --hm-line:#dce2d8; background:var(--hm-paper); color:var(--hm-ink); }
 .hm-wrap { width:min(1200px,calc(100% - 80px)); margin-inline:auto; }

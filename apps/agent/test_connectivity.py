@@ -5,9 +5,15 @@ from unittest.mock import Mock, patch
 
 import agent
 from printing import discovery
+from printing.windows_printer import print_windows
 
 
 class ConnectivityTests(unittest.TestCase):
+    def test_offline_printer_is_rejected_before_sumatra_runs(self):
+        with patch("printing.windows_printer.printer_availability", return_value=(False, "Printer is offline")), patch("printing.windows_printer.subprocess.run") as run:
+            self.assertEqual(print_windows("Canon", "test.pdf", {}), (False, "Printer is offline"))
+            run.assert_not_called()
+
     def test_window_shows_saved_routes_and_connection_loss(self):
         import tkinter as tk
         import desktop

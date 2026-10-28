@@ -14,7 +14,9 @@ function VendorLoginContent() {
 
   useEffect(() => {
     if (errorParam) {
-      if (errorParam === "oauth_init_failed") {
+      if (errorParam === "oauth_cancelled") {
+        setErrorMessage("Google sign-in was cancelled. Please try again or sign in with email.");
+      } else if (errorParam === "oauth_init_failed") {
         setErrorMessage("Failed to initialize Google login. Please verify Supabase settings.");
       } else if (errorParam === "auth_callback_failed") {
         setErrorMessage("Authentication failed during callback. Please try again.");

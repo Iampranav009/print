@@ -44,3 +44,17 @@ def get_discovered_printers() -> list[dict]:
                  "available": value.get("printer-state") != 5, "status": "stopped" if value.get("printer-state") == 5 else "ready"}
                 for name, value in connection.getPrinters().items()]
     return []
+
+
+def printer_availability(printer_name: str) -> tuple[bool, str]:
+    """Return whether a named OS queue is installed and currently reachable."""
+    try:
+        printers = get_discovered_printers()
+    except Exception:
+        return False, "Windows could not read its printer list. Restart the Print Spooler service and try again."
+    printer = next((item for item in printers if item.get("name") == printer_name), None)
+    if not printer:
+        return False, f'"{printer_name}" is not installed on this computer.'
+    if printer.get("available") is False:
+        return False, f'"{printer_name}" is offline in Windows. Turn it on, reconnect its USB or network cable, and print a Windows test page first.'
+    return True, ""
