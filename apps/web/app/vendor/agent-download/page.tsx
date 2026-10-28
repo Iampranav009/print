@@ -18,13 +18,33 @@ export default function AgentDownloadPage() {
   }
   async function createLink() {
     setBusy(true); setError(""); setCopied(false);
-    try {
-      const response = await fetch("/api/vendor/agent/pair-link", { method: "POST" });
-      const result: { link?: string; error?: string } = await response.json();
-      if (!response.ok || !result.link) throw new Error(result.error || "Could not create connection link.");
-      setLink(result.link);
-    } catch (error) { setError(error instanceof Error ? error.message : "Please try again."); }
-    finally { setBusy(false); }
+    const endpoints = ["/api/vendor/connection-link", "/api/vendor/agent/pair-link"];
+    let lastError = "Could not reach HIMMER. Check your internet connection and try again.";
+    for (const endpoint of endpoints) {
+      try {
+        const response = await fetch(endpoint, {
+          method: "POST",
+          credentials: "same-origin",
+          cache: "no-store",
+          headers: { Accept: "application/json" },
+        });
+        const contentType = response.headers.get("content-type") || "";
+        const result: { link?: string; error?: string } = contentType.includes("application/json")
+          ? await response.json()
+          : {};
+        if (response.ok && result.link) {
+          setLink(result.link);
+          setBusy(false);
+          return;
+        }
+        lastError = result.error || `Could not create connection link (${response.status}).`;
+        if (response.status < 500) break;
+      } catch {
+        // Retry through the alternate same-origin route before failing.
+      }
+    }
+    setError(lastError);
+    setBusy(false);
   }
   return <main className="mx-auto max-w-2xl space-y-7 p-6">
     <Link href="/vendor/printer" className="text-indigo-600">← Your printers</Link>
