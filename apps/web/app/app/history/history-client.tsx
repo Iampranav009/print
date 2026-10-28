@@ -20,7 +20,6 @@ export interface Job {
   duplex: boolean;
   orientation: "portrait" | "landscape";
   release_code: string | null;
-  failure_reason: string | null;
   file_name: string;
   created_at: string;
   updated_at: string;

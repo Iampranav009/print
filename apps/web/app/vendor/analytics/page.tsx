@@ -1,11 +1,13 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { RefreshCw } from "lucide-react";
 import { SegmentedControl } from "@/components/vendor/SegmentedControl";
 import { StatTile } from "@/components/vendor/StatTile";
 import { SimpleBarChart } from "@/components/vendor/SimpleBarChart";
 import { StatusPill } from "@/components/StatusPill";
 import type { JobStatus } from "@/components/StatusPill";
+import { JobErrorLog } from "@/components/vendor/JobErrorLog";
 
 type Period = "day" | "week" | "month";
 
@@ -22,6 +24,8 @@ type AnalyticsResponse = {
     total_jobs: number;
     online_revenue_paise: number;
     cash_revenue_paise: number;
+    failed_jobs: number;
+    refunded_jobs: number;
   };
   series: Array<{
     bucket: string;
@@ -41,7 +45,9 @@ type AnalyticsResponse = {
     paper: string;
     file_name: string;
     payment_method: "online" | "cash";
+    failure_reason: string | null;
   }>;
+  generated_at: string;
 };
 
 function formatPaise(paise: number): string {
@@ -49,9 +55,9 @@ function formatPaise(paise: number): string {
 }
 
 const PERIOD_OPTIONS: { label: string; value: Period }[] = [
-  { label: "Day", value: "day" },
-  { label: "Week", value: "week" },
-  { label: "Month", value: "month" },
+  { label: "Today", value: "day" },
+  { label: "This week", value: "week" },
+  { label: "This month", value: "month" },
 ];
 
 function SkeletonTile() {
@@ -63,21 +69,26 @@ export default function AnalyticsPage() {
   const [data, setData] = useState<AnalyticsResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [chartMode, setChartMode] = useState<"prints" | "revenue">("prints");
+  const [error, setError] = useState("");
 
   const fetchAnalytics = useCallback(async (p: Period) => {
     setLoading(true);
+    setError("");
     try {
-      const res = await fetch(`/api/vendor/analytics?period=${p}`);
-      if (res.ok) setData(await res.json());
+      const res = await fetch(`/api/vendor/analytics?period=${p}`, { cache: "no-store" });
+      const result = await res.json();
+      if (!res.ok) throw new Error(result.error || "Could not load analytics.");
+      setData(result);
     } catch {
-      // swallow
+      setError("Analytics could not be refreshed. Please try again.");
     } finally {
       setLoading(false);
     }
   }, []);
 
   useEffect(() => {
-    fetchAnalytics(period);
+    const timer = setTimeout(() => void fetchAnalytics(period), 0);
+    return () => clearTimeout(timer);
   }, [fetchAnalytics, period]);
 
   const s = data?.summary;
@@ -88,14 +99,25 @@ export default function AnalyticsPage() {
     <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between gap-4 flex-wrap">
-        <h2 className="text-lg font-semibold text-zinc-900">Analytics</h2>
-        <SegmentedControl
+        <div>
+          <h2 className="text-lg font-semibold text-zinc-900">Analytics</h2>
+          <p className="mt-1 text-xs text-zinc-500">India time · refreshed from live print jobs</p>
+        </div>
+        <div className="flex items-center gap-2">
+          <button type="button" onClick={() => fetchAnalytics(period)} disabled={loading} className="inline-flex min-h-10 items-center gap-2 rounded-xl border border-zinc-200 bg-white px-3 text-sm font-medium text-zinc-700 hover:bg-zinc-50 disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600">
+            <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} aria-hidden="true" />
+            Refresh
+          </button>
+          <SegmentedControl
           options={PERIOD_OPTIONS}
           value={period}
           onChange={(p) => setPeriod(p)}
           ariaLabel="Time period"
-        />
+          />
+        </div>
       </div>
+
+      {error && <p role="alert" className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</p>}
 
       {/* Summary tiles */}
       {loading ? (
@@ -168,6 +190,7 @@ export default function AnalyticsPage() {
                   <th className="px-4 py-3 text-xs font-medium text-zinc-500 uppercase tracking-wide">Amount</th>
                   <th className="px-4 py-3 text-xs font-medium text-zinc-500 uppercase tracking-wide">Payment</th>
                   <th className="px-4 py-3 text-xs font-medium text-zinc-500 uppercase tracking-wide">Status</th>
+                  <th className="px-4 py-3 text-xs font-medium text-zinc-500 uppercase tracking-wide">Error log</th>
                   <th className="px-6 py-3 text-xs font-medium text-zinc-500 uppercase tracking-wide">Time</th>
                 </tr>
               </thead>
@@ -190,6 +213,7 @@ export default function AnalyticsPage() {
                     <td className="px-4 py-3 text-zinc-900 tabular-nums">{formatPaise(job.price_paise)}</td>
                     <td className="px-4 py-3"><span className={`inline-flex px-2 py-0.5 rounded-full text-[10px] font-semibold ${job.payment_method === "cash" ? "bg-emerald-100 text-emerald-700" : "bg-blue-100 text-blue-700"}`}>{job.payment_method === "cash" ? "Cash" : "Online"}</span></td>
                     <td className="px-4 py-3"><StatusPill status={job.status as JobStatus} /></td>
+                    <td className="px-4 py-3"><JobErrorLog reason={job.failure_reason} /></td>
                     <td className="px-6 py-3 text-zinc-400 text-xs">
                       {new Date(job.created_at).toLocaleString("en-IN", {
                         month: "short",

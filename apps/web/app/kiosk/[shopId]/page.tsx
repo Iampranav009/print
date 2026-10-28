@@ -58,6 +58,7 @@ export default function KioskPage({
   const readyJobsRef = useRef(0);
   const activeJobIdRef = useRef<string | null>(null);
   const completionCountdownRef = useRef(false);
+  const refreshRequestedAtRef = useRef<string | null>(null);
 
   // Transient event from the customer's mobile session, arriving via
   // Supabase Realtime broadcast (WebSocket). Overrides the DB job for
@@ -88,6 +89,20 @@ export default function KioskPage({
   // the durable queue can show the next job (or the QR for a new customer).
   const [returnCountdown, setReturnCountdown] = useState<number | null>(null);
   const countdownTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const resetDisplayState = useCallback(() => {
+    if (countdownTimerRef.current) clearInterval(countdownTimerRef.current);
+    if (liveExpiryRef.current) clearTimeout(liveExpiryRef.current);
+    countdownTimerRef.current = null;
+    liveExpiryRef.current = null;
+    completionCountdownRef.current = false;
+    activeJobIdRef.current = null;
+    readyJobsRef.current = 0;
+    setReturnCountdown(null);
+    setActiveJob(null);
+    setLiveActivity(null);
+    setRetryPrompt(null);
+    setQueuedJobs([]);
+  }, []);
   const clearReturnCountdown = useCallback(() => {
     if (countdownTimerRef.current) clearInterval(countdownTimerRef.current);
     countdownTimerRef.current = null;
@@ -105,15 +120,16 @@ export default function KioskPage({
           if (prev <= 1) {
             if (countdownTimerRef.current) clearInterval(countdownTimerRef.current);
             countdownTimerRef.current = null;
-            // Reload from the durable queue. The next paid job becomes active.
-            window.location.reload();
+            // Clear stale hero state. Polling/realtime immediately repopulates
+            // the next durable job without relying on a cached page reload.
+            resetDisplayState();
             return null;
           }
           return prev - 1;
         });
       }, 1000);
     },
-    [clearReturnCountdown]
+    [clearReturnCountdown, resetDisplayState]
   );
 
   // Helper to extract clean file name
@@ -131,7 +147,7 @@ export default function KioskPage({
   // Clearing happens only when a new upload:start event arrives, i.e. a
   // fresh customer session begins. This is what makes "Print complete" and
   // "Payment rejected" stay on screen instead of flipping back to the QR.
-  const updateJobStates = useCallback((allJobs: DbJob[]) => {
+  const updateJobStates = useCallback((allJobs: DbJob[], replaceHero = false) => {
     const formattedJobs: KioskJob[] = allJobs.map((j) => ({
       id: j.id,
       shop_id: j.shop_id,
@@ -152,6 +168,7 @@ export default function KioskPage({
     if (nonTerminal) setLiveActivity(null);
 
     setActiveJob((prev) => {
+      if (replaceHero) return nonTerminal ?? null;
       if (completionCountdownRef.current) return prev;
       // 1. Fresh non-terminal job takes over immediately.
       if (nonTerminal) return nonTerminal;
@@ -195,6 +212,7 @@ export default function KioskPage({
         const queueRes = await fetch(`/api/kiosk/${encodeURIComponent(shopId)}/active`, { cache: "no-store" });
         if (active && queueRes.ok) {
           const data = await queueRes.json();
+          refreshRequestedAtRef.current = data.refresh_requested_at ?? null;
           updateJobStates([data.active, ...data.queue, ...data.recent].filter(Boolean) as DbJob[]);
         }
       } catch (err: unknown) {
@@ -241,6 +259,13 @@ export default function KioskPage({
       const res = await fetch(`/api/kiosk/${encodeURIComponent(shopId)}/active`, { cache: "no-store" });
       if (res.ok) {
         const data = await res.json();
+        const refreshRequestedAt = data.refresh_requested_at as string | null;
+        const shouldReset = Boolean(
+          refreshRequestedAt &&
+          refreshRequestedAtRef.current &&
+          refreshRequestedAt !== refreshRequestedAtRef.current
+        );
+        refreshRequestedAtRef.current = refreshRequestedAt;
         const justPrinted = (data.recent as DbJob[]).find(
           (job) => job.id === activeJobIdRef.current && job.status === "printed"
         );
@@ -255,7 +280,11 @@ export default function KioskPage({
           setLiveActivity(null);
           startReturnCountdown(3);
         }
-        updateJobStates([data.active, ...data.queue, ...data.recent].filter(Boolean) as DbJob[]);
+        if (shouldReset) resetDisplayState();
+        updateJobStates(
+          [data.active, ...data.queue, ...data.recent].filter(Boolean) as DbJob[],
+          shouldReset
+        );
       }
     };
 
@@ -451,6 +480,13 @@ export default function KioskPage({
             startReturnCountdown(3);
             break;
           }
+
+          case "kiosk:reset":
+            refreshRequestedAtRef.current = evt.requestedAt;
+            resetDisplayState();
+            fetchLatestJobs();
+            showToast("info", "Kiosk refreshed by the shop");
+            break;
         }
       })
       .subscribe();
@@ -464,7 +500,7 @@ export default function KioskPage({
       if (liveExpiryRef.current) clearTimeout(liveExpiryRef.current);
       if (countdownTimerRef.current) clearInterval(countdownTimerRef.current);
     };
-  }, [shopId, updateJobStates, showToast, startReturnCountdown, clearReturnCountdown]);
+  }, [shopId, updateJobStates, showToast, startReturnCountdown, clearReturnCountdown, resetDisplayState]);
 
   // Notify on job status transitions the operator should notice: payment
   // captured (job appears with paid+ status), print done, or a failure.

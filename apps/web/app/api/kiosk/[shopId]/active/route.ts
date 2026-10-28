@@ -9,7 +9,7 @@ export async function GET(
 ) {
   const { shopId } = await params;
   const supabase = getSupabase();
-  let [{ data: ready, error }, { data: recent }] = await Promise.all([
+  const results = await Promise.all([
     supabase.from("print_jobs")
       .select("id, shop_id, display_name, status, price_paise, created_at, updated_at")
       .eq("shop_id", shopId)
@@ -22,7 +22,14 @@ export async function GET(
       .in("status", ["printed", "print_failed", "refunded"])
       .order("updated_at", { ascending: false })
       .limit(3),
+    supabase.from("shops")
+      .select("kiosk_refresh_requested_at")
+      .eq("id", shopId)
+      .maybeSingle(),
   ]);
+  let { data: ready, error } = results[0];
+  let { data: recent } = results[1];
+  const { data: shop } = results[2];
   // Keep the existing kiosk operational while the new name migration is
   // being deployed. Its queue still works; labels fall back to Customer.
   if (["42703", "PGRST204"].includes(error?.code ?? "")) {
@@ -60,5 +67,6 @@ export async function GET(
     active,
     queue: jobs.filter((j) => j.id !== active?.id),
     recent: (recent ?? []).map(safe),
+    refresh_requested_at: shop?.kiosk_refresh_requested_at ?? null,
   }, { headers: { "Cache-Control": "no-store" } });
 }

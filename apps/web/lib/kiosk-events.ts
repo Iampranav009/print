@@ -88,6 +88,12 @@ export interface PrintFailedEvent {
   sentAt: string;
 }
 
+export interface KioskResetEvent {
+  type: "kiosk:reset";
+  requestedAt: string;
+  sentAt: string;
+}
+
 export type KioskEvent =
   | UploadStartEvent
   | UploadProgressEvent
@@ -98,7 +104,8 @@ export type KioskEvent =
   | PaymentFailedEvent
   | PrintStartedEvent
   | PrintCompletedEvent
-  | PrintFailedEvent;
+  | PrintFailedEvent
+  | KioskResetEvent;
 
 export const KIOSK_BROADCAST_EVENT = "kiosk-live" as const;
 

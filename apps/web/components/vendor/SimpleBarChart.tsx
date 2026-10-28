@@ -18,8 +18,14 @@ interface SimpleBarChartProps {
   height?: number;
 }
 
-/** Formats a bucket string (YYYY-MM-DD | YYYY-Www | YYYY-MM) to a short label. */
+/** Formats an India-time bucket string to a short label. */
 function formatBucket(bucket: string): string {
+  // Hour: 2026-10-28T09
+  if (/^\d{4}-\d{2}-\d{2}T\d{2}$/.test(bucket)) {
+    const hour = Number(bucket.slice(-2));
+    return new Intl.DateTimeFormat("en-IN", { hour: "numeric", hour12: true })
+      .format(new Date(Date.UTC(2020, 0, 1, hour)));
+  }
   // Week: 2026-W37
   if (/^\d{4}-W\d{1,2}$/.test(bucket)) {
     return `W${bucket.split("-W")[1]}`;
@@ -139,8 +145,7 @@ export function SimpleBarChart({ data, mode = "prints", height = 240 }: SimpleBa
                 key={`prints-bar-${d.bucket}-${i}`}
                 role="group"
                 aria-label={`${label}: ${d.prints} prints`}
-                onMouseEnter={(e) => {
-                  const rect = (e.currentTarget.closest("svg") as SVGElement).getBoundingClientRect();
+                onMouseEnter={() => {
                   setTooltip({
                     x: ((x + barW / 2) / chartW) * 100,
                     y: (barTop / chartH) * 100,

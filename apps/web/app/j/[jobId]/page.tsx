@@ -44,7 +44,6 @@ interface Job {
   duplex: boolean;
   orientation: string;
   release_code: string | null;
-  failure_reason: string | null;
   razorpay_order_id: string | null;
   created_at: string;
   updated_at: string;
@@ -316,13 +315,6 @@ export default function JobPage({
             </div>
           )}
 
-          {/* Print failure reason */}
-          {job!.status === "print_failed" && job!.failure_reason && (
-            <div className="mt-4 text-xs bg-red-50 dark:bg-red-950/40 text-red-700 dark:text-red-300 rounded-xl p-3.5 text-left">
-              <span className="font-semibold">Details: </span>
-              {job!.failure_reason}
-            </div>
-          )}
         </div>
 
         {/* Slow banner */}

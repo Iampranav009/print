@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useRef, useCallback, use, useSyncExternalStore } from "react";
+import React, { useState, useEffect, useRef, use, useSyncExternalStore } from "react";
 import Link from "next/link";
 import {
   Loader2,
@@ -46,7 +46,6 @@ interface Job {
   duplex: boolean;
   orientation: string;
   release_code: string | null;
-  failure_reason: string | null;
   razorpay_order_id: string | null;
   payment_method: "online" | "cash";
   created_at: string;
@@ -340,13 +339,6 @@ export default function JobDetailPage({
             </div>
           )}
 
-          {/* Print failure reason */}
-          {job!.status === "print_failed" && job!.failure_reason && (
-            <div className="mt-5 text-xs bg-red-50 text-red-700 rounded-xl p-3.5 text-left border border-red-100">
-              <span className="font-semibold">Reason: </span>
-              {job!.failure_reason}
-            </div>
-          )}
         </div>
 
         {/* Slow banner */}

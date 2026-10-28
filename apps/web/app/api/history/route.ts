@@ -3,11 +3,10 @@
 // app. Requires auth; the middleware-guarded /app pages call this so an
 // anon request here should be rare, but we 401 anyway for safety.
 
-import { NextRequest } from "next/server";
 import { createClient as createServerSupabase } from "@/lib/supabase/server";
 import { getSupabase } from "@/lib/supabase";
 
-export async function GET(_req: NextRequest) {
+export async function GET() {
   const authed = await createServerSupabase();
   const { data: { user } } = await authed.auth.getUser();
   if (!user) {
@@ -22,7 +21,7 @@ export async function GET(_req: NextRequest) {
     .from("print_jobs")
     .select(
       `id, shop_id, status, price_paise, pages, copies, color, paper,
-       duplex, orientation, release_code, failure_reason, file_path,
+       duplex, orientation, release_code, file_path,
        file_mime, created_at, updated_at,
        shops:shop_id ( name, location )`
     )
@@ -51,7 +50,6 @@ export async function GET(_req: NextRequest) {
       duplex: row.duplex,
       orientation: row.orientation,
       release_code: row.release_code,
-      failure_reason: row.failure_reason,
       file_name: filename,
       file_mime: row.file_mime,
       created_at: row.created_at,

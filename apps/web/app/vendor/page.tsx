@@ -2,11 +2,12 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import { QRCodeSVG } from "qrcode.react";
-import { Download, ExternalLink, AlertCircle, Printer } from "lucide-react";
+import { Download, ExternalLink, AlertCircle, Printer, RefreshCw } from "lucide-react";
 import { StatTile } from "@/components/vendor/StatTile";
 import { StatusPill } from "@/components/StatusPill";
 import type { JobStatus } from "@/components/StatusPill";
 import { createClient } from "@/lib/supabase/client";
+import { JobErrorLog } from "@/components/vendor/JobErrorLog";
 
 type AnalyticsResponse = {
   period: "day" | "week" | "month";
@@ -21,6 +22,8 @@ type AnalyticsResponse = {
     total_jobs: number;
     online_revenue_paise: number;
     cash_revenue_paise: number;
+    failed_jobs: number;
+    refunded_jobs: number;
   };
   series: Array<{
     bucket: string;
@@ -40,6 +43,7 @@ type AnalyticsResponse = {
     paper: string;
     file_name: string;
     payment_method: "online" | "cash";
+    failure_reason: string | null;
   }>;
 };
 
@@ -59,9 +63,10 @@ function formatPaise(paise: number): string {
 export default function VendorOverviewPage() {
   const [analytics, setAnalytics] = useState<AnalyticsResponse | null>(null);
   const [vendorData, setVendorData] = useState<VendorMeResponse | null>(null);
-  const [liveJobs, setLiveJobs] = useState<number>(0);
   const [loading, setLoading] = useState(true);
   const [releasingJobId, setReleasingJobId] = useState<string | null>(null);
+  const [refreshingKiosk, setRefreshingKiosk] = useState(false);
+  const [kioskRefreshMessage, setKioskRefreshMessage] = useState("");
   const qrRef = useRef<SVGSVGElement>(null);
 
   const handleReleaseJob = async (jobId: string) => {
@@ -81,8 +86,8 @@ export default function VendorOverviewPage() {
   const fetchData = useCallback(async () => {
     try {
       const [analyticsRes, meRes] = await Promise.all([
-        fetch("/api/vendor/analytics?period=day"),
-        fetch("/api/vendor/me"),
+        fetch("/api/vendor/analytics?period=day", { cache: "no-store" }),
+        fetch("/api/vendor/me", { cache: "no-store" }),
       ]);
       if (analyticsRes.ok) setAnalytics(await analyticsRes.json());
       if (meRes.ok) setVendorData(await meRes.json());
@@ -100,6 +105,24 @@ export default function VendorOverviewPage() {
   }, [fetchData]);
 
   const shopId = vendorData?.shop?.id ?? "";
+
+  const refreshKiosk = async () => {
+    setRefreshingKiosk(true);
+    setKioskRefreshMessage("");
+    try {
+      const response = await fetch("/api/vendor/kiosk/refresh", {
+        method: "POST",
+        cache: "no-store",
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || "Could not refresh kiosk.");
+      setKioskRefreshMessage("Kiosk refreshed. It is ready for the next job.");
+    } catch (error) {
+      setKioskRefreshMessage(error instanceof Error ? error.message : "Could not refresh kiosk.");
+    } finally {
+      setRefreshingKiosk(false);
+    }
+  };
 
   // Supabase Realtime subscription on print_jobs filtered by shop_id
   useEffect(() => {
@@ -125,15 +148,6 @@ export default function VendorOverviewPage() {
       supabase.removeChannel(channel);
     };
   }, [shopId, fetchData]);
-
-  // Count active jobs in status dispatched | printing | awaiting_release
-  useEffect(() => {
-    const active =
-      analytics?.recent?.filter((j) =>
-        ["dispatched", "printing", "awaiting_release"].includes(j.status)
-      ).length ?? 0;
-    setLiveJobs(active);
-  }, [analytics]);
 
   const downloadQR = () => {
     const svg = qrRef.current;
@@ -349,22 +363,10 @@ export default function VendorOverviewPage() {
   const qrUrl = shopId ? `${origin}/s/${shopId}` : "";
 
   const summary = analytics?.summary;
-  const series = analytics?.series ?? [];
   const recent = analytics?.recent ?? [];
-
-  const todayPrints = series[series.length - 1]?.prints ?? 0;
-  const yesterdayPrints = series[series.length - 2]?.prints ?? 0;
-  const printsTrend =
-    yesterdayPrints > 0
-      ? ((todayPrints - yesterdayPrints) / yesterdayPrints) * 100
-      : undefined;
-
-  const todayRevenue = series[series.length - 1]?.revenue_paise ?? 0;
-  const yesterdayRevenue = series[series.length - 2]?.revenue_paise ?? 0;
-  const revenueTrend =
-    yesterdayRevenue > 0
-      ? ((todayRevenue - yesterdayRevenue) / yesterdayRevenue) * 100
-      : undefined;
+  const liveJobs = recent.filter((job) =>
+    ["dispatched", "printing", "awaiting_release"].includes(job.status)
+  ).length;
 
   if (loading) {
     return (
@@ -390,12 +392,10 @@ export default function VendorOverviewPage() {
         <StatTile
           label="Prints today"
           value={(summary?.total_prints ?? 0).toString()}
-          trend={printsTrend}
         />
         <StatTile
           label="Revenue today"
           value={formatPaise(summary?.total_revenue_paise ?? 0)}
-          trend={revenueTrend}
         />
 
         {/* Colour vs B&W — emerald for colour, zinc for B&W */}
@@ -474,6 +474,7 @@ export default function VendorOverviewPage() {
                   <th className="px-4 py-3 text-xs font-medium text-zinc-500 uppercase tracking-wide">Payment</th>
                   <th className="px-4 py-3 text-xs font-medium text-zinc-500 uppercase tracking-wide">Status</th>
                   <th className="px-4 py-3 text-xs font-medium text-zinc-500 uppercase tracking-wide">Action</th>
+                  <th className="px-4 py-3 text-xs font-medium text-zinc-500 uppercase tracking-wide">Error log</th>
                   <th className="px-6 py-3 text-xs font-medium text-zinc-500 uppercase tracking-wide">Time</th>
                 </tr>
               </thead>
@@ -495,6 +496,7 @@ export default function VendorOverviewPage() {
                         {job.color ? "Colour" : "B&W"}
                       </span>
                     </td>
+                    <td className="px-4 py-3"><JobErrorLog reason={job.failure_reason} /></td>
                     <td className="px-4 py-3 text-zinc-900 tabular-nums">{formatPaise(job.price_paise)}</td>
                     <td className="px-4 py-3"><span className={`inline-flex px-2 py-0.5 rounded-full text-[10px] font-semibold ${job.payment_method === "cash" ? "bg-emerald-100 text-emerald-700" : "bg-blue-100 text-blue-700"}`}>{job.payment_method === "cash" ? "Cash" : "Online"}</span></td>
                     <td className="px-4 py-3"><StatusPill status={job.status as JobStatus} /></td>
@@ -557,7 +559,17 @@ export default function VendorOverviewPage() {
                   <ExternalLink className="w-4 h-4" />
                   Open kiosk view
                 </a>
+                <button
+                  type="button"
+                  onClick={refreshKiosk}
+                  disabled={refreshingKiosk}
+                  className="flex items-center gap-2 px-4 py-2 rounded-xl border border-zinc-200 hover:border-emerald-300 text-sm font-medium text-zinc-700 transition-colors disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600"
+                >
+                  <RefreshCw className={`w-4 h-4 ${refreshingKiosk ? "animate-spin" : ""}`} aria-hidden="true" />
+                  {refreshingKiosk ? "Refreshing…" : "Refresh kiosk"}
+                </button>
               </div>
+              {kioskRefreshMessage && <p role="status" className="text-xs text-zinc-600">{kioskRefreshMessage}</p>}
             </>
           ) : (
             <p className="text-sm text-zinc-400">Shop not set up yet.</p>

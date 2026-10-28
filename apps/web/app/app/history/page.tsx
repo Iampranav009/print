@@ -17,7 +17,6 @@ interface HistoryRow {
   duplex: boolean;
   orientation: "portrait" | "landscape";
   release_code: string | null;
-  failure_reason: string | null;
   file_path: string | null;
   created_at: string;
   updated_at: string;
@@ -55,7 +54,6 @@ export default async function HistoryPage() {
         duplex,
         orientation,
         release_code,
-        failure_reason,
         file_path,
         created_at,
         updated_at,
@@ -87,7 +85,6 @@ export default async function HistoryPage() {
           duplex: item.duplex,
           orientation: item.orientation || "portrait",
           release_code: item.release_code,
-          failure_reason: item.failure_reason,
           file_name: fileName,
           created_at: item.created_at,
           updated_at: item.updated_at,
