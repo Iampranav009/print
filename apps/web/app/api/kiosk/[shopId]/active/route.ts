@@ -59,6 +59,8 @@ export async function GET(
     release_code: null,
     created_at: job.created_at,
     updated_at: job.updated_at,
+    needs_attention: job.status === "printing" &&
+      Date.now() - new Date(job.updated_at).getTime() >= 10 * 60 * 1000,
   });
   const jobs = (ready ?? []).map(safe);
   const printing = jobs.find((j) => j.status === "printing");

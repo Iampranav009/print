@@ -30,7 +30,8 @@ export async function GET(req: NextRequest) {
       )
       .eq("shop_id", agent.shopId)
       .in("status", ["dispatched", "released", "awaiting_release"])
-      .order("updated_at", { ascending: true })
+      // Preserve FIFO even when the vendor asks the agent to retry a job.
+      .order("created_at", { ascending: true })
       .limit(1)
       .maybeSingle(),
 

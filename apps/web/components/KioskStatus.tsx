@@ -8,7 +8,7 @@ import {
   CheckCircle2,
   CreditCard,
   XCircle,
-  FileCheck2,
+  AlertTriangle,
 } from "lucide-react";
 import { type JobStatus } from "./StatusPill";
 import { DocumentUploadIcon } from "./DocumentUploadIcon";
@@ -24,6 +24,7 @@ export interface KioskJob {
   file_name?: string;
   created_at: string;
   updated_at?: string;
+  needs_attention?: boolean;
 }
 
 // A transient client-side event that beats out the DB job for the hero slot.
@@ -248,17 +249,24 @@ export function KioskStatus({
 
     case "paid":
     case "dispatched":
-      tone = "success";
-      iconNode = <FileCheck2 className="w-14 h-14" />;
-      headline = `${activeJob.display_name || "Customer"}’s print is ready`;
-      sub = "Your document is next for the printer.";
+      tone = "warn";
+      iconNode = <Clock className="w-14 h-14" />;
+      headline = `${activeJob.display_name || "Customer"}’s print is queued`;
+      sub = "Payment is confirmed. The shop will print it when the printer is ready.";
       break;
 
     case "printing":
-      tone = "info";
-      iconNode = <Printer className="w-14 h-14 animate-pulse" />;
-      headline = `${activeJob.display_name || "Customer"}’s print is in progress`;
-      sub = "Please wait while the printer finishes these pages.";
+      if (activeJob.needs_attention) {
+        tone = "warn";
+        iconNode = <AlertTriangle className="w-14 h-14" />;
+        headline = "Printer needs shop attention";
+        sub = "Your paid job is safely saved. The shop can retry it from the vendor dashboard.";
+      } else {
+        tone = "info";
+        iconNode = <Printer className="w-14 h-14 animate-pulse" />;
+        headline = `${activeJob.display_name || "Customer"}’s print is in progress`;
+        sub = "Please wait while the printer finishes these pages.";
+      }
       break;
 
     case "awaiting_release":

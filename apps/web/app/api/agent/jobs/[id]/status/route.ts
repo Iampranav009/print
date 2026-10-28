@@ -40,6 +40,14 @@ export async function POST(
   if (job.status === newStatus) {
     return Response.json({ ok: true, alreadyRecorded: true });
   }
+  // A print_failed report may have reached us successfully even when the
+  // agent lost the HTTP response. The server can then refund the payment
+  // before the agent retries its durable pending-status file. Treat that
+  // refunded row as an acknowledged failure so an existing Windows agent
+  // does not block its entire queue forever.
+  if (newStatus === "print_failed" && job.status === "refunded") {
+    return Response.json({ ok: true, alreadyRecorded: true });
+  }
 
   const allowed = VALID_TRANSITIONS[job.status as JobStatus];
   if (!allowed?.includes(newStatus)) {

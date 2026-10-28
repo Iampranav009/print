@@ -37,6 +37,7 @@ interface DbJob {
   display_name?: string | null;
   created_at: string;
   updated_at?: string;
+  needs_attention?: boolean;
 }
 
 export default function KioskPage({
@@ -158,6 +159,7 @@ export default function KioskPage({
       display_name: j.display_name || "Customer",
       created_at: j.created_at,
       updated_at: j.updated_at,
+      needs_attention: j.needs_attention,
     }));
 
     const ready = formattedJobs.filter((j) => ["dispatched", "awaiting_release", "released", "printing"].includes(j.status));

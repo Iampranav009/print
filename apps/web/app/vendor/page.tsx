@@ -8,6 +8,7 @@ import { StatusPill } from "@/components/StatusPill";
 import type { JobStatus } from "@/components/StatusPill";
 import { createClient } from "@/lib/supabase/client";
 import { JobErrorLog } from "@/components/vendor/JobErrorLog";
+import { VendorPrintQueue } from "@/components/vendor/VendorPrintQueue";
 
 type AnalyticsResponse = {
   period: "day" | "week" | "month";
@@ -435,6 +436,8 @@ export default function VendorOverviewPage() {
         />
       </div>
 
+      {shopId && <VendorPrintQueue shopId={shopId} />}
+
       {/* Recent jobs */}
       <div className="bg-white rounded-2xl shadow-sm border border-zinc-100 overflow-hidden">
         <div className="px-6 py-4 border-b border-zinc-100">
@@ -496,7 +499,6 @@ export default function VendorOverviewPage() {
                         {job.color ? "Colour" : "B&W"}
                       </span>
                     </td>
-                    <td className="px-4 py-3"><JobErrorLog reason={job.failure_reason} /></td>
                     <td className="px-4 py-3 text-zinc-900 tabular-nums">{formatPaise(job.price_paise)}</td>
                     <td className="px-4 py-3"><span className={`inline-flex px-2 py-0.5 rounded-full text-[10px] font-semibold ${job.payment_method === "cash" ? "bg-emerald-100 text-emerald-700" : "bg-blue-100 text-blue-700"}`}>{job.payment_method === "cash" ? "Cash" : "Online"}</span></td>
                     <td className="px-4 py-3"><StatusPill status={job.status as JobStatus} /></td>
@@ -512,6 +514,7 @@ export default function VendorOverviewPage() {
                         </button>
                       )}
                     </td>
+                    <td className="px-4 py-3"><JobErrorLog reason={job.failure_reason} /></td>
                     <td className="px-6 py-3 text-zinc-400 text-xs">
                       {new Date(job.created_at).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" })}
                     </td>
