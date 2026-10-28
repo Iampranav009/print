@@ -89,8 +89,14 @@ def build_cups_options(job: dict, caps: dict | None = None) -> dict[str, str]:
             options["outputorder"] = "reverse"
 
     # Scaling
+    # "fit-to-page"   → CUPS "fit"      (always fill the printable area, may enlarge)
+    # "shrink-to-fit" → CUPS "auto-fit" (shrink only, never enlarge)
+    # "none"          → CUPS "auto-fit" (same as shrink-to-fit — prevents the zoom-in
+    #                   bug where content whose PDF dimensions are declared in screen
+    #                   pixels, e.g. a 1920 × 1080 pt raster image, overflows A4 paper
+    #                   entirely when printed at 100 % scale)
     scaling = job.get("scaling", "none")
-    options["print-scaling"] = {"fit-to-page": "fit", "shrink-to-fit": "auto-fit"}.get(scaling, "none")
+    options["print-scaling"] = {"fit-to-page": "fit"}.get(scaling, "auto-fit")
 
     # Finishings — map to IPP finishing codes
     supported = caps.get("finishings", []) if caps else None

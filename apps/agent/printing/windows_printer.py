@@ -89,11 +89,13 @@ def print_windows(
         scaling = job.get("scaling", "none")
         if scaling == "fit-to-page":
             settings_parts.append("fit")
-        elif scaling == "shrink-to-fit":
-            settings_parts.append("shrink")
-
         else:
-            settings_parts.append("noscale")
+            # Both "shrink-to-fit" and "none" map to SumatraPDF "shrink":
+            # scale down oversized content to fit the page, but never enlarge
+            # content that already fits.  This prevents the zoom-in bug where
+            # content whose PDF dimensions are declared in screen pixels
+            # (e.g. a 1920 x 1080 pt raster image) overflows A4 paper entirely.
+            settings_parts.append("shrink")
 
         for f in job.get("finishings", []):
             dropped.append(f"finishing={f} (not supported by SumatraPDF)")
