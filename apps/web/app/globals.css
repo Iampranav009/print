@@ -8,19 +8,19 @@
   --card-foreground: #111827;
   --popover: #ffffff;
   --popover-foreground: #111827;
-  --primary: #0c831f;
+  --primary: #052E1B;
   --primary-foreground: #ffffff;
   --secondary: #f2f2f7;
   --secondary-foreground: #1d1d1f;
   --muted: #f2f2f7;
   --muted-foreground: #6e6e73;
-  --accent: #eaf6ec;
-  --accent-foreground: #086618;
+  --accent: #e6faf1;
+  --accent-foreground: #052E1B;
   --destructive: #ef4444;
   --destructive-foreground: #ffffff;
   --border: #d2d2d7;
   --input: #d2d2d7;
-  --ring: #0c831f;
+  --ring: #00CE68;
   --radius: 1rem;
 
   /* HIMMER surfaces */
@@ -31,9 +31,9 @@
   --pb-secondary-label: #5b6961;
   --pb-tertiary-label: #8e8e93;
   --pb-separator: rgba(60, 60, 67, 0.14);
-  --pb-brand: #0c831f;
-  --pb-brand-pressed: #086618;
-  --pb-brand-soft: #eaf6ec;
+  --pb-brand: #00CE68;
+  --pb-brand-pressed: #00a854;
+  --pb-brand-soft: #e6faf1;
   --pb-shadow: 0 1px 2px rgba(0, 0, 0, 0.03), 0 8px 30px rgba(0, 0, 0, 0.05);
 
   /* Gradient / Chart colors */

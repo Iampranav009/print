@@ -2,7 +2,7 @@ import Link from "next/link";
 import {
   ArrowUpRight, Menu,
   FileText, MapPin, History, Store, Download, IndianRupee,
-  HelpCircle, BookOpen, Printer, Activity,
+  HelpCircle, BookOpen, MessageCircle, Activity,
   Instagram, Youtube, Linkedin,
 } from "lucide-react";
 import { Brand } from "@/components/Brand";
@@ -51,7 +51,7 @@ export function SiteFooter() {
             <FooterCol heading="Help" links={[
               { label: "Help center", href: "/support", icon: <HelpCircle size={14} /> },
               { label: "Guides", href: "/#how-it-works", icon: <BookOpen size={14} /> },
-              { label: "Contact support", href: "/support#printing", icon: <Printer size={14} /> },
+              { label: "Contact support", href: "/support#printing", icon: <MessageCircle size={14} /> },
               { label: "Status", href: "/support", icon: <Activity size={14} /> },
             ]} />
           </div>
@@ -60,10 +60,12 @@ export function SiteFooter() {
 
       <div className="hm-footer-giant" aria-hidden="true">
         <div className="hm-wrap hm-footer-giant-inner">
+          {/* Brand symbol — oversized H icon */}
+          <svg className="hm-footer-symbol" viewBox="0 0 32 36" fill="none" aria-hidden="true">
+            <path d="M3 3h8v12h10V3h8v30h-8V22H11v11H3V3Z" fill="currentColor"/>
+            <path d="M21 3h8v8l-8-8Z" fill="#00CE68"/>
+          </svg>
           <span className="hm-footer-wordmark">HIMMER</span>
-          <div className="hm-footer-printer-icon">
-            <Printer strokeWidth={0.75} />
-          </div>
         </div>
       </div>
 
