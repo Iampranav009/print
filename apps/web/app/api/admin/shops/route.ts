@@ -2,17 +2,8 @@
 // Gated by the ADMIN_EMAILS allowlist.
 
 import { NextRequest } from "next/server";
-import { createClient as createServerSupabase } from "@/lib/supabase/server";
 import { getSupabase } from "@/lib/supabase";
-import { isAdmin } from "@/lib/admin";
-
-async function requireAdmin() {
-  const authed = await createServerSupabase();
-  const { data: { user } } = await authed.auth.getUser();
-  if (!user) return { user: null, error: "Unauthorized" as const, status: 401 };
-  if (!isAdmin(user)) return { user, error: "Forbidden" as const, status: 403 };
-  return { user, error: null, status: 200 };
-}
+import { requireAdmin } from "@/lib/admin";
 
 const PAID_STATUSES = [
   "paid",

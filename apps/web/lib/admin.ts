@@ -4,6 +4,7 @@
 // Used to gate the internal /dashboard and every /api/admin/* route.
 
 import type { User } from "@supabase/supabase-js";
+import { createClient as createServerSupabase } from "@/lib/supabase/server";
 
 function adminEmailSet(): Set<string> {
   const raw = process.env.ADMIN_EMAILS ?? process.env.ADMIN_EMAIL ?? "";
@@ -25,4 +26,12 @@ export function isAdmin(user: Pick<User, "email"> | null | undefined): boolean {
 export function isAdminEmail(email: string | null | undefined): boolean {
   if (!email) return false;
   return adminEmailSet().has(email.toLowerCase());
+}
+
+export async function requireAdmin() {
+  const authed = await createServerSupabase();
+  const { data: { user } } = await authed.auth.getUser();
+  if (!user) return { user: null, error: "Unauthorized" as const, status: 401 };
+  if (!isAdmin(user)) return { user, error: "Forbidden" as const, status: 403 };
+  return { user, error: null, status: 200 };
 }

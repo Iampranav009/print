@@ -26,7 +26,11 @@ export async function POST(req: NextRequest) {
   // rewrite of the print page uses the second set.
   const mime = body.mime ?? body.mimeType;
   const size = body.size ?? body.fileSize;
-  const shopId = body.shopId?.trim() || "virtual";
+  const rawShopId = body.shopId?.trim();
+  if (rawShopId && rawShopId !== "virtual" && !/^[0-9a-f-]{36}$/.test(rawShopId)) {
+    return Response.json({ error: "Invalid shopId" }, { status: 400 });
+  }
+  const shopId = rawShopId || "virtual";
 
   if (!mime || !ALLOWED_MIMES.includes(mime)) {
     return Response.json(

@@ -3,6 +3,7 @@
 // If mime is missing we sniff by extension so callers can pass just `path`.
 
 import { getSupabase } from "@/lib/supabase";
+import { createClient as createServerSupabase } from "@/lib/supabase/server";
 import { PDFDocument } from "pdf-lib";
 import { NextRequest } from "next/server";
 
@@ -14,6 +15,10 @@ interface Body {
 }
 
 export async function POST(req: NextRequest) {
+  const authed = await createServerSupabase();
+  const { data: { user } } = await authed.auth.getUser();
+  if (!user) return Response.json({ error: "Unauthorized" }, { status: 401 });
+
   const body = (await req.json()) as Body;
   const filePath = body.filePath ?? body.path;
   let mime = body.mime ?? body.mimeType;

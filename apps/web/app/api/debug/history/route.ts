@@ -8,8 +8,12 @@
 import { NextRequest } from "next/server";
 import { createClient as createServerSupabase } from "@/lib/supabase/server";
 import { getSupabase } from "@/lib/supabase";
+import { requireAdmin } from "@/lib/admin";
 
 export async function GET(_req: NextRequest) {
+  const gate = await requireAdmin();
+  if (gate.error) return Response.json({ error: gate.error }, { status: gate.status });
+
   const authed = await createServerSupabase();
   const { data: { user }, error: userErr } = await authed.auth.getUser();
 
@@ -70,14 +74,13 @@ export async function GET(_req: NextRequest) {
 // signed-in user. Only touches rows that currently have user_id IS NULL,
 // so it's safe to run repeatedly.
 export async function POST(_req: NextRequest) {
-  const authed = await createServerSupabase();
-  const { data: { user } } = await authed.auth.getUser();
-  if (!user) return Response.json({ error: "Not signed in" }, { status: 401 });
+  const gate = await requireAdmin();
+  if (gate.error) return Response.json({ error: gate.error }, { status: gate.status });
 
   const supabase = getSupabase();
   const { data, error } = await supabase
     .from("print_jobs")
-    .update({ user_id: user.id })
+    .update({ user_id: gate.user!.id })
     .is("user_id", null)
     .select("id");
 
