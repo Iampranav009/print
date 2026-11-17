@@ -1,8 +1,15 @@
 import React from "react";
+import type { Metadata } from "next";
 import { createClient } from "@/lib/supabase/server";
 import { getSupabase } from "@/lib/supabase";
 import { HistoryClient, type Job } from "./history-client";
 import { type JobStatus } from "@/components/StatusPill";
+
+export const metadata: Metadata = {
+  title: "Print History",
+  description: "View your past print jobs — status, cost, and release codes for each order.",
+  robots: { index: false, follow: false },
+};
 
 interface HistoryRow {
   id: string;

@@ -2,6 +2,8 @@ import type { Metadata, Viewport } from "next";
 import Script from "next/script";
 import { Manrope } from "next/font/google";
 import { RegisterSW } from "@/app/components/register-sw";
+import { JsonLd } from "@/components/seo/JsonLd";
+import { orgSchema } from "@/components/seo/schemas";
 import "./globals.css";
 import "./marketing.css";
 
@@ -102,6 +104,7 @@ export default function RootLayout({
       </head>
       <body className="min-h-full flex flex-col" suppressHydrationWarning>
         {children}
+        <JsonLd schema={orgSchema()} />
         <RegisterSW />
         <Script
           src="https://checkout.razorpay.com/v1/checkout.js"

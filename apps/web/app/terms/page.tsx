@@ -1,7 +1,25 @@
 import { SiteHeader, SiteFooter } from "@/components/marketing/SiteChrome";
 import { Breadcrumbs } from "@/components/Breadcrumbs";
 
-export const metadata = { title: "Terms of Service — HIMMER", description: "HIMMER's terms for customers and shop partners." };
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: "Terms of Service",
+  description: "HIMMER's terms for customers and shop partners — pricing, refunds, acceptable use, and governing law.",
+  alternates: { canonical: "/terms" },
+  openGraph: {
+    title: "Terms of Service — HIMMER",
+    description: "HIMMER's terms for customers and shop partners — pricing, refunds, acceptable use, and governing law.",
+    url: "/terms",
+    siteName: "HIMMER",
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Terms of Service — HIMMER",
+    description: "HIMMER's terms for customers and shop partners — pricing, refunds, acceptable use, and governing law.",
+  },
+};
 
 export default function TermsPage() {
   return (

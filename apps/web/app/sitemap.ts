@@ -5,24 +5,11 @@ export default function sitemap(): MetadataRoute.Sitemap {
   const lastModified = new Date();
 
   return [
+    { url: baseUrl, lastModified, changeFrequency: "daily", priority: 1.0 },
+    { url: `${baseUrl}/login`, lastModified, changeFrequency: "weekly", priority: 0.9 },
+    { url: `${baseUrl}/vendor/login`, lastModified, changeFrequency: "weekly", priority: 0.9 },
+    { url: `${baseUrl}/privacy`, lastModified, changeFrequency: "yearly", priority: 0.4 },
+    { url: `${baseUrl}/terms`, lastModified, changeFrequency: "yearly", priority: 0.4 },
     { url: `${baseUrl}/support`, changeFrequency: "monthly", priority: 0.6 },
-    {
-      url: baseUrl,
-      lastModified,
-      changeFrequency: "daily",
-      priority: 1.0,
-    },
-    {
-      url: `${baseUrl}/vendor/login`,
-      lastModified,
-      changeFrequency: "weekly",
-      priority: 0.9,
-    },
-    {
-      url: `${baseUrl}/login`,
-      lastModified,
-      changeFrequency: "weekly",
-      priority: 0.9,
-    },
   ];
 }

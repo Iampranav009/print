@@ -1,7 +1,25 @@
 import { SiteHeader, SiteFooter } from "@/components/marketing/SiteChrome";
 import { Breadcrumbs } from "@/components/Breadcrumbs";
 
-export const metadata = { title: "Privacy Policy — HIMMER", description: "How HIMMER handles your data." };
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: "Privacy Policy",
+  description: "How HIMMER handles your data — including document ephemerality, UPI payments, and your rights.",
+  alternates: { canonical: "/privacy" },
+  openGraph: {
+    title: "Privacy Policy — HIMMER",
+    description: "How HIMMER handles your data — including document ephemerality, UPI payments, and your rights.",
+    url: "/privacy",
+    siteName: "HIMMER",
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Privacy Policy — HIMMER",
+    description: "How HIMMER handles your data — including document ephemerality, UPI payments, and your rights.",
+  },
+};
 
 export default function PrivacyPage() {
   return (
