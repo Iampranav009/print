@@ -15,9 +15,11 @@ export async function POST(req: Request) {
   if (error) return Response.json({ error: "Could not verify the link. Try again shortly." }, { status: 503 });
   if (!pairing) return Response.json({ error: "This link expired or was already used. Get a new link from the dashboard." }, { status: 410 });
   // Replace the previous device credential so two shop PCs cannot consume the same queue.
-  const { data: agent } = await db.from("agents").update({ agent_token: randomBytes(32).toString("hex"), status: "offline" })
-    .eq("id", pairing.agent_id).select("agent_token, shop_id").single();
+  const rawToken = randomBytes(32).toString("hex");
+  const tokenHash = createHash("sha256").update(rawToken).digest("hex");
+  const { data: agent } = await db.from("agents").update({ agent_token_hash: tokenHash, status: "offline" })
+    .eq("id", pairing.agent_id).select("shop_id").single();
   if (!agent) return Response.json({ error: "Shop connection unavailable. Generate a new link." }, { status: 503 });
   const { data: shop } = await db.from("shops").select("name").eq("id", agent.shop_id).single();
-  return Response.json({ agentToken: agent.agent_token, shopId: agent.shop_id, shopName: shop?.name ?? "Your shop" }, { headers: { "Cache-Control": "no-store" } });
+  return Response.json({ agentToken: rawToken, shopId: agent.shop_id, shopName: shop?.name ?? "Your shop" }, { headers: { "Cache-Control": "no-store" } });
 }

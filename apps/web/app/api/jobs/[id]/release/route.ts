@@ -26,7 +26,7 @@ export async function POST(
   }
 
   const body = await req.json().catch(() => ({}));
-  if (body?.code && job.release_code && body.code.toString().trim() !== job.release_code.trim()) {
+  if (job.release_code && body?.code?.toString().trim() !== job.release_code.trim()) {
     return Response.json({ error: "Invalid release code" }, { status: 400 });
   }
 

@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { getSupabase } from "./supabase";
 
 export async function resolveAgentToken(
@@ -7,10 +8,11 @@ export async function resolveAgentToken(
   const token = authHeader.slice(7);
   if (!token) return null;
 
+  const tokenHash = createHash("sha256").update(token).digest("hex");
   const { data, error } = await getSupabase()
     .from("agents")
     .select("id, shop_id")
-    .eq("agent_token", token)
+    .eq("agent_token_hash", tokenHash)
     .single();
 
   if (error || !data) return null;

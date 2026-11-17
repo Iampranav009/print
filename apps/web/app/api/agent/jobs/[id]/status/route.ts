@@ -123,7 +123,7 @@ export async function POST(
   if (newStatus === "printed") {
     supabase.storage
       .from("documents")
-      .remove([job.id])
+      .remove([job.file_path])
       .catch(() => {});
   }
 
