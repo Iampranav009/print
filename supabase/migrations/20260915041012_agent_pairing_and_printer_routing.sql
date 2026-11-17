@@ -9,7 +9,7 @@ update public.printers
 set bw_os_printer_name = coalesce(bw_os_printer_name, os_printer_name),
     color_os_printer_name = coalesce(color_os_printer_name, os_printer_name);
 
-create table public.agent_pairings (
+create table if not exists public.agent_pairings (
   agent_id uuid primary key references public.agents(id) on delete cascade,
   token_hash text not null unique check (token_hash ~ '^[a-f0-9]{64}$'),
   expires_at timestamptz not null,
