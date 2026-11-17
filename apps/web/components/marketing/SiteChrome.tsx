@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import {
   ArrowUpRight, Menu,
   FileText, MapPin, History, Store, Download, IndianRupee,
@@ -60,11 +61,14 @@ export function SiteFooter() {
 
       <div className="hm-footer-giant" aria-hidden="true">
         <div className="hm-wrap hm-footer-giant-inner">
-          {/* Brand symbol — oversized H icon */}
-          <svg className="hm-footer-symbol" viewBox="0 0 32 36" fill="none" aria-hidden="true">
-            <path d="M3 3h8v12h10V3h8v30h-8V22H11v11H3V3Z" fill="currentColor"/>
-            <path d="M21 3h8v8l-8-8Z" fill="#00CE68"/>
-          </svg>
+          <Image
+            src="/himmer-symbol.png"
+            alt=""
+            width={200}
+            height={200}
+            className="hm-footer-symbol"
+            aria-hidden
+          />
           <span className="hm-footer-wordmark">HIMMER</span>
         </div>
       </div>

@@ -1,0 +1,4 @@
+/* Load Manrope in your app for exact SVG wordmark rendering */
+@import url('https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&display=swap');
+:root { --himmer-emerald:#00CE68; --himmer-forest:#052E1B; --himmer-white:#FFFFFF; --himmer-black:#000000; --himmer-font:'Manrope',sans-serif; }
+.himmer-wordmark {font-family:var(--himmer-font);font-weight:600;letter-spacing:-.03em;}
