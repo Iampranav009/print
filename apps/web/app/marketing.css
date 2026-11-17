@@ -48,6 +48,7 @@
 .hm-proof span:first-child { font-weight:600; color:var(--hm-ink); }
 .hm-section { padding-block:100px; }
 .hm-site h2 { font-size:clamp(30px,3.5vw,46px); font-weight:500; line-height:1.15; letter-spacing:-.045em; }
+.hm-prose h2 { font-size:1.125rem; font-weight:600; line-height:1.4; letter-spacing:-.02em; margin-bottom:.5rem; }
 .hm-section-heading { display:flex; justify-content:space-between; gap:32px; align-items:end; }
 .hm-section-heading>p { font-size:14px; line-height:1.8; color:var(--hm-muted); }
 .hm-steps { display:grid; grid-template-columns:repeat(4,1fr); gap:28px; margin-top:50px; list-style:none; padding:0; }

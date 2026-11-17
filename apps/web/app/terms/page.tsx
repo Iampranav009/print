@@ -6,8 +6,8 @@ export default function TermsPage() {
   return (
     <div className="hm-site" id="top">
       <SiteHeader />
-      <main id="main-content" className="hm-wrap" style={{ maxWidth: 720, padding: "3rem 1.5rem 5rem" }}>
-        <p className="hm-eyebrow">LEGAL</p>
+      <main id="main-content" className="hm-wrap hm-prose" style={{ maxWidth: 720, padding: "3rem 1.5rem 5rem" }}>
+        <p className="hm-eyebrow"><span aria-hidden="true" />LEGAL</p>
         <h1 style={{ marginBottom: "0.5rem" }}>Terms of Service</h1>
         <p style={{ color: "var(--hm-muted, #888)", marginBottom: "2.5rem" }}>
           Last updated: January 2025

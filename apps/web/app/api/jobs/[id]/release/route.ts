@@ -10,7 +10,7 @@ export async function POST(
 
   const { data: job, error: jobErr } = await supabase
     .from("print_jobs")
-    .select("id, status, release_code, release_attempts")
+    .select("id, status, release_code, release_attempts, updated_at")
     .eq("id", id)
     .single();
 
@@ -29,11 +29,16 @@ export async function POST(
     return Response.json({ error: "Too many attempts" }, { status: 429 });
   }
 
+  // Throttle: reject if the last attempt was within the last 5 seconds.
+  if (job.updated_at && (Date.now() - new Date(job.updated_at).getTime()) < 5_000 && (job.release_attempts ?? 0) > 0) {
+    return Response.json({ error: "Too many attempts" }, { status: 429 });
+  }
+
   const body = await req.json().catch(() => ({}));
   if (job.release_code && body?.code?.toString().trim() !== job.release_code.trim()) {
     await supabase
       .from("print_jobs")
-      .update({ release_attempts: (job.release_attempts ?? 0) + 1 })
+      .update({ release_attempts: (job.release_attempts ?? 0) + 1, updated_at: new Date().toISOString() })
       .eq("id", id);
     return Response.json({ error: "Invalid release code" }, { status: 400 });
   }

@@ -9,12 +9,13 @@
 // it to the vendor over email / WhatsApp / whatever.
 
 import { NextRequest } from "next/server";
-import { randomBytes } from "crypto";
+import { randomBytes, createHash } from "crypto";
 import { getSupabase } from "@/lib/supabase";
 import { requireAdmin } from "@/lib/admin";
 
-function generateToken(): string {
-  return randomBytes(24).toString("base64url");
+function generateToken(): { raw: string; hash: string } {
+  const raw = randomBytes(24).toString("base64url");
+  return { raw, hash: createHash("sha256").update(raw).digest("hex") };
 }
 
 export async function GET(req: NextRequest) {
@@ -102,11 +103,11 @@ export async function POST(req: NextRequest) {
     await supabase.from("pricing").insert({ shop_id: shopId }).select();
   }
 
-  const token = generateToken();
+  const { raw: rawToken, hash: tokenHash } = generateToken();
   const { data: invite, error } = await supabase
     .from("vendor_invites")
     .insert({
-      token,
+      token: tokenHash,
       shop_id: shopId,
       email: body.email?.trim().toLowerCase() || null,
     })
@@ -115,7 +116,8 @@ export async function POST(req: NextRequest) {
   if (error) return Response.json({ error: error.message }, { status: 500 });
 
   const origin = req.nextUrl.origin;
-  const claimUrl = `${origin}/vendor/claim?token=${encodeURIComponent(token)}`;
+  const claimUrl = `${origin}/vendor/claim?token=${encodeURIComponent(rawToken)}`;
 
+  // rawToken is returned once here and never stored; DB holds only the hash.
   return Response.json({ invite, claimUrl, shop_id: shopId });
 }

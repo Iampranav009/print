@@ -3,6 +3,7 @@
 // user is already the shop's owner, returns success.
 
 import { NextRequest } from "next/server";
+import { createHash } from "node:crypto";
 import { createClient as createServerSupabase } from "@/lib/supabase/server";
 import { getSupabase } from "@/lib/supabase";
 
@@ -22,10 +23,11 @@ export async function POST(req: NextRequest) {
 
   const supabase = getSupabase();
 
+  const tokenHash = createHash("sha256").update(token.trim()).digest("hex");
   const { data: invite } = await supabase
     .from("vendor_invites")
     .select("token, shop_id, claimed_by, expires_at, email")
-    .eq("token", token.trim())
+    .eq("token", tokenHash)
     .maybeSingle();
 
   if (!invite) {
@@ -67,7 +69,7 @@ export async function POST(req: NextRequest) {
   await supabase
     .from("vendor_invites")
     .update({ claimed_by: user.id, claimed_at: new Date().toISOString() })
-    .eq("token", token.trim());
+    .eq("token", tokenHash);
 
   return Response.json({ shopId: invite.shop_id });
 }

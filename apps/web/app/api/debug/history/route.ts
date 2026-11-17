@@ -87,7 +87,7 @@ export async function POST(_req: NextRequest) {
   if (error) return Response.json({ error: error.message }, { status: 500 });
   return Response.json({
     claimed_jobs: data?.length ?? 0,
-    user_id: user.id,
+    user_id: gate.user!.id,
     note: "All previously orphaned jobs are now attached to this account.",
   });
 }
