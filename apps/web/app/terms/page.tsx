@@ -1,4 +1,5 @@
 import { SiteHeader, SiteFooter } from "@/components/marketing/SiteChrome";
+import { Breadcrumbs } from "@/components/Breadcrumbs";
 
 export const metadata = { title: "Terms of Service — HIMMER", description: "HIMMER's terms for customers and shop partners." };
 
@@ -6,6 +7,7 @@ export default function TermsPage() {
   return (
     <div className="hm-site" id="top">
       <SiteHeader />
+      <Breadcrumbs crumbs={[{ label: "Home", href: "/" }, { label: "Terms of Service" }]} />
       <main id="main-content" className="hm-wrap hm-prose" style={{ maxWidth: 720, padding: "3rem 1.5rem 5rem" }}>
         <p className="hm-eyebrow"><span aria-hidden="true" />LEGAL</p>
         <h1 style={{ marginBottom: "0.5rem" }}>Terms of Service</h1>

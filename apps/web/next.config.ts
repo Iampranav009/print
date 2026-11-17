@@ -4,6 +4,7 @@ const nextConfig: NextConfig = {
   compress: true,
   poweredByHeader: false,
   reactStrictMode: true,
+  productionBrowserSourceMaps: false,
   experimental: {
     optimizePackageImports: ["lucide-react", "leaflet"],
   },

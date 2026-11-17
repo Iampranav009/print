@@ -1,4 +1,5 @@
 import { SiteHeader, SiteFooter } from "@/components/marketing/SiteChrome";
+import { Breadcrumbs } from "@/components/Breadcrumbs";
 
 export const metadata = { title: "Privacy Policy — HIMMER", description: "How HIMMER handles your data." };
 
@@ -6,6 +7,7 @@ export default function PrivacyPage() {
   return (
     <div className="hm-site" id="top">
       <SiteHeader />
+      <Breadcrumbs crumbs={[{ label: "Home", href: "/" }, { label: "Privacy Policy" }]} />
       <main id="main-content" className="hm-wrap hm-prose" style={{ maxWidth: 720, padding: "3rem 1.5rem 5rem" }}>
         <p className="hm-eyebrow"><span aria-hidden="true" />LEGAL</p>
         <h1 style={{ marginBottom: "0.5rem" }}>Privacy Policy</h1>
