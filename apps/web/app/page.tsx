@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
-import { Homepage, printFaqs } from "@/components/marketing/Homepage";
+import { Homepage } from "@/components/marketing/Homepage";
+import { printFaqs } from "@/components/marketing/faq-data";
 
 const siteUrl = process.env.NEXT_PUBLIC_APP_URL || "https://himmer.vercel.app";
 export const metadata: Metadata = {

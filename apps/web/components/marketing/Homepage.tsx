@@ -1,10 +1,10 @@
+"use client";
 import Image from "next/image";
 import Link from "next/link";
 import { ArrowRight, ArrowUpRight, Check, FileText, Printer, QrCode, SlidersHorizontal, Smartphone } from "lucide-react";
 import { SiteHeader, SiteFooter } from "./SiteChrome";
 import WaitlistForm from "./WaitlistForm";
 import { printFaqs } from "./faq-data";
-export { printFaqs };
 
 export function Homepage() {
   return <div className="hm-site" id="top"><SiteHeader /><main id="main-content">
