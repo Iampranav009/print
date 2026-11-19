@@ -103,15 +103,14 @@ export default function RootLayout({
   return (
     <html lang="en" className={`${manrope.variable} h-full antialiased font-sans`}>
       <head>
-        <link rel="preconnect" href="https://checkout.razorpay.com" />
-        <link rel="dns-prefetch" href="https://api.razorpay.com" />
+        <link rel="preconnect" href="https://sdk.cashfree.com" />
       </head>
       <body className="min-h-full flex flex-col" suppressHydrationWarning>
         {children}
         <JsonLd schema={orgSchema()} />
         <RegisterSW />
         <Script
-          src="https://checkout.razorpay.com/v1/checkout.js"
+          src="https://sdk.cashfree.com/js/v3/cashfree.js"
           strategy="lazyOnload"
         />
       </body>

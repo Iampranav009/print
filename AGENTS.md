@@ -10,7 +10,7 @@
   - **Tier 0 (Core / Zero-Hardware Rollout):** Shop's existing PC + Printer + Internet. Deploys the Print Agent software + a QR sticker. Fast, zero-friction onboarding.
   - **Tier 1 (Headless Node):** Dedicated Raspberry Pi running the Print Agent (for shops lacking a usable PC).
   - **Tier 2 (Ad Node - Optional Add-on):** Raspberry Pi + Monitor displaying QR, live print status, and local idle ads (coaching centers, cafes). *Not the core MVP.*
-- **Zero-Friction Customer Experience:** Customer scans QR code on phone $\rightarrow$ Opens lightweight Next.js PWA (no app store install) $\rightarrow$ Uploads document $\rightarrow$ Configures print options $\rightarrow$ Sees locked live price $\rightarrow$ Pays via UPI (Razorpay) $\rightarrow$ Releases job at printer via 4-digit code $\rightarrow$ Output prints automatically.
+- **Zero-Friction Customer Experience:** Customer scans QR code on phone $\rightarrow$ Opens lightweight Next.js PWA (no app store install) $\rightarrow$ Uploads document $\rightarrow$ Configures print options $\rightarrow$ Sees locked live price $\rightarrow$ Pays via UPI (Cashfree) $\rightarrow$ Releases job at printer via 4-digit code $\rightarrow$ Output prints automatically.
 
 ---
 
@@ -21,11 +21,11 @@
 | **Customer App** | Next.js (App Router), React, TypeScript | PWA (Progressive Web App), Tailwind CSS, shadcn/ui, mobile-first |
 | **Shop Dashboard** | Next.js (App Router), TypeScript | Tailwind CSS, shadcn/ui, live queue, pricing config, printer monitor |
 | **Central Admin** | Next.js (App Router), TypeScript | Fleet management, shop onboarding, revenue/commission analytics |
-| **Cloud Backend** | Next.js Route Handlers (Node/TypeScript) | APIs, Razorpay webhooks, job orchestration, document normalization |
+| **Cloud Backend** | Next.js Route Handlers (Node/TypeScript) | APIs, Cashfree webhooks, job orchestration, document normalization |
 | **Database & Auth** | Supabase (PostgreSQL) | Self-hostable via Docker, Row Level Security (RLS), Supabase Auth |
 | **Storage** | Supabase Storage | Encrypted, temporary document storage with short-lived signed URLs |
 | **Realtime** | Supabase Realtime | Outbound push to Print Agents via WebSocket / subscriptions |
-| **Payments** | Razorpay | Orders API, UPI-first intent flow, server-to-server signed webhooks |
+| **Payments** | Cashfree Payments | PG Orders API (v2023-08-01), JS SDK v3 checkout (UPI-first), server-to-server signed webhooks |
 | **Print Agent** | Python (3.10+) | Standalone service: `pycups` on Linux/Pi; SumatraPDF CLI on Windows |
 | **File Normalization** | LibreOffice Headless, img2pdf, PyMuPDF | Converts `.docx`, `.pptx`, images to print-ready PDF; inspects pages & color |
 
@@ -39,11 +39,11 @@
    ▼
 [Cloud Backend (Next.js Route Handlers + Supabase)]
    │ (2) Server-side PDF normalization + exact page/color count
-   │ (3) Lock price & create Razorpay Order
+   │ (3) Lock price & create Cashfree Order
    ▼
-[Razorpay Payment (UPI-First)]
+[Cashfree Payment (UPI-First)]
    │ (4) Customer completes payment
-   │ (5) Razorpay server-to-server webhook callback (signature verified)
+   │ (5) Cashfree server-to-server webhook callback (signature verified)
    ▼
 [Cloud Backend]
    │ (6) Mark job as 'paid' & assign 4-digit release code
@@ -67,7 +67,7 @@ Agents developing or modifying code in this repository **must strictly observe**
 
 1. **Webhook-Only Dispatch (Zero Client-Side Trust):**
    - **NEVER** trigger or dispatch a print job based on a client-side payment success callback. Client callbacks can be intercepted or forged.
-   - Jobs are **ONLY** dispatched after a Razorpay server-to-server webhook is received and its cryptographic signature (`X-Razorpay-Signature`) is verified.
+   - Jobs are **ONLY** dispatched after a Cashfree server-to-server webhook is received and its cryptographic signature (`x-webhook-signature` + `x-webhook-timestamp`) is verified.
 
 2. **Outbound-Only Print Agent Communication:**
    - Shop networks sit behind ordinary NAT routers with dynamic IPs and strict firewalls.
@@ -89,7 +89,7 @@ Agents developing or modifying code in this repository **must strictly observe**
    - Eliminate "final cost may vary" notices.
    - Once the shop QR is resolved and the PDF is normalized, compute exact pricing:
      $$\text{Price} = f(\text{pages}, \text{copies}, \text{color vs B&W}, \text{paper size}, \text{simplex/duplex}, \text{shop rates})$$
-   - Lock price before rendering the Razorpay checkout.
+   - Lock price before rendering the Cashfree checkout.
 
 6. **Privacy & Document Ephemerality:**
    - Uploaded documents are private (passports, exam papers, tax forms).
@@ -104,7 +104,7 @@ Agents developing or modifying code in this repository **must strictly observe**
 
 8. **Offline Resilience & Refund Path:**
    - Print Agent must maintain a local SQLite/file queue for already-paid jobs in case shop internet drops mid-operation.
-   - If a printer experiences unresolvable failure (out of paper, hardware jam, error), the backend must support automated or 1-tap customer refunds through Razorpay.
+   - If a printer experiences unresolvable failure (out of paper, hardware jam, error), the backend must support automated or 1-tap customer refunds through Cashfree.
 
 ---
 
@@ -135,7 +135,7 @@ cancelled    expired     payment_failed
 ## 6. MVP Scope Boundaries (Discipline)
 
 ### Included in MVP (v1)
-- Customer PWA (scan QR $\rightarrow$ file upload $\rightarrow$ options config $\rightarrow$ locked price $\rightarrow$ Razorpay UPI checkout $\rightarrow$ job tracking $\rightarrow$ 4-digit release code).
+- Customer PWA (scan QR $\rightarrow$ file upload $\rightarrow$ options config $\rightarrow$ locked price $\rightarrow$ Cashfree UPI checkout $\rightarrow$ job tracking $\rightarrow$ 4-digit release code).
 - Server-side normalization to print-ready PDF + page & color analysis.
 - Print Agent for Raspberry Pi (CUPS) and Windows (SumatraPDF).
 - Webhook-gated dispatch + Supabase Realtime subscription.

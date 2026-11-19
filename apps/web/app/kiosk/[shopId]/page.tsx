@@ -80,7 +80,7 @@ export default function KioskPage({
     toastTimerRef.current = setTimeout(() => setToast(null), 5000);
   }, []);
 
-  // Retry-payment prompt shown when Razorpay reports the payment failed.
+  // Retry-payment prompt shown when Cashfree reports the payment failed.
   const [retryPrompt, setRetryPrompt] = useState<{
     jobId: string;
     reason: string;
@@ -364,7 +364,7 @@ export default function KioskPage({
             break;
 
           case "checkout:dismissed":
-            // Keep the "Waiting for payment…" up — user may reopen Razorpay.
+            // Keep the "Waiting for payment…" up — user may reopen Cashfree.
             // Toast is enough to signal what happened. Don't reveal QR.
             showToast("info", "Payment window closed");
             break;
@@ -690,7 +690,7 @@ export default function KioskPage({
         </div>
       )}
 
-      {/* Retry-payment modal — shown when Razorpay reports payment failed. */}
+      {/* Retry-payment modal — shown when Cashfree reports payment failed. */}
       {retryPrompt && (
         <div
           role="dialog"

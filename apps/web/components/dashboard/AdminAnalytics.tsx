@@ -134,7 +134,7 @@ export function AdminAnalytics() {
         <StatCard
           label={`Platform fee (${feePct}%)`}
           value={formatPaise(s.platform_fee_paise)}
-          subline="Razorpay share"
+          subline="Payment gateway share"
           icon={Wallet}
           tone="amber"
         />

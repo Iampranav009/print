@@ -1,6 +1,6 @@
 import { getSupabase } from "@/lib/supabase";
 import { resolveAgentToken } from "@/lib/agent-auth";
-import { createRefund } from "@/lib/razorpay";
+import { createRefund } from "@/lib/cashfree";
 import { broadcastToKiosk } from "@/lib/kiosk-broadcast";
 import { NextRequest } from "next/server";
 import type { JobStatus } from "@printbuddy/shared";
@@ -93,7 +93,7 @@ export async function POST(
 
       if (payment?.razorpay_payment_id) {
         const refund = await createRefund(
-          payment.razorpay_payment_id,
+          job.razorpay_order_id,
           job.price_paise,
           job.id
         );

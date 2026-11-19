@@ -28,7 +28,7 @@ Monorepo layout:
 - **Node.js** 20+  
 - **npm** 10+  
 - A free **Supabase** project (hosted or self-hosted)  
-- A **Razorpay** test-mode account  
+- A **Cashfree** sandbox account  
 
 ### 1. Clone and install
 
@@ -74,11 +74,11 @@ Copy the `AGENT TOKEN` — you'll need it for the agent env.
 > supabase db seed
 > ```
 
-### 4. Set up Razorpay (test mode)
+### 4. Set up Cashfree (sandbox)
 
-1. Go to [dashboard.razorpay.com](https://dashboard.razorpay.com) and switch to **Test Mode**.
-2. Go to **Settings > API Keys** and generate a test key pair. The Key ID will start with `rzp_test_`.
-3. Expose localhost so Razorpay can reach your webhook. Pick any tunnel tool:
+1. Sign up at [merchant.cashfree.com](https://merchant.cashfree.com) and switch to **Sandbox** (Test) mode.
+2. Go to **Developers > API Keys** and copy the sandbox **App ID** and **Secret Key**.
+3. Expose localhost so Cashfree can reach your webhook. Pick any tunnel tool:
 
    ```bash
    # ngrok (most common)
@@ -87,14 +87,13 @@ Copy the `AGENT TOKEN` — you'll need it for the agent env.
    cloudflare tunnel --url http://localhost:3000
    ```
 
-   > **Tunnel gotcha**: Razorpay caches the webhook URL. If you restart your tunnel and get a new hostname, update the webhook URL in the Razorpay dashboard and allow ~60 s for propagation.
+4. Go to **Developers > Webhooks**, add an endpoint (API version **2023-08-01**):
+   - URL: `https://<your-tunnel-hostname>/api/webhooks/cashfree`
+   - Events: Payment (success, failed) and Refund status
+   - Webhooks are signed with your **Secret Key** — there is no separate webhook secret.
+   - If `NEXT_PUBLIC_APP_URL` is an `https://` URL, each order also sets `notify_url` to `<NEXT_PUBLIC_APP_URL>/api/webhooks/cashfree` automatically.
 
-4. Go to **Settings > Webhooks**, click **Add New Webhook**:
-   - URL: `https://<your-tunnel-hostname>/api/webhooks/razorpay`
-   - Events: `order.paid`, `payment.captured`, `payment.failed`
-   - Copy the **Webhook Secret** shown after saving.
-
-**Test VPA for UPI payments:** Use `success@razorpay` as the UPI ID in the checkout to simulate a successful payment, or `failure@razorpay` to simulate a failure.
+**Test UPI IDs:** use `testsuccess@gocash` for a successful payment or `testfailure@gocash` for a failure (see Cashfree's sandbox test-data docs for cards).
 
 ### 5. Configure environment variables
 
@@ -109,10 +108,10 @@ Fill in `apps/web/.env.local`:
 | `NEXT_PUBLIC_SUPABASE_URL`       | Supabase dashboard > API      |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY`  | Supabase dashboard > API      |
 | `SUPABASE_SERVICE_ROLE_KEY`      | Supabase dashboard > API      |
-| `RAZORPAY_KEY_ID`                | Razorpay dashboard > API Keys |
-| `RAZORPAY_KEY_SECRET`            | Razorpay dashboard > API Keys |
-| `RAZORPAY_WEBHOOK_SECRET`        | Razorpay dashboard > Webhooks |
-| `NEXT_PUBLIC_RAZORPAY_KEY_ID`    | Same as `RAZORPAY_KEY_ID`     |
+| `CASHFREE_APP_ID`                | Cashfree dashboard > Developers > API Keys |
+| `CASHFREE_SECRET_KEY`            | Cashfree dashboard > Developers > API Keys (also verifies webhooks) |
+| `CASHFREE_ENV`                   | `sandbox` or `production`     |
+| `NEXT_PUBLIC_CASHFREE_ENV`       | Same as `CASHFREE_ENV`        |
 
 For the agent (optional, only needed to run the print agent):
 
@@ -147,7 +146,7 @@ You should see:
     "supabase": { "ok": true },
     "storage": { "ok": true, "detail": "public=false" },
     "pilotShop": { "ok": true, "detail": "Pilot Shop" },
-    "razorpay": { "ok": true }
+    "cashfree": { "ok": true, "detail": "sandbox" }
   }
 }
 ```
@@ -170,16 +169,16 @@ npx tsx scripts/e2e-sim.ts
 npx tsx scripts/e2e-sim.ts --fail jam
 ```
 
-The script reads `apps/web/.env.local` automatically. It aborts if `RAZORPAY_KEY_ID` is not a test key.
+The script reads `apps/web/.env.local` automatically. It aborts unless `CASHFREE_ENV=sandbox`.
 
 #### Dashboard simulate controls
 
-If you have a Razorpay test key configured, the dashboard at [http://localhost:3000/dashboard](http://localhost:3000/dashboard) shows a **Dev: Simulate** panel with:
+If `NEXT_PUBLIC_CASHFREE_ENV=sandbox`, the dashboard at [http://localhost:3000/dashboard](http://localhost:3000/dashboard) shows a **Dev: Simulate** panel with:
 
 - **Happy Path** — creates a test job, dispatches it, walks it to `printed`
 - **Failure + Refund** — same, but ends with `print_failed` and triggers the refund flow
 
-The panel is hidden automatically in production (live Razorpay key).
+The panel is hidden automatically in production (`CASHFREE_ENV=production`).
 
 ## Running the Print Agent
 

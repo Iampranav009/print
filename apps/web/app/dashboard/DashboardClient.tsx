@@ -6,7 +6,7 @@ import type { JobStatus, PrinterCapabilities, CapabilitiesSource } from "@printb
 const PILOT_SHOP_ID = "00000000-0000-0000-0000-000000000001";
 const IS_TEST_MODE =
   typeof window !== "undefined" &&
-  (process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID || "").startsWith("rzp_test_");
+  process.env.NEXT_PUBLIC_CASHFREE_ENV === "sandbox";
 
 interface PricingData {
   bw_page_paise: number;
@@ -190,7 +190,7 @@ export function DashboardClient() {
       const jobId = jobData.jobId;
       simAppend(`Job ${jobId.slice(0, 8)}... created (${jobData.pricePaise} paise)`);
 
-      simAppend("Creating Razorpay order...");
+      simAppend("Creating Cashfree order...");
       const payRes = await fetch(`/api/jobs/${jobId}/pay`, { method: "POST" });
       const payData = await payRes.json();
       if (!payRes.ok) throw new Error(payData.error || "Pay failed");
@@ -591,28 +591,30 @@ export function DashboardClient() {
               <p>
                 To advance a job without using the script, fire a test webhook from the{" "}
                 <a
-                  href="https://dashboard.razorpay.com/app/webhooks"
+                  href="https://merchant.cashfree.com/"
                   target="_blank"
                   rel="noreferrer"
                   className="underline"
                 >
-                  Razorpay Test Dashboard
+                  Cashfree Sandbox Dashboard
                 </a>
-                {" "}(Webhooks → Test → order.paid), or run:
+                {" "}(Developers → Webhooks → Test), or run:
               </p>
               <pre className="bg-zinc-900 text-green-400 p-2 rounded text-xs overflow-x-auto whitespace-pre">
 {`# In a terminal (replace values from .env.local):
 ORDER_ID="${lastOrderId}"
-SECRET="$RAZORPAY_WEBHOOK_SECRET"
-PAYLOAD=$(printf '{"event":"order.paid","payload":{"payment":{"entity":{"id":"pay_sim_test","order_id":"%s","status":"captured","amount":500,"currency":"INR","method":"upi"}}}}' "$ORDER_ID")
-SIG=$(echo -n "$PAYLOAD" | openssl dgst -sha256 -hmac "$SECRET" | awk '{print $2}')
-curl -s -X POST http://localhost:3000/api/webhooks/razorpay \\
+SECRET="$CASHFREE_SECRET_KEY"
+TS=$(date +%s%3N)
+PAYLOAD=$(printf '{"type":"PAYMENT_SUCCESS_WEBHOOK","data":{"order":{"order_id":"%s"},"payment":{"cf_payment_id":"sim_test","payment_status":"SUCCESS"}}}' "$ORDER_ID")
+SIG=$(printf '%s%s' "$TS" "$PAYLOAD" | openssl dgst -sha256 -hmac "$SECRET" -binary | base64)
+curl -s -X POST http://localhost:3000/api/webhooks/cashfree \\
   -H "Content-Type: application/json" \\
-  -H "x-razorpay-signature: $SIG" \\
+  -H "x-webhook-timestamp: $TS" \\
+  -H "x-webhook-signature: $SIG" \\
   -d "$PAYLOAD"`}
               </pre>
               <p className="text-amber-600 dark:text-amber-400">
-                ⚠ Without a tunnel, the webhook above fires locally only — real Razorpay test payments still need{" "}
+                ⚠ Without a tunnel, the webhook above fires locally only — real Cashfree sandbox payments still need{" "}
                 <code>ngrok</code> or <code>cloudflared</code>. See{" "}
                 <code>docs/testing-without-hardware.md</code>.
               </p>

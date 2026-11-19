@@ -1,7 +1,7 @@
 // Virtual print mode: for shops with virtual_mode = true, the web backend
 // itself advances jobs through the full print pipeline on a timer, letting
 // the whole flow be demoed and tested without a real printer or the Python
-// agent. Fire-and-forget from the Razorpay webhook.
+// agent. Fire-and-forget from the Cashfree webhook.
 //
 // Auto-print flow (no release-code entry required):
 //   paid/dispatched -> (3s: prepping) -> printing -> (10s: printing) -> printed

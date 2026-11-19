@@ -1,5 +1,5 @@
 import { getSupabase } from "@/lib/supabase";
-import { getRazorpay } from "@/lib/razorpay";
+import { createOrder, isCashfreeProduction } from "@/lib/cashfree";
 import { NextRequest } from "next/server";
 
 export async function POST(
@@ -29,18 +29,12 @@ export async function POST(
     return Response.json({ error: "Cash jobs are confirmed by the shop counter." }, { status: 400 });
   }
 
-  const razorpay = getRazorpay();
-  const order = await razorpay.orders.create({
-    amount: job.price_paise,
-    currency: "INR",
-    receipt: id,
-    notes: { job_id: id },
-  });
+  const order = await createOrder(id, job.price_paise);
 
   await supabase
     .from("print_jobs")
     .update({
-      razorpay_order_id: order.id,
+      razorpay_order_id: order.orderId,
       status: "awaiting_payment",
       updated_at: new Date().toISOString(),
     })
@@ -48,14 +42,15 @@ export async function POST(
 
   await supabase.from("payments").insert({
     print_job_id: id,
-    razorpay_order_id: order.id,
+    razorpay_order_id: order.orderId,
     amount_paise: job.price_paise,
     status: "pending",
   });
 
   return Response.json({
-    orderId: order.id,
-    keyId: process.env.RAZORPAY_KEY_ID || process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
+    orderId: order.orderId,
+    paymentSessionId: order.paymentSessionId,
+    cashfreeMode: isCashfreeProduction() ? "production" : "sandbox",
     amount: job.price_paise,
     currency: "INR",
   });

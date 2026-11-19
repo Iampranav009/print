@@ -135,7 +135,7 @@ function getStatusConfig(status: JobStatus) {
       return {
         icon: <CheckCircle2 className="w-10 h-10 text-emerald-600" />,
         headline: "Refund processed",
-        sub: "Razorpay confirmed your refund. Your bank may take time to show the credit.",
+        sub: "Cashfree confirmed your refund. Your bank may take time to show the credit.",
         color: "emerald",
       };
     case "cancelled":
@@ -309,7 +309,7 @@ export default function JobPage({
           )}
           {job!.status === "print_failed" && (
             <div className="mt-5 rounded-2xl bg-amber-50 px-4 py-3 text-sm text-amber-900" role="status" aria-live="polite">
-              {job!.refundStatus === "pending" ? "Refund requested with Razorpay. We’re checking its progress." :
+              {job!.refundStatus === "pending" ? "Refund requested with Cashfree. We’re checking its progress." :
                 job!.refundStatus === "failed" ? "The refund could not be processed automatically. Please contact the shop for help." :
                 "We’re checking the refund request. This screen will update automatically."}
             </div>

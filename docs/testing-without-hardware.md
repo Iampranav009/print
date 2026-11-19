@@ -1,42 +1,36 @@
 # Testing end-to-end without hardware
 
-This guide walks through validating the complete HIMMER chain — upload → price → pay → webhook → dispatch → release → print — using Razorpay **test mode** and the agent's **simulate mode**. No phone, no physical printer required.
+This guide walks through validating the complete HIMMER chain — upload → price → pay → webhook → dispatch → release → print — using Cashfree **sandbox mode** and the agent's **simulate mode**. No phone, no physical printer required.
 
 ---
 
-## 1. Razorpay test setup
+## 1. Cashfree sandbox setup
 
-1. Log in to the [Razorpay Test Dashboard](https://dashboard.razorpay.com/app/dashboard) and switch to **Test Mode** (toggle in the left sidebar).
-2. Go to **Settings → API Keys**, generate a test keypair, and add them to `apps/web/.env.local`:
-
-```env
-RAZORPAY_KEY_ID=rzp_test_xxxxxxxxxxxx
-RAZORPAY_KEY_SECRET=your_test_secret
-```
-
-3. To complete a test UPI payment in the Razorpay checkout UI, enter the **success VPA**:
-
-```
-success@razorpay
-```
-
-   Alternatively, test card details (if UPI is unavailable in your browser):
-   - Card: `4111 1111 1111 1111`
-   - Expiry: any future date
-   - CVV: any 3 digits
-   - OTP (if prompted): `1234`
-
-4. For automated webhook simulation (what `e2e-sim.ts` does), you also need the webhook secret:
+1. Log in to the [Cashfree Merchant Dashboard](https://merchant.cashfree.com) and switch to **Sandbox** mode.
+2. Go to **Developers → API Keys**, copy the sandbox keys, and add them to `apps/web/.env.local`:
 
 ```env
-RAZORPAY_WEBHOOK_SECRET=your_webhook_secret
+CASHFREE_APP_ID=your_sandbox_app_id
+CASHFREE_SECRET_KEY=your_sandbox_secret_key
+CASHFREE_ENV=sandbox
+NEXT_PUBLIC_CASHFREE_ENV=sandbox
 ```
+
+3. To complete a test UPI payment in the Cashfree checkout, enter the **success UPI ID**:
+
+```
+testsuccess@gocash
+```
+
+   (`testfailure@gocash` simulates a failed payment. For test cards, see Cashfree's sandbox test-data docs.)
+
+4. Webhooks are signed with `CASHFREE_SECRET_KEY` (`x-webhook-signature` = base64 HMAC-SHA256 of `x-webhook-timestamp` + raw body), so `e2e-sim.ts` needs no extra secret.
 
 ---
 
 ## 2. Tunnel setup (CRITICAL — read this first)
 
-**Razorpay cannot reach `http://localhost`.** Without a public URL for your local server, the `order.paid` webhook never fires and every job is permanently stuck in `awaiting_payment`. This is the single most common day-one blocker.
+**Cashfree cannot reach `http://localhost`.** Without a public URL for your local server, the payment success webhook never fires and every job is permanently stuck in `awaiting_payment`. This is the single most common day-one blocker.
 
 ### Option A — ngrok
 
@@ -54,15 +48,14 @@ cloudflared tunnel --url http://localhost:3000
 
 Copy the `https://xxxx.trycloudflare.com` URL.
 
-### Register the webhook in Razorpay
+### Register the webhook in Cashfree
 
-1. Razorpay Test Dashboard → **Settings → Webhooks → Add New Webhook**.
-2. **Webhook URL**: `https://<your-tunnel-url>/api/webhooks/razorpay`
-3. **Secret**: paste what you put in `RAZORPAY_WEBHOOK_SECRET`.
-4. **Events**: enable `order.paid` and `payment.captured`.
-5. Save.
+1. Cashfree Dashboard (Sandbox) → **Developers → Webhooks → Add Webhook Endpoint**.
+2. **Webhook URL**: `https://<your-tunnel-url>/api/webhooks/cashfree` (API version 2023-08-01).
+3. **Events**: payment success, payment failed, refund status.
+4. Save.
 
-> **Without this registration, jobs never leave `awaiting_payment`.** The `e2e-sim.ts` script fires the webhook *directly* via HMAC-signed POST, so it works even without the registered webhook — but real Razorpay test payments made through the checkout UI will not advance the job unless the webhook is wired up.
+> **Without this registration, jobs never leave `awaiting_payment`.** The `e2e-sim.ts` script fires the webhook *directly* via HMAC-signed POST, so it works even without the registered webhook — but real Cashfree sandbox payments made through the checkout UI will not advance the job unless the webhook is wired up.
 
 ---
 
@@ -130,7 +123,7 @@ Step 2: Upload via /api/uploads → signed URL → PUT
   ✓ PASS  upload complete  00000000-.../uuid.pdf
 Step 3: POST /api/jobs (4-up, double-sided, B&W, pages 1-6)
   ✓ PASS  job created  id=a1b2c3d4 pages=6 price=200p
-Step 4: POST /api/jobs/[id]/pay → Razorpay test order
+Step 4: POST /api/jobs/[id]/pay → Cashfree sandbox order
   ✓ PASS  order created  order_XXXXXXXXXXXXXXXX
 Step 5: Simulate order.paid webhook → assert dispatched
   ✓ PASS  job dispatched
@@ -172,22 +165,22 @@ Expected final lines:
 
 ```
 Step 9: Assert refund initiated (status → print_failed or refunded)
-  ✓ PASS  status = refunded   Razorpay refund was initiated automatically
+  ✓ PASS  status = refunded   Cashfree refund was initiated automatically
 
   12/12 passed (all green)
 ```
 
-> **Note on refunds in test mode**: The refund is initiated by calling the Razorpay refunds API against the `payment_id` stored when the webhook fired. If the simulated webhook didn't record a real Razorpay `payment_id` (because it's a synthetic HMAC-signed POST rather than a real test payment), the status ends at `print_failed` rather than `refunded`. This is expected. To see the full refund path: complete a test payment manually through the checkout UI first (with the tunnel wired up), *then* run `--mode fail`.
+> **Note on refunds in test mode**: The refund is initiated by calling the Cashfree refunds API against the order. If the order was never actually paid in Cashfree (because the webhook was a synthetic HMAC-signed POST rather than a real sandbox payment), the status ends at `print_failed` rather than `refunded`. This is expected. To see the full refund path: complete a test payment manually through the checkout UI first (with the tunnel wired up), *then* run `--mode fail`.
 
 ---
 
 ## 5. Dashboard test panel
 
-Open `http://localhost:3000/dashboard`. In test mode (`NEXT_PUBLIC_RAZORPAY_KEY_ID=rzp_test_...`) the **Dev: Simulate** panel appears.
+Open `http://localhost:3000/dashboard`. In sandbox mode (`NEXT_PUBLIC_CASHFREE_ENV=sandbox`) the **Dev: Simulate** panel appears.
 
-- **Happy Path** — walks a synthetic job through all states server-side. Does not use the real Razorpay webhook (calls `simulate_dispatch` directly). Good for quick smoke tests.
+- **Happy Path** — walks a synthetic job through all states server-side. Does not use the real Cashfree webhook (calls `simulate_dispatch` directly). Good for quick smoke tests.
 - **Failure + Refund** — same flow but ends with `print_failed` and triggers the refund path.
-- **Webhook helper** — shown after a simulation run. Displays the Razorpay order ID and instructions for firing the webhook manually from the Razorpay dashboard or via `curl`.
+- **Webhook helper** — shown after a simulation run. Displays the Cashfree order ID and instructions for firing the webhook manually from the Cashfree dashboard or via `curl`.
 
 The **Print Queue** table below the panel updates every 3 s, so you can watch jobs move through states live without refreshing.
 

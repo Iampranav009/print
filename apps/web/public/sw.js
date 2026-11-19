@@ -38,7 +38,7 @@ async function saveSharedFiles(payload) {
 function shouldBypass(url) {
   return (
     url.includes("/api/") ||
-    url.includes("razorpay.com") ||
+    url.includes("cashfree.com") ||
     url.includes("supabase.co") ||
     url.startsWith("chrome-extension")
   );

@@ -571,7 +571,7 @@ export function PrinterClient({ initialData }: PrinterClientProps) {
             </button>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            {([{"value":"online","label":"Online payment","detail":"Razorpay confirmation","icon":CreditCard},{"value":"cash","label":"Cash at counter","detail":"Owner confirms receipt","icon":Banknote}] as const).map((option) => {
+            {([{"value":"online","label":"Online payment","detail":"Cashfree confirmation","icon":CreditCard},{"value":"cash","label":"Cash at counter","detail":"Owner confirms receipt","icon":Banknote}] as const).map((option) => {
               const Icon = option.icon;
               const disabled = option.value === "cash" && !cashEnabled;
               return (

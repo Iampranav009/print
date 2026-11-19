@@ -1,6 +1,6 @@
 import { getSupabase } from "@/lib/supabase";
 import { createClient as createServerSupabase } from "@/lib/supabase/server";
-import { getRazorpay } from "@/lib/razorpay";
+import { createOrder, isCashfreeProduction } from "@/lib/cashfree";
 import { computePrice } from "@/lib/pricing";
 import type { PrintOptions, Pricing, PrinterCapabilities } from "@printbuddy/shared";
 import { preparePrintPdf } from "@/lib/print-layout";
@@ -101,7 +101,7 @@ export async function POST(req: NextRequest) {
   const rawOptions = (body.options ?? {}) as Record<string, unknown>;
   const paymentMethod = body.paymentMethod === "cash" ? "cash" : "online";
   const withOrder = paymentMethod === "online" && body.withOrder !== false; // default true — client wants a
-                                              // Razorpay order in the same call
+                                              // Cashfree order in the same call
 
   if (!filePath || !rawOptions) {
     return Response.json({ error: "Missing required fields" }, { status: 400 });
@@ -272,29 +272,24 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  // Optionally mint the Razorpay order in the same call. The mobile client
+  // Optionally mint the Cashfree order in the same call. The mobile client
   // does this to avoid a second round-trip before opening checkout.
   let orderResult: {
     orderId: string;
-    keyId: string | undefined;
+    paymentSessionId: string;
+    cashfreeMode: "production" | "sandbox";
     amount: number;
     currency: string;
   } | null = null;
 
   if (withOrder) {
     try {
-      const razorpay = getRazorpay();
-      const order = await razorpay.orders.create({
-        amount: breakdown.price_paise,
-        currency: "INR",
-        receipt: job.id,
-        notes: { job_id: job.id },
-      });
+      const order = await createOrder(job.id, breakdown.price_paise);
 
       await supabase
         .from("print_jobs")
         .update({
-          razorpay_order_id: order.id,
+          razorpay_order_id: order.orderId,
           status: "awaiting_payment",
           updated_at: new Date().toISOString(),
         })
@@ -302,15 +297,16 @@ export async function POST(req: NextRequest) {
 
       await supabase.from("payments").insert({
         print_job_id: job.id,
-        razorpay_order_id: order.id,
+        razorpay_order_id: order.orderId,
         amount_paise: breakdown.price_paise,
         status: "pending",
         payment_method: "online",
       });
 
       orderResult = {
-        orderId: order.id,
-        keyId: process.env.RAZORPAY_KEY_ID || process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
+        orderId: order.orderId,
+        paymentSessionId: order.paymentSessionId,
+        cashfreeMode: isCashfreeProduction() ? "production" : "sandbox",
         amount: breakdown.price_paise,
         currency: "INR",
       };

@@ -1,7 +1,7 @@
 #!/usr/bin/env npx tsx
 /**
  * E2E dry-run — walks a print job through the full chain without a printer or
- * a second phone, using Razorpay TEST mode and the agent's SIMULATE mode.
+ * a second phone, using Cashfree SANDBOX mode and the agent's SIMULATE mode.
  *
  * Usage:
  *   npx tsx scripts/e2e-sim.ts              # happy path
@@ -9,7 +9,7 @@
  *
  * Required env (reads from apps/web/.env.local automatically):
  *   NEXT_PUBLIC_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY
- *   RAZORPAY_KEY_ID, RAZORPAY_KEY_SECRET, RAZORPAY_WEBHOOK_SECRET
+ *   CASHFREE_APP_ID, CASHFREE_SECRET_KEY, CASHFREE_ENV=sandbox
  *   AGENT_TOKEN  (from supabase/seed.sql output)
  *
  * The webhook step needs a public URL — see docs/testing-without-hardware.md.
@@ -39,9 +39,8 @@ if (fs.existsSync(envPath)) {
 
 const API_BASE  = process.env.API_BASE  || "http://localhost:3000";
 const SHOP_ID   = process.env.SHOP_ID   || "00000000-0000-0000-0000-000000000001";
-const KEY_ID    = process.env.RAZORPAY_KEY_ID    || "";
-const KEY_SEC   = process.env.RAZORPAY_KEY_SECRET || "";
-const WH_SEC    = process.env.RAZORPAY_WEBHOOK_SECRET || "";
+const CF_ENV    = process.env.CASHFREE_ENV || "";
+const WH_SEC    = process.env.CASHFREE_SECRET_KEY || "";
 const AGENT_TOK = process.env.AGENT_TOKEN || "";
 const SUP_URL   = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
 
@@ -53,9 +52,9 @@ function isSafeToRun(): { ok: boolean; reason?: string } {
   if (process.env.NODE_ENV === "production")
     return { ok: false, reason: "NODE_ENV=production — this script must not run in production." };
 
-  if (!KEY_ID.startsWith("rzp_test_"))
-    return { ok: false, reason: `RAZORPAY_KEY_ID (${KEY_ID.slice(0, 12)}...) is not a test key. ` +
-      "Use rzp_test_ keys only. Hard-abort to prevent charging real money." };
+  if (CF_ENV !== "sandbox")
+    return { ok: false, reason: `CASHFREE_ENV is "${CF_ENV}", not "sandbox". ` +
+      "Use Cashfree sandbox keys only. Hard-abort to prevent charging real money." };
 
   // If the Supabase URL looks like a known production domain but NODE_ENV is not 'development',
   // warn loudly. We cannot know which project is "prod" vs "dev", so we check env only.
@@ -63,8 +62,8 @@ function isSafeToRun(): { ok: boolean; reason?: string } {
     const hasProdMarker = KNOWN_PROD_MARKERS.some((m) => SUP_URL.includes(m)) &&
       !process.env.NODE_ENV; // no NODE_ENV set at all is suspicious in prod deploys
     if (hasProdMarker && !SUP_URL.includes("localhost")) {
-      // Only hard-abort if RAZORPAY_KEY_ID is live (already caught above).
-      // With a test key this is a dev project that happens to live on supabase.co — fine.
+      // Only hard-abort if CASHFREE_ENV is not sandbox (already caught above).
+      // With sandbox keys this is a dev project that happens to live on supabase.co — fine.
     }
   }
 
@@ -82,7 +81,7 @@ if (!AGENT_TOK) {
   process.exit(1);
 }
 if (!WH_SEC) {
-  console.error("\x1b[31mABORT: RAZORPAY_WEBHOOK_SECRET missing — required to sign test webhooks.\x1b[0m");
+  console.error("\x1b[31mABORT: CASHFREE_SECRET_KEY missing — required to sign test webhooks.\x1b[0m");
   process.exit(1);
 }
 
@@ -161,8 +160,8 @@ function agentH(): Record<string, string> {
   return { Authorization: `Bearer ${AGENT_TOK}` };
 }
 
-function hmac(payload: string): string {
-  return crypto.createHmac("sha256", WH_SEC).update(payload).digest("hex");
+function signWebhook(timestamp: string, payload: string): string {
+  return crypto.createHmac("sha256", WH_SEC).update(timestamp + payload).digest("base64");
 }
 
 async function sleep(ms: number) {
@@ -223,29 +222,31 @@ async function uploadFile(buf: Buffer, mime: string): Promise<string> {
   return filePath;
 }
 
-// ── Simulate Razorpay order.paid webhook ──────────────────────────────────────
+// ── Simulate Cashfree payment webhook ─────────────────────────────────────────
 
-async function fireWebhook(orderId: string, event: "order.paid" | "payment.failed" = "order.paid") {
-  const paymentId = `pay_sim_${crypto.randomUUID().slice(0, 12)}`;
+async function fireWebhook(orderId: string, event: "success" | "failed" = "success") {
+  const paymentId = `sim_${crypto.randomUUID().slice(0, 12)}`;
   const payload = JSON.stringify({
-    event,
-    payload: {
+    type: event === "success" ? "PAYMENT_SUCCESS_WEBHOOK" : "PAYMENT_FAILED_WEBHOOK",
+    data: {
+      order: { order_id: orderId, order_amount: 5, order_currency: "INR" },
       payment: {
-        entity: {
-          id: paymentId,
-          order_id: orderId,
-          status: event === "order.paid" ? "captured" : "failed",
-          amount: 500,
-          currency: "INR",
-          method: "upi",
-        },
+        cf_payment_id: paymentId,
+        payment_status: event === "success" ? "SUCCESS" : "FAILED",
+        payment_amount: 5,
+        payment_group: "upi",
       },
     },
   });
+  const timestamp = Date.now().toString();
 
-  const res = await fetch(`${API_BASE}/api/webhooks/razorpay`, {
+  const res = await fetch(`${API_BASE}/api/webhooks/cashfree`, {
     method: "POST",
-    headers: { "Content-Type": "application/json", "x-razorpay-signature": hmac(payload) },
+    headers: {
+      "Content-Type": "application/json",
+      "x-webhook-timestamp": timestamp,
+      "x-webhook-signature": signWebhook(timestamp, payload),
+    },
     body: payload,
   });
   if (!res.ok) fail("webhook", `HTTP ${res.status}`);
@@ -336,17 +337,17 @@ async function runHappy(): Promise<void> {
   pass("job created", `id=${jobId.slice(0, 8)} pages=${pages} price=${pricePaise}p`);
   info(`breakdown: sides=${breakdown.sides} per_side=${breakdown.per_side_base}p copies=${breakdown.copies}`);
 
-  // 4. Create Razorpay order
-  step(4, "POST /api/jobs/[id]/pay → Razorpay test order");
+  // 4. Create Cashfree order
+  step(4, "POST /api/jobs/[id]/pay → Cashfree sandbox order");
   const { status: pySt, data: pyData } = await api("POST", `/api/jobs/${jobId}/pay`);
   if (pySt !== 200) fail("create order", `HTTP ${pySt}: ${JSON.stringify(pyData)}`);
   const orderId: string = pyData.orderId;
-  if (!orderId?.startsWith("order_")) fail("create order", `orderId looks wrong: ${orderId}`);
+  if (!orderId?.startsWith("job_")) fail("create order", `orderId looks wrong: ${orderId}`);
   pass("order created", orderId);
 
   // 5. Fire webhook → dispatched
-  step(5, "Simulate order.paid webhook → assert dispatched");
-  info("Firing HMAC-signed webhook to /api/webhooks/razorpay ...");
+  step(5, "Simulate payment success webhook → assert dispatched");
+  info("Firing HMAC-signed webhook to /api/webhooks/cashfree ...");
   await fireWebhook(orderId);
   const dispatchedStatus = await pollStatus(
     jobId,
@@ -354,10 +355,10 @@ async function runHappy(): Promise<void> {
     120_000,
     30_000,
     "Still waiting for dispatched.\n" +
-    "       COMMON CAUSE: Razorpay cannot reach http://localhost — you need a tunnel.\n" +
+    "       COMMON CAUSE: Cashfree cannot reach http://localhost — you need a tunnel.\n" +
     "       Run:  ngrok http 3000   or   cloudflared tunnel --url http://localhost:3000\n" +
-    "       Then register <public-url>/api/webhooks/razorpay in the Razorpay TEST dashboard.\n" +
-    "       OR: the script fires the webhook directly — if it passed, check /api/webhooks/razorpay logs."
+    "       Then register <public-url>/api/webhooks/cashfree in the Cashfree sandbox dashboard.\n" +
+    "       OR: the script fires the webhook directly — if it passed, check /api/webhooks/cashfree logs."
   );
   pass("job dispatched", dispatchedStatus);
 
@@ -467,12 +468,12 @@ async function runFail(): Promise<void> {
   info("The real agent will honour this and report print_failed with this reason.");
   info("The script also drives agent status manually so the run works without the agent.");
 
-  // 5. Create Razorpay order + fire webhook → dispatched
+  // 5. Create Cashfree order + fire webhook → dispatched
   step(5, "Pay + webhook → dispatched");
   const { status: pySt, data: pyData } = await api("POST", `/api/jobs/${jobId}/pay`);
   if (pySt !== 200) fail("create order", `HTTP ${pySt}: ${JSON.stringify(pyData)}`);
   const orderId: string = pyData.orderId;
-  pass("Razorpay test order", orderId);
+  pass("Cashfree sandbox order", orderId);
 
   await fireWebhook(orderId);
   await pollStatus(jobId, ["dispatched"], 120_000, 30_000,
@@ -506,14 +507,14 @@ async function runFail(): Promise<void> {
   step(9, "Assert refund initiated (status → print_failed or refunded)");
   const finalStatus = await pollStatus(jobId, ["print_failed", "refunded"], 20_000);
   if (finalStatus === "refunded") {
-    pass("status = refunded", "Razorpay refund was initiated automatically");
+    pass("status = refunded", "Cashfree refund was initiated automatically");
   } else {
-    // print_failed is OK too — refund only fires when there's a real captured Razorpay payment.
-    // With our HMAC-signed simulated webhook the payment exists in our DB but Razorpay
+    // print_failed is OK too — refund only fires when there's a real captured Cashfree payment.
+    // With our HMAC-signed simulated webhook the payment exists in our DB but Cashfree
     // may not have a real payment to refund against in test mode.
     pass(
       "status = print_failed",
-      "Refund not recorded — expected when Razorpay test payment doesn't back-fill a real payment_id. " +
+      "Refund not recorded — expected when Cashfree sandbox payment doesn't back-fill a real payment_id. " +
       "The refund path IS exercised when a real test payment is captured first."
     );
   }
@@ -526,7 +527,7 @@ async function main() {
   console.log(`\n${C.bold}HIMMER E2E Dry Run${C.reset}`);
   console.log(`  API:     ${API_BASE}`);
   console.log(`  Shop:    ${SHOP_ID}`);
-  console.log(`  RZP Key: ${KEY_ID.slice(0, 12)}...`);
+  console.log(`  Cashfree: ${CF_ENV}`);
   console.log(`  Mode:    ${C.bold}${MODE}${C.reset}\n`);
 
   if (MODE === "fail") {

@@ -6,6 +6,7 @@ import type { PrinterCapabilities, PriceBreakdown } from "@printbuddy/shared";
 import { DEFAULT_CAPABILITIES } from "@printbuddy/shared";
 import { PDFDocument } from "pdf-lib";
 import type { RealtimeChannel } from "@supabase/supabase-js";
+import { QRCodeSVG } from "qrcode.react";
 import { DocumentPreview } from "@/components/DocumentPreview";
 import { DocumentUploadIcon } from "@/components/DocumentUploadIcon";
 import { createClient as createBrowserSupabase } from "@/lib/supabase/client";
@@ -76,8 +77,11 @@ interface PriceResult {
   breakdown: PriceBreakdown;
 }
 
-type RazorpayWindow = Window & {
-  Razorpay: new (opts: Record<string, unknown>) => { open(): void };
+type CashfreeCheckoutResult = { error?: { message?: string }; paymentDetails?: unknown; redirect?: boolean };
+type CashfreeWindow = Window & {
+  Cashfree: (opts: { mode: "sandbox" | "production" }) => {
+    checkout(opts: { paymentSessionId: string; redirectTarget: "_modal" | "_self" }): Promise<CashfreeCheckoutResult>;
+  };
 };
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -356,9 +360,75 @@ function ToggleOption({
 
 // ── Print Content ─────────────────────────────────────────────────────────────
 
+function useIsDesktop() {
+  const [desktop, setDesktop] = useState<boolean | null>(null);
+  useEffect(() => {
+    const mq = window.matchMedia("(min-width: 768px)");
+    setDesktop(mq.matches);
+    const handler = (e: MediaQueryListEvent) => setDesktop(e.matches);
+    mq.addEventListener("change", handler);
+    return () => mq.removeEventListener("change", handler);
+  }, []);
+  return desktop;
+}
+
+function DesktopGate() {
+  const [url, setUrl] = useState("");
+  useEffect(() => {
+    setUrl(window.location.href);
+  }, []);
+
+  return (
+    <div className="min-h-dvh flex flex-col items-center justify-center bg-white px-6 py-12 text-center">
+      <div className="w-16 h-16 rounded-2xl bg-green-50 flex items-center justify-center mb-5">
+        <svg className="w-8 h-8 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 1.5H8.25A2.25 2.25 0 0 0 6 3.75v16.5a2.25 2.25 0 0 0 2.25 2.25h7.5A2.25 2.25 0 0 0 18 20.25V3.75a2.25 2.25 0 0 0-2.25-2.25H13.5m-3 0V3h3V1.5m-3 0h3m-3 18.75h3" />
+        </svg>
+      </div>
+
+      <h1 className="text-2xl font-bold text-gray-900 mb-2">Switch to your phone</h1>
+      <p className="text-sm text-gray-500 max-w-sm leading-relaxed">
+        HIMMER is a mobile printing experience. Scan this QR code to continue on your phone.
+      </p>
+
+      {/* QR code */}
+      {url && (
+        <div className="mt-8 p-4 rounded-2xl border border-gray-100 bg-gray-50 inline-block">
+          <QRCodeSVG value={url} size={180} level="M" />
+        </div>
+      )}
+
+      {/* Steps */}
+      <ol className="mt-8 text-left max-w-xs space-y-3">
+        {[
+          "Open your phone camera and scan the QR code above",
+          "Tap the link that appears to open HIMMER",
+          "Find a nearby HIMMER shop and scan the shop’s QR sticker",
+          "Upload your document, pay, and collect your printout",
+        ].map((step, i) => (
+          <li key={i} className="flex gap-3 text-sm text-gray-600">
+            <span className="flex-shrink-0 w-6 h-6 rounded-full bg-green-100 text-green-700 font-bold text-xs flex items-center justify-center">
+              {i + 1}
+            </span>
+            <span className="pt-0.5">{step}</span>
+          </li>
+        ))}
+      </ol>
+
+      <a
+        href="/"
+        className="mt-10 text-sm font-semibold text-gray-500 hover:text-gray-700 transition-colors"
+      >
+        Back to homepage
+      </a>
+    </div>
+  );
+}
+
 function PrintContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
+  const isDesktop = useIsDesktop();
   const shopId = searchParams.get("shop");
   const isSharedEntry = searchParams.get("shared") === "1";
   const sharedEntryError = searchParams.get("shared_error") === "1";
@@ -682,7 +752,7 @@ function PrintContent() {
     }
   }, [isSharedEntry, uploadState]);
 
-  // Razorpay pay
+  // Cashfree pay
   const handlePay = useCallback(async () => {
     if (!fileState || !config) return;
     if (rawPriceResult === null) return;
@@ -716,12 +786,11 @@ function PrintContent() {
         }),
       });
       if (!res.ok) { const failure = await res.json(); throw new Error(failure.error ?? "Could not create print job"); }
-      const { jobId, orderId, amount, currency, keyId } = await res.json() as {
+      const { jobId, paymentSessionId, cashfreeMode, amount } = await res.json() as {
         jobId: string;
-        orderId: string;
+        paymentSessionId?: string;
+        cashfreeMode?: "sandbox" | "production";
         amount: number;
-        currency: string;
-        keyId: string;
       };
 
       if (paymentMethod === "cash") {
@@ -729,31 +798,9 @@ function PrintContent() {
         return;
       }
 
-      const win = window as unknown as RazorpayWindow;
-      if (typeof win.Razorpay !== "function") throw new Error("Payment not available");
-
-      const rzp = new win.Razorpay({
-        key: keyId,
-        order_id: orderId,
-        amount,
-        currency,
-        name: "HIMMER",
-        description: fileState.file.name,
-        prefill: {},
-        theme: { color: "#22c55e" },
-        modal: {
-          ondismiss: () => {
-            broadcast({
-              type: "checkout:dismissed",
-              sessionId: sessionIdRef.current,
-              sentAt: new Date().toISOString(),
-            });
-          },
-        },
-        handler: () => {
-          router.push(`/app/history/${jobId}`);
-        },
-      });
+      const win = window as unknown as CashfreeWindow;
+      if (typeof win.Cashfree !== "function" || !paymentSessionId) throw new Error("Payment not available");
+      const cashfree = win.Cashfree({ mode: cashfreeMode ?? "sandbox" });
 
       broadcast({
         type: "checkout:opened",
@@ -763,7 +810,18 @@ function PrintContent() {
         sentAt: new Date().toISOString(),
       });
 
-      rzp.open();
+      // Dispatch is driven only by the signed webhook; this result just routes the UI.
+      void cashfree.checkout({ paymentSessionId, redirectTarget: "_modal" }).then((result) => {
+        if (result.paymentDetails || result.redirect) {
+          router.push(`/app/history/${jobId}`);
+        } else {
+          broadcast({
+            type: "checkout:dismissed",
+            sessionId: sessionIdRef.current,
+            sentAt: new Date().toISOString(),
+          });
+        }
+      });
     } catch (err: unknown) {
       setPayError(err instanceof Error ? err.message : "Payment failed");
     } finally {
@@ -775,6 +833,13 @@ function PrintContent() {
   const hasFile = fileState !== null;
 
   // ── Render ─────────────────────────────────────────────────────────────────
+
+  if (isDesktop === null) {
+    return <div className="min-h-full flex items-center justify-center"><Loader2 className="w-6 h-6 text-green-500 animate-spin" /></div>;
+  }
+  if (isDesktop) {
+    return <DesktopGate />;
+  }
 
   return (
     <div className="min-h-full bg-white flex flex-col">

@@ -50,8 +50,8 @@ export default function TermsPage() {
             surcharges added after payment.
           </p>
           <p>
-            Payments are processed by Razorpay. By completing a payment you agree to
-            <a href="https://razorpay.com/terms/" target="_blank" rel="noopener noreferrer"> Razorpay's Terms</a>.
+            Payments are processed by Cashfree Payments. By completing a payment you agree to
+            <a href="https://www.cashfree.com/tnc/" target="_blank" rel="noopener noreferrer"> Cashfree's Terms</a>.
           </p>
         </section>
 
@@ -60,7 +60,7 @@ export default function TermsPage() {
           <p>
             If your print job cannot be completed due to a printer error, hardware failure, or inability to
             dispatch the job, you are entitled to a full refund. Refunds are issued to your original payment
-            method via Razorpay, typically within 5–7 business days.
+            method via Cashfree, typically within 5–7 business days.
           </p>
           <p>
             Refunds are not issued for jobs that printed successfully but where you are dissatisfied with

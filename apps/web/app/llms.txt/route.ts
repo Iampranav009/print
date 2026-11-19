@@ -11,7 +11,7 @@ export function GET() {
 2. Opens a lightweight web app — no install required.
 3. Uploads a document (PDF, DOCX, PPTX, or images).
 4. Chooses print options and sees a locked final price.
-5. Pays via UPI (Razorpay).
+5. Pays via UPI (Cashfree).
 6. Receives a 4-digit release code on their phone.
 7. Enters the code at the shop — document prints automatically.
 

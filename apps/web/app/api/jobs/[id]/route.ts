@@ -1,6 +1,6 @@
 import { getSupabase } from "@/lib/supabase";
 import { NextRequest } from "next/server";
-import { getRazorpay } from "@/lib/razorpay";
+import { fetchRefund } from "@/lib/cashfree";
 
 export async function GET(
   _req: NextRequest,
@@ -39,12 +39,12 @@ export async function GET(
   let refundStatus = payment?.refund_status ?? null;
   let refundId = payment?.refund_id ?? null;
   const paymentId = payment?.razorpay_payment_id;
-  if (job.status === "print_failed" && !refundId && paymentId) {
-    // A refund request may have reached Razorpay even if our response or DB
-    // write failed. Reconcile by our receipt before telling the customer.
+  const orderId = job.razorpay_order_id;
+  if (job.status === "print_failed" && !refundId && paymentId && orderId) {
+    // A refund request may have reached Cashfree even if our response or DB
+    // write failed. Our refund_id is the job id, so look it up directly.
     try {
-      const refunds = await getRazorpay().payments.fetchMultipleRefund(paymentId);
-      const matching = refunds.items.find((refund) => refund.receipt === id);
+      const matching = await fetchRefund(orderId, id);
       if (matching) {
         refundId = matching.id;
         refundStatus = matching.status;
@@ -59,9 +59,10 @@ export async function GET(
       console.error("[jobs] Refund reconciliation failed", { jobId: id, error });
     }
   }
-  if (refundId && refundStatus !== "processed" && refundStatus !== "failed") {
+  if (refundId && orderId && refundStatus !== "processed" && refundStatus !== "failed") {
     try {
-      const refund = await getRazorpay().refunds.fetch(refundId);
+      const refund = await fetchRefund(orderId, refundId);
+      if (!refund) throw new Error(`Refund ${refundId} not found`);
       const previousRefundStatus = refundStatus;
       refundStatus = refund.status;
       if (refund.status !== previousRefundStatus) {

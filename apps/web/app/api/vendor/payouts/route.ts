@@ -1,7 +1,7 @@
 // GET  /api/vendor/payouts — list payout requests for the signed-in vendor's shop
 // POST /api/vendor/payouts — create a new payout request for the shop
 //
-// A 2% platform fee is applied at request time (Razorpay share on collected
+// A 2% platform fee is applied at request time (Cashfree share on collected
 // revenue). The vendor sees both the gross request amount and the net payout.
 
 import { NextRequest } from "next/server";

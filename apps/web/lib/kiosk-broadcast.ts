@@ -1,4 +1,4 @@
-// Server-side broadcast helper. The Razorpay webhook and the virtual-print
+// Server-side broadcast helper. The Cashfree webhook and the virtual-print
 // ticker use this to push events to the kiosk WebSocket channel WITHOUT
 // depending on postgres_changes — which is subject to RLS on print_jobs
 // and doesn't reach anon subscribers reliably.

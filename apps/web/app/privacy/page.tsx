@@ -40,7 +40,7 @@ export default function PrivacyPage() {
             <li><strong>Phone number</strong> — used to identify your session and send order updates.</li>
             <li><strong>Uploaded documents</strong> — temporarily stored only long enough to process and dispatch your print job.</li>
             <li><strong>Print options and order details</strong> — pages, copies, colour settings, and the shop you printed at.</li>
-            <li><strong>Payment information</strong> — processed by Razorpay. HIMMER never stores card or UPI credentials. See <a href="https://razorpay.com/privacy/" target="_blank" rel="noopener noreferrer">Razorpay's Privacy Policy</a>.</li>
+            <li><strong>Payment information</strong> — processed by Cashfree Payments. HIMMER never stores card or UPI credentials. See <a href="https://www.cashfree.com/privacypolicy/" target="_blank" rel="noopener noreferrer">Cashfree's Privacy Policy</a>.</li>
           </ul>
         </section>
 
@@ -68,7 +68,7 @@ export default function PrivacyPage() {
           <h2>Data sharing</h2>
           <p>
             We share only what is necessary: your print job details are shared with the print shop you selected, and
-            payment data flows through Razorpay. We do not share your data with advertisers or data brokers.
+            payment data flows through Cashfree Payments. We do not share your data with advertisers or data brokers.
           </p>
         </section>
 

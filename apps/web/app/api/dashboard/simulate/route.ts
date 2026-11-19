@@ -5,10 +5,8 @@ import type { PrintOptions, Pricing } from "@printbuddy/shared";
 import { NextRequest } from "next/server";
 import crypto from "crypto";
 
-const RAZORPAY_KEY_ID = process.env.RAZORPAY_KEY_ID || "";
-
 function isTestMode(): boolean {
-  return RAZORPAY_KEY_ID.startsWith("rzp_test_");
+  return process.env.CASHFREE_ENV === "sandbox";
 }
 
 function makeMinimalPdf(): Uint8Array {
@@ -32,7 +30,7 @@ startxref
 export async function POST(req: NextRequest) {
   if (!isTestMode()) {
     return Response.json(
-      { error: "Simulate endpoints are only available in Razorpay test mode" },
+      { error: "Simulate endpoints are only available in Cashfree sandbox mode" },
       { status: 403 }
     );
   }

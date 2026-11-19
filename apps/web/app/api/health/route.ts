@@ -70,20 +70,9 @@ export async function GET(_req: NextRequest) {
     };
   }
 
-  // 4. Razorpay keys loaded
-  const rzpKeyId = process.env.RAZORPAY_KEY_ID;
-  const rzpSecret = process.env.RAZORPAY_KEY_SECRET;
-  const rzpWebhookSecret = process.env.RAZORPAY_WEBHOOK_SECRET;
-
-  if (rzpKeyId && rzpSecret && rzpWebhookSecret) {
-    checks.razorpay = { ok: true };
-  } else {
-    const missing: string[] = [];
-    if (!rzpKeyId) missing.push("RAZORPAY_KEY_ID");
-    if (!rzpSecret) missing.push("RAZORPAY_KEY_SECRET");
-    if (!rzpWebhookSecret) missing.push("RAZORPAY_WEBHOOK_SECRET");
-    checks.razorpay = { ok: false, detail: `Missing: ${missing.join(", ")}` };
-  }
+  // 4. Cashfree keys loaded (the secret key also verifies webhooks)
+  const missing = ["CASHFREE_APP_ID", "CASHFREE_SECRET_KEY", "CASHFREE_ENV"].filter((k) => !process.env[k]);
+  checks.cashfree = missing.length ? { ok: false, detail: `Missing: ${missing.join(", ")}` } : { ok: true, detail: process.env.CASHFREE_ENV };
 
   const allOk = Object.values(checks).every((c) => c.ok);
 

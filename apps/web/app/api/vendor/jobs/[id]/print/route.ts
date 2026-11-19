@@ -2,7 +2,7 @@ import { NextRequest } from "next/server";
 import { vendorShopId } from "@/lib/vendor-shop";
 import { getSupabase } from "@/lib/supabase";
 import { broadcastToKiosk } from "@/lib/kiosk-broadcast";
-import { createRefund } from "@/lib/razorpay";
+import { createRefund } from "@/lib/cashfree";
 
 const RETRYABLE = new Set(["dispatched", "awaiting_release", "released", "printing"]);
 const PRINTING_RETRY_AFTER_MS = 10 * 60 * 1000;
@@ -67,7 +67,7 @@ export async function POST(
           .eq("status", "captured")
           .maybeSingle();
         if (payment?.razorpay_payment_id) {
-          const refund = await createRefund(payment.razorpay_payment_id, failed.price_paise, id);
+          const refund = await createRefund(failed.razorpay_order_id, failed.price_paise, id);
           refundStatus = refund.status;
           await supabase.from("payments").update({
             refund_id: refund.id,

@@ -1,7 +1,7 @@
 // GET /api/admin/analytics — platform-wide numbers across every shop.
 //
 // Returns totals for prints (color / B&W), gross revenue collected, the 2%
-// Razorpay platform share, net owed to vendors, and a per-shop breakdown so
+// Cashfree platform share, net owed to vendors, and a per-shop breakdown so
 // the admin can spot outliers.
 
 import { NextRequest } from "next/server";
