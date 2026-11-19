@@ -99,7 +99,7 @@
 .hm-footer-col-link { display:flex; align-items:center; gap:9px; font-size:13px; color:#c6d9cb; padding-block:7px; }
 .hm-footer a:hover { color:#fff; }
 .hm-footer-giant { overflow:hidden; padding-top:24px; }
-.hm-footer-giant-inner { display:flex; align-items:flex-end; gap:clamp(16px,3vw,48px); }
+.hm-footer-giant-inner { display:flex; align-items:flex-end; justify-content:center; gap:clamp(16px,3vw,48px); }
 .hm-footer-symbol { flex-shrink:0; opacity:0.12; width:clamp(60px,10vw,140px) !important; height:auto !important; margin-bottom:.08em; filter:brightness(10); }
 .hm-footer-wordmark { font-size:clamp(72px,15vw,200px); font-weight:600; line-height:0.88; letter-spacing:-.03em; color:rgba(255,255,255,0.09); display:block; user-select:none; font-family:var(--font-himmer),sans-serif; }
 .hm-footer-bottom { border-top:1px solid rgba(255,255,255,0.08); padding-block:22px; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:16px; font-size:11px; color:#8aab94; }

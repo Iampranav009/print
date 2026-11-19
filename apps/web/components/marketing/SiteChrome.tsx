@@ -2,7 +2,7 @@ import Link from "next/link";
 import Image from "next/image";
 import {
   ArrowUpRight, Menu,
-  FileText, MapPin, History, Store, Download, IndianRupee,
+  Store, Download, IndianRupee,
   HelpCircle, BookOpen, MessageCircle, Activity,
   Instagram, Youtube, Linkedin,
 } from "lucide-react";
@@ -34,16 +34,11 @@ export function SiteFooter() {
       <div className="hm-wrap">
         <div className="hm-footer-top">
           <div className="hm-footer-brand-col">
-            <Brand light />
+            <Brand light large />
             <p className="hm-footer-tagline">The easy printing platform for students,<br />professionals and businesses in India.</p>
             <span className="hm-footer-location">Upload, pay via UPI, and pick up from a nearby print shop — hassle-free.</span>
           </div>
           <div className="hm-footer-nav-cols">
-            <FooterCol heading="For you" links={[
-              { label: "Print a document", href: "/app/print", icon: <FileText size={14} /> },
-              { label: "Find a print shop", href: "/app/nearby", icon: <MapPin size={14} /> },
-              { label: "Print history", href: "/app/history", icon: <History size={14} /> },
-            ]} />
             <FooterCol heading="For print shops" links={[
               { label: "Partner portal", href: "/vendor/login", icon: <Store size={14} /> },
               { label: "Download print agent", href: "/vendor/agent-download", icon: <Download size={14} /> },
