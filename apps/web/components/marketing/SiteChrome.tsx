@@ -20,7 +20,7 @@ function FooterCol({ heading, links }: { heading: string; links: { label: string
     <div>
       <h3 className="hm-footer-col-heading">{heading}</h3>
       {links.map(({ label, href, icon }) => (
-        <Link key={href} href={href} className="hm-footer-col-link">
+        <Link key={label} href={href} className="hm-footer-col-link">
           {icon}{label}
         </Link>
       ))}
