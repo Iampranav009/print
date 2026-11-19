@@ -6,7 +6,9 @@ import type { PrinterCapabilities, PriceBreakdown } from "@printbuddy/shared";
 import { DEFAULT_CAPABILITIES } from "@printbuddy/shared";
 import { PDFDocument } from "pdf-lib";
 import type { RealtimeChannel } from "@supabase/supabase-js";
+import Link from "next/link";
 import { QRCodeSVG } from "qrcode.react";
+import { Brand } from "@/components/Brand";
 import { DocumentPreview } from "@/components/DocumentPreview";
 import { DocumentUploadIcon } from "@/components/DocumentUploadIcon";
 import { createClient as createBrowserSupabase } from "@/lib/supabase/client";
@@ -379,48 +381,72 @@ function DesktopGate() {
   }, []);
 
   return (
-    <div className="min-h-dvh flex flex-col items-center justify-center bg-white px-6 py-12 text-center">
-      <div className="w-16 h-16 rounded-2xl bg-green-50 flex items-center justify-center mb-5">
-        <svg className="w-8 h-8 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-          <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 1.5H8.25A2.25 2.25 0 0 0 6 3.75v16.5a2.25 2.25 0 0 0 2.25 2.25h7.5A2.25 2.25 0 0 0 18 20.25V3.75a2.25 2.25 0 0 0-2.25-2.25H13.5m-3 0V3h3V1.5m-3 0h3m-3 18.75h3" />
-        </svg>
-      </div>
+    <div className="min-h-dvh flex flex-col bg-white">
+      {/* Same header as login page */}
+      <header className="hm-auth-header">
+        <Brand />
+        <Link href="/support" className="text-xs font-medium">Need a hand? ↗</Link>
+      </header>
 
-      <h1 className="text-2xl font-bold text-gray-900 mb-2">Switch to your phone</h1>
-      <p className="text-sm text-gray-500 max-w-sm leading-relaxed">
-        HIMMER is a mobile printing experience. Scan this QR code to continue on your phone.
-      </p>
+      {/* Backdrop + centered popup */}
+      <div className="flex-1 flex items-center justify-center bg-gray-50/60 px-4 py-10">
+        <div className="relative w-full max-w-md bg-white rounded-3xl shadow-xl border border-gray-100 px-8 py-10 text-center">
+          {/* Close → homepage */}
+          <a
+            href="/"
+            className="absolute top-4 right-4 w-8 h-8 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center transition-colors"
+            aria-label="Close"
+          >
+            <X className="w-4 h-4 text-gray-500" />
+          </a>
 
-      {/* QR code */}
-      {url && (
-        <div className="mt-8 p-4 rounded-2xl border border-gray-100 bg-gray-50 inline-block">
-          <QRCodeSVG value={url} size={180} level="M" />
+          <div className="w-14 h-14 rounded-2xl bg-green-50 flex items-center justify-center mx-auto mb-4">
+            <svg className="w-7 h-7 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 1.5H8.25A2.25 2.25 0 0 0 6 3.75v16.5a2.25 2.25 0 0 0 2.25 2.25h7.5A2.25 2.25 0 0 0 18 20.25V3.75a2.25 2.25 0 0 0-2.25-2.25H13.5m-3 0V3h3V1.5m-3 0h3m-3 18.75h3" />
+            </svg>
+          </div>
+
+          <h1 className="text-xl font-bold text-gray-900 mb-1">Switch to your phone</h1>
+          <p className="text-sm text-gray-500 max-w-xs mx-auto leading-relaxed">
+            Scan this QR code to open HIMMER on your mobile browser.
+          </p>
+
+          {/* QR code */}
+          {url && (
+            <div className="mt-6 inline-block p-4 rounded-2xl border border-gray-100 bg-gray-50">
+              <QRCodeSVG value={url} size={160} level="M" />
+            </div>
+          )}
+
+          {/* Steps */}
+          <ol className="mt-6 text-left max-w-xs mx-auto space-y-2.5">
+            {[
+              "Open your phone camera and scan the QR code",
+              "Tap the link to open HIMMER",
+              "Upload your document, pay, and collect your print",
+            ].map((step, i) => (
+              <li key={i} className="flex gap-2.5 text-sm text-gray-600">
+                <span className="flex-shrink-0 w-5 h-5 rounded-full bg-green-100 text-green-700 font-bold text-[11px] flex items-center justify-center">
+                  {i + 1}
+                </span>
+                <span className="pt-px">{step}</span>
+              </li>
+            ))}
+          </ol>
+
+          {/* Close button */}
+          <a
+            href="/"
+            className="mt-8 inline-flex min-h-[44px] w-full max-w-xs items-center justify-center rounded-2xl bg-gray-900 text-white font-semibold text-sm hover:bg-gray-800 transition-colors"
+          >
+            Go to homepage
+          </a>
+
+          <p className="mt-4 text-[11px] text-gray-400">
+            You can browse and sign up on desktop — printing requires a mobile device.
+          </p>
         </div>
-      )}
-
-      {/* Steps */}
-      <ol className="mt-8 text-left max-w-xs space-y-3">
-        {[
-          "Open your phone camera and scan the QR code above",
-          "Tap the link that appears to open HIMMER",
-          "Find a nearby HIMMER shop and scan the shop’s QR sticker",
-          "Upload your document, pay, and collect your printout",
-        ].map((step, i) => (
-          <li key={i} className="flex gap-3 text-sm text-gray-600">
-            <span className="flex-shrink-0 w-6 h-6 rounded-full bg-green-100 text-green-700 font-bold text-xs flex items-center justify-center">
-              {i + 1}
-            </span>
-            <span className="pt-0.5">{step}</span>
-          </li>
-        ))}
-      </ol>
-
-      <a
-        href="/"
-        className="mt-10 text-sm font-semibold text-gray-500 hover:text-gray-700 transition-colors"
-      >
-        Back to homepage
-      </a>
+      </div>
     </div>
   );
 }
