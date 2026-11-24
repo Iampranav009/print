@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { SiteHeader, SiteFooter } from "@/components/marketing/SiteChrome";
-import { printFaqs } from "@/components/marketing/Homepage";
+import { printFaqs } from "@/components/marketing/faq-data";
 
 export const metadata: Metadata = {title: "Help with your print", description: "Help with HIMMER print orders, payment status and connecting your shop.", alternates: {canonical: "/support"}};
 export default function SupportPage() {
