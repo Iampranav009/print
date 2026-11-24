@@ -306,7 +306,7 @@ function StepShop({
             required
             value={inviteInput}
             onChange={(e) => setInviteInput(e.target.value)}
-            placeholder="https://himmer.vercel.app/vendor/claim?token=... or token"
+            placeholder="https://www.himmer.in/vendor/claim?token=... or token"
             className="w-full px-3.5 py-2.5 rounded-xl border border-zinc-200 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600"
             aria-required="true"
           />
@@ -349,8 +349,8 @@ function StepShop({
           </div>
           <p>
             Shops on HIMMER are currently onboarded by our operations team. If you operate a print shop and wish to join the network, please contact us at{" "}
-            <a href="mailto:support@printbuddy.app" className="underline font-medium">
-              support@printbuddy.app
+            <a href="mailto:support@himmer.in" className="underline font-medium">
+              support@himmer.in
             </a>{" "}
             or speak to your HIMMER administrator to receive your invite link.
           </p>

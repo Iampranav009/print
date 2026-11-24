@@ -21,7 +21,7 @@ function subscribe() {
 
 export function KioskQR({ shopId, shopName, location, compact }: KioskQRProps) {
   const origin = useSyncExternalStore(subscribe, getOrigin, () => "");
-  const qrUrl = origin ? `${origin}/s/${shopId}` : `https://himmer.vercel.app/s/${shopId}`;
+  const qrUrl = origin ? `${origin}/s/${shopId}` : `https://www.himmer.in/s/${shopId}`;
 
   const size = compact ? 220 : 320;
 

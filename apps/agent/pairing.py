@@ -4,7 +4,7 @@ import re
 from urllib.parse import urlparse
 import requests
 
-TRUSTED_HOST = "himmer.vercel.app"
+TRUSTED_HOST = "www.himmer.in"
 
 
 def parse_link(link: str) -> tuple[str, str]:

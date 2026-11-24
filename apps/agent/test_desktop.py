@@ -15,13 +15,13 @@ from printing.windows_printer import print_windows
 class DesktopTests(unittest.TestCase):
     def test_pairing_link_rejects_untrusted_hosts_and_permanent_credentials(self):
         token = "a" * 64
-        self.assertEqual(parse_link(f"https://himmer.vercel.app/agent/connect#{token}")[1], token)
-        for link in [f"http://himmer.vercel.app/agent/connect#{token}",
+        self.assertEqual(parse_link(f"https://www.himmer.in/agent/connect#{token}")[1], token)
+        for link in [f"http://www.himmer.in/agent/connect#{token}",
                      f"https://print-kro-five.vercel.app/agent/connect#{token}",
                      f"https://evil.example/agent/connect#{token}",
-                     f"https://himmer.vercel.app.evil.example/agent/connect#{token}",
-                     f"https://user@himmer.vercel.app/agent/connect#{token}",
-                     "https://himmer.vercel.app/agent/connect#short"]:
+                     f"https://www.himmer.in.evil.example/agent/connect#{token}",
+                     f"https://user@www.himmer.in/agent/connect#{token}",
+                     "https://www.himmer.in/agent/connect#short"]:
             with self.assertRaises(ValueError):
                 parse_link(link)
 
@@ -30,10 +30,10 @@ class DesktopTests(unittest.TestCase):
         response = Mock(status_code=200)
         response.json.return_value = {"agentToken": "test-agent-token", "shopId": "test-shop"}
         with patch("pairing.requests.post", return_value=response) as post:
-            settings = redeem_link(f"  https://himmer.vercel.app/agent/connect#{token}\n")
-            post.assert_called_once_with("https://himmer.vercel.app/api/agent/pair",
+            settings = redeem_link(f"  https://www.himmer.in/agent/connect#{token}\n")
+            post.assert_called_once_with("https://www.himmer.in/api/agent/pair",
                                          json={"token": token}, timeout=20, allow_redirects=False)
-            self.assertEqual(settings["PRINTBUDDY_API_BASE"], "https://himmer.vercel.app")
+            self.assertEqual(settings["PRINTBUDDY_API_BASE"], "https://www.himmer.in")
             self.assertEqual(settings["SHOP_ID"], "test-shop")
 
     def test_expired_link_returns_actionable_message(self):
@@ -41,7 +41,7 @@ class DesktopTests(unittest.TestCase):
         result.json.return_value = {"error": "Link expired. Generate another."}
         with patch("pairing.requests.post", return_value=result) as post:
             with self.assertRaisesRegex(RuntimeError, "expired"):
-                redeem_link("https://himmer.vercel.app/agent/connect#" + "a" * 64)
+                redeem_link("https://www.himmer.in/agent/connect#" + "a" * 64)
             self.assertFalse(post.call_args.kwargs["allow_redirects"])
 
     @unittest.skipUnless(sys.platform == "win32", "Windows credential protection")

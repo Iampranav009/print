@@ -9,7 +9,7 @@ import "./marketing.css";
 
 const manrope = Manrope({ subsets: ["latin"], display: "swap", variable: "--font-himmer" });
 
-const siteUrl = process.env.NEXT_PUBLIC_APP_URL || "https://himmer.vercel.app";
+const siteUrl = process.env.NEXT_PUBLIC_APP_URL || "https://www.himmer.in";
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
@@ -82,6 +82,7 @@ export const metadata: Metadata = {
       { url: "/favicon.ico", sizes: "any" },
       { url: "/favicon-32.png", sizes: "32x32", type: "image/png" },
       { url: "/favicon-192.png", sizes: "192x192", type: "image/png" },
+      { url: "/favicon-512.png", sizes: "512x512", type: "image/png" },
     ],
     apple: "/favicon-180.png",
   },

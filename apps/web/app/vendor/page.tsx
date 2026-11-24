@@ -309,7 +309,7 @@ export default function VendorOverviewPage() {
         ctx.fillStyle = "#9CA3AF";
         ctx.font = "13px 'Segoe UI', system-ui, sans-serif";
         ctx.textAlign = "center";
-        ctx.fillText("Powered by HIMMER · himmer.vercel.app", W / 2, H - 28);
+        ctx.fillText("Powered by HIMMER · himmer.in", W / 2, H - 28);
 
         // Bottom accent bar
         ctx.fillStyle = "#4F46E5";

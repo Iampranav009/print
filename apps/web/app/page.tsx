@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { Homepage } from "@/components/marketing/Homepage";
 import { printFaqs } from "@/components/marketing/faq-data";
 
-const siteUrl = process.env.NEXT_PUBLIC_APP_URL || "https://himmer.vercel.app";
+const siteUrl = process.env.NEXT_PUBLIC_APP_URL || "https://www.himmer.in";
 export const metadata: Metadata = {
   title: { absolute: "HIMMER — Printing, made effortless." },
   description: "Print documents from your phone at a local shop. Choose your options, see the price and pay via UPI. HIMMER makes everyday printing simpler.",
