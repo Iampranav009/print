@@ -1,4 +1,5 @@
 import { getSupabase } from "@/lib/supabase";
+import { createClient as createServerSupabase } from "@/lib/supabase/server";
 import { createOrder, isCashfreeProduction } from "@/lib/cashfree";
 import { NextRequest } from "next/server";
 
@@ -29,7 +30,17 @@ export async function POST(
     return Response.json({ error: "Cash jobs are confirmed by the shop counter." }, { status: 400 });
   }
 
-  const order = await createOrder(id, job.price_paise);
+  const authed = await createServerSupabase();
+  const { data: { user } } = await authed.auth.getUser();
+  const order = await createOrder(id, job.price_paise, {
+    phone: user?.phone ?? (user?.user_metadata?.contact_phone as string | undefined),
+    email: user?.email,
+    name: typeof user?.user_metadata?.full_name === "string"
+      ? user.user_metadata.full_name
+      : typeof user?.user_metadata?.name === "string"
+        ? user.user_metadata.name
+        : undefined,
+  });
 
   await supabase
     .from("print_jobs")

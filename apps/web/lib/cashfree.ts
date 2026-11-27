@@ -43,8 +43,14 @@ async function cashfree<T>(path: string, init: { method: "GET" | "POST"; body?: 
 
 const rupees = (paise: number) => Number((paise / 100).toFixed(2));
 
+interface CustomerInfo {
+  phone?: string | null;
+  email?: string | null;
+  name?: string | null;
+}
+
 /** Creates a Cashfree order for a print job. Returns our order id + the checkout session id. */
-export async function createOrder(jobId: string, amountPaise: number, customerPhone?: string | null) {
+export async function createOrder(jobId: string, amountPaise: number, customer?: CustomerInfo) {
   const compactId = jobId.replace(/-/g, "");
   // Suffix keeps order_id unique if a job ever needs a second order (max 50 chars).
   const orderId = `job_${compactId}_${Date.now().toString(36)}`;
@@ -57,8 +63,12 @@ export async function createOrder(jobId: string, amountPaise: number, customerPh
       order_currency: "INR",
       customer_details: {
         customer_id: `cust_${compactId}`,
-        // shortcut: Cashfree requires a phone and we don't collect one yet; pass the real number once the PWA asks for it.
-        customer_phone: customerPhone && /^\d{10}$/.test(customerPhone) ? customerPhone : "9999999999",
+        customer_phone: (() => {
+          const digits = customer?.phone?.replace(/^\+?91/, "").replace(/\D/g, "") ?? "";
+          return /^\d{10}$/.test(digits) ? digits : "9999999999";
+        })(),
+        ...(customer?.email ? { customer_email: customer.email } : {}),
+        ...(customer?.name ? { customer_name: customer.name } : {}),
       },
       order_meta: appUrl?.startsWith("https://")
         ? { notify_url: `${appUrl}/api/webhooks/cashfree` }

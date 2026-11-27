@@ -284,7 +284,15 @@ export async function POST(req: NextRequest) {
 
   if (withOrder) {
     try {
-      const order = await createOrder(job.id, breakdown.price_paise);
+      const order = await createOrder(job.id, breakdown.price_paise, {
+        phone: user?.phone ?? (user?.user_metadata?.contact_phone as string | undefined),
+        email: user?.email,
+        name: typeof user?.user_metadata?.full_name === "string"
+          ? user.user_metadata.full_name
+          : typeof user?.user_metadata?.name === "string"
+            ? user.user_metadata.name
+            : undefined,
+      });
 
       await supabase
         .from("print_jobs")
