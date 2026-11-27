@@ -24,6 +24,7 @@ import {
   AlertCircle,
   Footprints,
 } from "lucide-react";
+import Image from "next/image";
 import { Segmented } from "@/components/mobile/Segmented";
 
 /* ─── Types ──────────────────────────────────────────────────────────── */
@@ -440,19 +441,20 @@ export default function NearbyMap() {
       `}</style>
 
       {/* ── Glass Header ── */}
-      <div className="glass-chrome relative z-30 shrink-0 rounded-none border-x-0 border-t-0 border-b-black/[0.06] px-4 pb-3 pt-[max(1rem,env(safe-area-inset-top))] shadow-none">
-        {/* Title row */}
-        <div className="mb-3 flex items-end justify-between gap-3">
-          <div className="min-w-0">
-            <h1 className="text-[28px] font-bold leading-tight tracking-[-0.035em] text-label">Nearby</h1>
-            <p className="mt-0.5 text-[13px] text-secondary-label">
+      <div className="glass-chrome relative z-30 shrink-0 rounded-none border-x-0 border-t-0 border-b-black/[0.06] px-4 pb-3 pt-[env(safe-area-inset-top)] shadow-none">
+        {/* Title row — matches TabTopBar */}
+        <div className="flex h-14 items-center gap-2.5">
+          <Image src="/himmer-symbol-nav.png" alt="" aria-hidden width={28} height={28} className="shrink-0" priority />
+          <div className="min-w-0 flex-1">
+            <h1 className="truncate text-[20px] font-bold leading-tight tracking-[-0.03em] text-label">Nearby</h1>
+            <p className="truncate text-[12px] text-secondary-label">
               {userPos
                 ? `${shops.length} shop${shops.length !== 1 ? "s" : ""} within 50 km`
                 : "Enable location to sort by distance"}
             </p>
           </div>
 
-          <div className="w-[148px] shrink-0">
+          <div className="w-[140px] shrink-0">
             <Segmented
               size="sm"
               ariaLabel="View"

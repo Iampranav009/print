@@ -6,6 +6,7 @@ import type { PrintOptions, Pricing, PrinterCapabilities } from "@printbuddy/sha
 import { preparePrintPdf } from "@/lib/print-layout";
 import { PDFDocument } from "pdf-lib";
 import { NextRequest } from "next/server";
+import { scheduleCleanup } from "@/lib/retention";
 
 const VIRTUAL_SHOP_ID = "00000000-0000-0000-0000-000000000001";
 
@@ -124,6 +125,7 @@ export async function POST(req: NextRequest) {
     : null;
 
   const supabase = getSupabase();
+  scheduleCleanup();
 
   const { data: shop } = await supabase
     .from("shops")

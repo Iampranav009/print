@@ -11,7 +11,7 @@ export async function GET(
 
   const { data: shop, error: shopErr } = await supabase
     .from("shops")
-    .select("id, name, location, status, virtual_mode, cash_payments_enabled, default_payment_method")
+    .select("id, name, location, status, virtual_mode, cash_payments_enabled, default_payment_method, online_payments_enabled")
     .eq("id", shopId)
     .single();
 
@@ -38,7 +38,7 @@ export async function GET(
   const { data: printers } = await supabase
     .from("printers")
     .select(
-      "capabilities, capabilities_source, make_and_model, capabilities_updated_at, mode, online, last_seen_at, connection_type"
+      "capabilities, capabilities_source, make_and_model, capabilities_updated_at, mode, online, last_seen_at, connection_type, color_enabled, duplex_enabled"
     )
     .eq("shop_id", shopId)
     .order("id", { ascending: true });
@@ -52,6 +52,8 @@ export async function GET(
     online: !!p.online,
     last_seen_at: p.last_seen_at ?? null,
     connection_type: p.connection_type ?? null,
+    color_enabled: (p as { color_enabled?: boolean }).color_enabled ?? true,
+    duplex_enabled: (p as { duplex_enabled?: boolean }).duplex_enabled ?? true,
   }));
 
   // Fall back to the default capability set when a shop has no registered
@@ -72,7 +74,10 @@ export async function GET(
 
   return Response.json(
     {
-      shop,
+      shop: {
+        ...shop,
+        online_payments_enabled: (shop as { online_payments_enabled?: boolean }).online_payments_enabled ?? true,
+      },
       pricing,
       printers: printerList,
       capabilities,
@@ -81,6 +86,10 @@ export async function GET(
         online: printerOnline,
         last_seen_at: primary?.last_seen_at ?? null,
         connection_type: primary?.connection_type ?? null,
+      },
+      printer_features: {
+        color_enabled: primary?.color_enabled ?? true,
+        duplex_enabled: primary?.duplex_enabled ?? true,
       },
     },
     {

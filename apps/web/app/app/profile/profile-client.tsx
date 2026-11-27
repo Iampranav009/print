@@ -9,14 +9,18 @@ import {
   Camera,
   CheckCircle2,
   Edit3,
+  FileText,
+  LifeBuoy,
   Loader2,
+  RotateCcw,
+  ShieldCheck,
   LogOut,
   Phone,
   Printer,
   Store,
   User,
 } from "lucide-react";
-import { LargeTitle } from "@/components/mobile/NavBar";
+import { TabTopBar } from "@/components/mobile/NavBar";
 import { ListGroup, ListRow } from "@/components/mobile/List";
 import { Sheet } from "@/components/mobile/Sheet";
 
@@ -139,14 +143,13 @@ export function ProfileClient({ user, stats }: ProfileProps) {
 
   return (
     <div className="min-h-full pb-32">
-      <LargeTitle
+      <TabTopBar
         title="Profile"
-        subtitle="Account"
         right={
           <button
             type="button"
             onClick={() => setEditing(true)}
-            className="glass-card mb-1 flex h-10 items-center gap-1.5 rounded-full px-4 text-[15px] font-semibold text-tint active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-tint"
+            className="flex h-10 items-center gap-1.5 rounded-full bg-tint/10 px-4 text-[15px] font-semibold text-tint transition-transform active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-tint"
           >
             <Edit3 className="w-4 h-4" />
             Edit
@@ -154,7 +157,7 @@ export function ProfileClient({ user, stats }: ProfileProps) {
         }
       />
 
-      <div className="space-y-5 px-4">
+      <div className="space-y-5 px-4 pt-4">
         <section className="glass-card rounded-[28px] p-5">
           <div className="flex items-center gap-4">
             <div className="relative flex h-[72px] w-[72px] shrink-0 items-center justify-center overflow-hidden rounded-full bg-tint/10 ring-4 ring-white/80">
@@ -226,6 +229,13 @@ export function ProfileClient({ user, stats }: ProfileProps) {
             iconClassName="bg-red-500/10 text-red-600"
             title={<span className="text-red-600">Sign out</span>}
           />
+        </ListGroup>
+
+        <ListGroup title="Policies & help">
+          <ListRow href="/privacy" icon={<ShieldCheck className="h-[18px] w-[18px]" />} title="Privacy Policy" />
+          <ListRow href="/terms" icon={<FileText className="h-[18px] w-[18px]" />} title="Terms & Conditions" />
+          <ListRow href="/refund" icon={<RotateCcw className="h-[18px] w-[18px]" />} title="Refund & Cancellation" />
+          <ListRow href="/support" icon={<LifeBuoy className="h-[18px] w-[18px]" />} title="Help & Support" />
         </ListGroup>
       </div>
 

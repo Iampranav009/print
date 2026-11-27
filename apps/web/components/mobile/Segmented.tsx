@@ -7,6 +7,7 @@ interface SegmentedOption<T extends string> {
   label: string;
   icon?: React.ReactNode;
   disabled?: boolean;
+  unavailable?: boolean; // shown but blurred/non-interactive (not using disabled attr)
   title?: string;
 }
 
@@ -46,11 +47,11 @@ export function Segmented<T extends string>({ options, value, onChange, ariaLabe
             aria-checked={active}
             disabled={opt.disabled}
             title={opt.title}
-            onClick={() => onChange(opt.value)}
+            onClick={() => !opt.unavailable && onChange(opt.value)}
             style={{ touchAction: "manipulation" }}
             className={`relative z-10 flex items-center justify-center gap-1.5 rounded-[9px] px-3 font-semibold transition-colors ${h} ${
               active ? "text-label" : "text-zinc-500"
-            } disabled:cursor-not-allowed disabled:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-tint`}
+            } ${opt.unavailable ? "pointer-events-none opacity-40 blur-[0.4px]" : ""} disabled:cursor-not-allowed disabled:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-tint`}
           >
             {opt.icon}
             {opt.label}

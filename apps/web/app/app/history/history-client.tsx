@@ -2,10 +2,10 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
-import { FileText, Clock } from "lucide-react";
+import { FileText, Clock, Plus } from "lucide-react";
 import { StatusPill } from "@/components/StatusPill";
 import { EmptyState } from "@/components/EmptyState";
-import { LargeTitle } from "@/components/mobile/NavBar";
+import { TabTopBar, TopBarLink } from "@/components/mobile/NavBar";
 import { formatRelativeTime } from "@/lib/date-utils";
 import type { Job } from "@/lib/jobs";
 
@@ -18,9 +18,16 @@ export function HistoryClient({ initialJobs }: { initialJobs: Job[] }) {
 
   return (
     <div className="min-h-full pb-32">
-      <LargeTitle title="History" subtitle="Every print job on this account" />
+      <TabTopBar
+        title="History"
+        right={
+          <TopBarLink href="/app/scan" label="Start a new print">
+            <Plus className="h-5 w-5" strokeWidth={2.4} aria-hidden />
+          </TopBarLink>
+        }
+      />
 
-      <div className="px-4">
+      <div className="px-4 pt-4">
         {jobs.length === 0 ? (
           <EmptyState
             icon={<Clock className="h-6 w-6" aria-hidden />}

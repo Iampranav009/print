@@ -58,7 +58,7 @@ export function PrinterAssignments({ printers, bw, color, discoveredAt, onSaved 
       <select aria-label="Color printer" className="w-full rounded-xl border p-3" value={colorPrinter} onChange={e => setColorPrinter(e.target.value)}>{choices(colorPrinter)}</select>
     </label>}
     <p className="text-xs text-zinc-500">Choose a color-capable printer for color jobs. Selecting it does not change which print options you offer customers.</p>
-    <button onClick={save} disabled={busy || stale || !names.has(blackWhite) || (!same && !names.has(colorPrinter))} className="rounded-xl bg-indigo-600 px-5 py-2.5 text-sm font-semibold text-white disabled:opacity-50">{busy ? "Saving…" : "Save printer choices"}</button>
+    <button onClick={save} disabled={busy || !names.has(blackWhite) || (!same && !names.has(colorPrinter))} className="rounded-xl bg-indigo-600 px-5 py-2.5 text-sm font-semibold text-white disabled:opacity-50">{busy ? "Saving…" : "Save printer choices"}</button>
     {message && <p role="status" className="text-sm">{message}</p>}
   </section>;
 }

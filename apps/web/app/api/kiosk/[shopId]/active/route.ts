@@ -1,5 +1,6 @@
 import { NextRequest } from "next/server";
 import { getSupabase } from "@/lib/supabase";
+import { scheduleCleanup } from "@/lib/retention";
 
 // Public display data: names and progress only. Never return the PDF path,
 // release code, payment identifiers, phone number or customer account ID.
@@ -9,6 +10,7 @@ export async function GET(
 ) {
   const { shopId } = await params;
   const supabase = getSupabase();
+  scheduleCleanup();
   const results = await Promise.all([
     supabase.from("print_jobs")
       .select("id, shop_id, display_name, status, price_paise, created_at, updated_at")

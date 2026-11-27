@@ -2,7 +2,7 @@
 
 import React, { Suspense, useState, useEffect, useRef, useCallback, useId } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
-import type { PrinterCapabilities, PriceBreakdown } from "@printbuddy/shared";
+import type { PrinterCapabilities, PriceBreakdown, PrintOptions } from "@printbuddy/shared";
 import { DEFAULT_CAPABILITIES } from "@printbuddy/shared";
 import { PDFDocument } from "pdf-lib";
 import type { RealtimeChannel } from "@supabase/supabase-js";
@@ -19,6 +19,7 @@ import {
   type KioskEvent,
 } from "@/lib/kiosk-events";
 import { clearPendingShare, getPendingShare } from "@/lib/pending-share";
+import { dominantOrientation, imageToJpeg, isImageFile, isPdfFile } from "@/lib/print-files";
 import { NavBar } from "@/components/mobile/NavBar";
 import { Sheet } from "@/components/mobile/Sheet";
 import { Segmented } from "@/components/mobile/Segmented";
@@ -37,6 +38,7 @@ import {
   Banknote,
   CreditCard,
   Contrast,
+  Info,
   Palette,
   RectangleVertical,
   RectangleHorizontal,
@@ -45,8 +47,9 @@ import {
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 interface ShopData {
-  shop: { id: string; name: string; location: string | null; virtual_mode?: boolean; cash_payments_enabled?: boolean; default_payment_method?: "online" | "cash" };
+  shop: { id: string; name: string; location: string | null; virtual_mode?: boolean; cash_payments_enabled?: boolean; default_payment_method?: "online" | "cash"; online_payments_enabled?: boolean };
   capabilities: PrinterCapabilities | null;
+  printer_features?: { color_enabled: boolean; duplex_enabled: boolean };
 }
 
 interface FileState {
@@ -105,7 +108,7 @@ function defaultConfig(caps: PrinterCapabilities | null): Config {
     copies: 1,
     color: false,
     orientation: "portrait",
-    paper: caps?.media?.[0] ?? "A4",
+    paper: "A4",
     duplex: false,
     duplex_edge: "long",
     useCustomRange: false,
@@ -226,6 +229,7 @@ function OptionPair<T extends string>({
     label: string;
     icon: React.ReactNode;
     disabled?: boolean;
+    unavailable?: boolean;
     disabledReason?: string;
   }>;
   value: T;
@@ -244,6 +248,7 @@ function OptionPair<T extends string>({
           label: opt.label,
           icon: opt.icon,
           disabled: disabled || !!opt.disabled,
+          unavailable: opt.unavailable,
           title: opt.disabledReason,
         }))}
       />
@@ -295,23 +300,25 @@ function ToggleOption({
   value,
   onChange,
   disabled,
+  unavailable,
 }: {
   label: string;
   subtitle?: string;
   value: boolean;
   onChange: (v: boolean) => void;
   disabled?: boolean;
+  unavailable?: boolean;
 }) {
   const id = useId();
   return (
-    <div className="flex items-center justify-between gap-4">
+    <div className={`flex items-center justify-between gap-4${unavailable ? " pointer-events-none opacity-40 blur-[0.4px]" : ""}`}>
       <div id={id}>
         <p className="text-[15px] font-semibold text-label">{label}</p>
         {subtitle && <p className="text-[13px] text-secondary-label mt-0.5">{subtitle}</p>}
       </div>
       <Toggle
         checked={value}
-        onChange={() => !disabled && onChange(!value)}
+        onChange={() => !disabled && !unavailable && onChange(!value)}
         disabled={disabled}
         aria-labelledby={id}
       />
@@ -486,7 +493,9 @@ function PrintContent() {
         const data: ShopData = await res.json();
         if (!active) return;
         setShopData(data);
-        setPaymentMethod(data.shop.cash_payments_enabled && data.shop.default_payment_method === "cash" ? "cash" : "online");
+        const onlineOn = data.shop.online_payments_enabled !== false;
+        const cashOn = data.shop.cash_payments_enabled ?? false;
+        setPaymentMethod(!onlineOn && cashOn ? "cash" : "online");
         if (data.capabilities) setConfig(defaultConfig(data.capabilities));
       } catch (err: unknown) {
         if (!active) return;
@@ -543,25 +552,21 @@ function PrintContent() {
   }, [fileState?.path, config?.copies, config?.color, config?.orientation, config?.paper, config?.duplex, config?.useCustomRange, config?.pageRange, config?.numberUp, config?.mediaType]);
 
   // Merge PDFs + images into one PDF using pdf-lib. Runs entirely in the
-  // browser so the server keeps its single-file contract. Images become
-  // full-page pages sized to the image's own dimensions.
+  // browser so the server keeps its single-file contract. Images (any type the
+  // phone can open, including HEIC) become upright JPEG pages sized to the photo.
   const mergeFilesIntoPdf = useCallback(async (files: File[]): Promise<File> => {
     const out = await PDFDocument.create();
 
     for (const f of files) {
-      const buf = await f.arrayBuffer();
-      if (f.type === "application/pdf") {
-        const src = await PDFDocument.load(buf, { ignoreEncryption: true });
+      if (isPdfFile(f)) {
+        const src = await PDFDocument.load(await f.arrayBuffer(), { ignoreEncryption: true });
         const pages = await out.copyPages(src, src.getPageIndices());
         pages.forEach((p) => out.addPage(p));
-      } else if (f.type === "image/jpeg" || f.type === "image/jpg") {
-        const img = await out.embedJpg(new Uint8Array(buf));
-        const page = out.addPage([img.width, img.height]);
-        page.drawImage(img, { x: 0, y: 0, width: img.width, height: img.height });
-      } else if (f.type === "image/png") {
-        const img = await out.embedPng(new Uint8Array(buf));
-        const page = out.addPage([img.width, img.height]);
-        page.drawImage(img, { x: 0, y: 0, width: img.width, height: img.height });
+      } else {
+        const photo = await imageToJpeg(f);
+        const img = await out.embedJpg(photo.bytes);
+        const page = out.addPage([photo.width, photo.height]);
+        page.drawImage(img, { x: 0, y: 0, width: photo.width, height: photo.height });
       }
     }
 
@@ -581,15 +586,9 @@ function PrintContent() {
   const handleFilesSelect = useCallback(async (rawInputs: File[], append = false) => {
     if (rawInputs.length === 0) return;
 
-    const ACCEPTED = new Set([
-      "application/pdf",
-      "image/jpeg",
-      "image/png",
-      "image/jpg",
-    ]);
-    const rejected = rawInputs.filter((f) => !ACCEPTED.has(f.type));
+    const rejected = rawInputs.filter((f) => !isPdfFile(f) && !isImageFile(f));
     if (rejected.length > 0) {
-      setUploadError(`Unsupported file type: ${rejected.map((r) => r.name).join(", ")}`);
+      setUploadError(`Can't print ${rejected.map((r) => r.name).join(", ")} yet. Use a PDF or a photo (Word and PowerPoint: save as PDF first).`);
       return;
     }
 
@@ -621,13 +620,17 @@ function PrintContent() {
 
     try {
       // Always merge when there are multiple files or any image
-      const needsMerge =
-        allFiles.length > 1 ||
-        (allFiles[0].type !== "application/pdf");
+      const needsMerge = allFiles.length > 1 || !isPdfFile(allFiles[0]);
 
       const uploadableFile = needsMerge
         ? await mergeFilesIntoPdf(allFiles)
         : allFiles[0];
+
+      // Start in the layout the document mostly uses; the customer can still change it.
+      const detected = dominantOrientation(
+        await PDFDocument.load(await uploadableFile.arrayBuffer(), { ignoreEncryption: true })
+      );
+      setConfig((c) => (c ? { ...c, orientation: detected } : c));
 
       // Get signed upload URL for the (possibly merged) file
       const res = await fetch("/api/uploads", {
@@ -707,7 +710,7 @@ function PrintContent() {
         }
 
         // Shared documents are intentionally short-lived on the device.
-        if (Date.now() - pending.receivedAt > 30 * 60 * 1000) {
+        if (Date.now() - pending.receivedAt > 10 * 60 * 1000) {
           void clearPendingShare();
           setSharedImportError("The shared file expired for privacy. Please share it again.");
           return;
@@ -862,7 +865,7 @@ function PrintContent() {
       )}
 
       {/* Scrollable body */}
-      <div className={`flex-1 overflow-y-auto ${shopData?.shop.cash_payments_enabled ? "pb-64" : "pb-48"}`}>
+      <div className={`flex-1 overflow-y-auto ${(shopData?.shop.online_payments_enabled !== false) && shopData?.shop.cash_payments_enabled ? "pb-64" : "pb-48"}`}>
         {/* Upload zone / File preview */}
         <div className="px-4 pt-4">
           {!shopId && pendingSharedFiles.length > 0 ? (
@@ -908,7 +911,7 @@ function PrintContent() {
               </div>
               <div className="text-center">
                 <p className="text-[17px] font-semibold text-label">Upload document</p>
-                <p className="text-[13px] text-secondary-label mt-1">Pick one or more · PDF, JPG, PNG · up to 50 MB total</p>
+                <p className="text-[13px] text-secondary-label mt-1">PDF or photos (JPG, PNG, WebP, HEIC…) · up to 50 MB total</p>
               </div>
             </button>
           ) : (
@@ -932,13 +935,24 @@ function PrintContent() {
               </button>
 
               <DocumentPreview
-                files={rawFiles.length > 0 ? rawFiles : [{ file: fileState.file, name: fileState.file.name, mime: fileState.mime }]}
-                orientation={config?.orientation ?? "portrait"}
-                grayscale={config ? !config.color : false}
-                numberUp={config?.numberUp ?? 1}
-                paperSize={config?.paper ?? "A4"}
-                scaling={config?.scaling ?? "none"}
-                pageRange={config?.useCustomRange ? config.pageRange : null}
+                pdf={fileState.file}
+                label={rawFiles.length > 1 ? `${rawFiles.length} files` : rawFiles[0]?.name ?? fileState.file.name}
+                options={{
+                  copies: config?.copies ?? 1,
+                  color: config?.color ?? false,
+                  orientation: config?.orientation ?? "portrait",
+                  paper: config?.paper ?? "A4",
+                  duplex: config?.duplex ?? false,
+                  duplex_edge: config?.duplex_edge ?? "long",
+                  pageRange: config?.useCustomRange && config.pageRange.trim() ? config.pageRange : null,
+                  numberUp: config?.numberUp ?? 1,
+                  collate: config?.collate ?? true,
+                  quality: (config?.quality ?? "normal") as PrintOptions["quality"],
+                  mediaType: config?.mediaType ?? "plain",
+                  reverse: config?.reverse ?? false,
+                  scaling: (config?.scaling ?? "none") as PrintOptions["scaling"],
+                  finishings: config?.finishings ?? [],
+                }}
               />
 
               {rawFiles.length > 1 && (
@@ -947,6 +961,13 @@ function PrintContent() {
                 </p>
               )}
             </div>
+          )}
+
+          {!hasFile && pendingSharedFiles.length === 0 && (
+            <p className="mt-3 flex items-start gap-2 rounded-[14px] bg-tint/[0.07] px-3.5 py-2.5 text-[13px] leading-snug text-secondary-label">
+              <Info className="mt-0.5 h-4 w-4 shrink-0 text-tint" aria-hidden />
+              <span>You can print PDFs and photos (JPG, PNG, WebP, HEIC). For Word or PowerPoint files, save them as PDF first.</span>
+            </p>
           )}
 
           {uploadError && (
@@ -1035,8 +1056,8 @@ function PrintContent() {
                   value: "color",
                   label: "Colour",
                   icon: <Palette className="w-4 h-4" />,
-                  disabled: caps ? !caps.color : false,
-                  disabledReason: caps && !caps.color ? "This printer only supports Black & White" : undefined,
+                  unavailable: shopData?.printer_features?.color_enabled === false,
+                  disabledReason: shopData?.printer_features?.color_enabled === false ? "Not available at this shop" : undefined,
                 },
               ]}
             />
@@ -1052,24 +1073,21 @@ function PrintContent() {
               ]}
             />
 
-            {/* Duplex (if supported and document has > 1 page) */}
+            {/* Duplex (if hardware supports it; blurred when vendor disabled) */}
             {caps?.sides && caps.sides.some(s => s.startsWith("two-sided")) && (
               <ToggleOption
                 label="Double-sided"
-                subtitle={fileState && fileState.totalPages <= 1 ? "Need at least 2 pages" : undefined}
+                subtitle={
+                  shopData?.printer_features?.duplex_enabled === false
+                    ? "Not available at this shop"
+                    : fileState && fileState.totalPages <= 1
+                    ? "Need at least 2 pages"
+                    : undefined
+                }
                 value={config.duplex}
                 onChange={(v) => setConfig((c) => c ? { ...c, duplex: v } : c)}
                 disabled={fileState !== null && fileState.totalPages <= 1}
-              />
-            )}
-
-            {/* Paper size */}
-            {caps?.media && caps.media.length > 1 && (
-              <ChipStrip
-                label="Paper size"
-                options={caps.media as string[]}
-                value={config.paper}
-                onChange={(v) => setConfig((c) => c ? { ...c, paper: v } : c)}
+                unavailable={shopData?.printer_features?.duplex_enabled === false}
               />
             )}
 
@@ -1140,7 +1158,7 @@ function PrintContent() {
         style={{ paddingBottom: "max(12px, env(safe-area-inset-bottom))" }}
       >
         <div className="glass-sheet mx-auto max-w-2xl rounded-[28px] p-4">
-        {shopId && shopData?.shop.cash_payments_enabled && (
+        {shopId && (shopData?.shop.online_payments_enabled !== false) && shopData?.shop.cash_payments_enabled && (
           <div className="mb-3">
             <Segmented
               ariaLabel="Payment method"
@@ -1203,7 +1221,7 @@ function PrintContent() {
         ref={fileInputRef}
         type="file"
         multiple
-        accept=".pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png"
+        accept="application/pdf,.pdf,image/*,.heic,.heif"
         className="sr-only"
         aria-hidden
         onChange={(e) => {

@@ -2,6 +2,7 @@ import { getSupabase } from "@/lib/supabase";
 import { resolveAgentToken } from "@/lib/agent-auth";
 import { NextRequest } from "next/server";
 import { printerForJob } from "@/lib/printer-routing";
+import { RETENTION, minutesAgo, scheduleCleanup } from "@/lib/retention";
 
 export async function GET(req: NextRequest) {
   const agent = await resolveAgentToken(req.headers.get("authorization"));
@@ -10,6 +11,10 @@ export async function GET(req: NextRequest) {
   }
 
   const supabase = getSupabase();
+  scheduleCleanup();
+  // Jobs older than this are failed and refunded by the cleanup, never printed late
+  // when a printer reconnects (and a long-stuck "printing" job no longer blocks the queue).
+  const freshSince = minutesAgo(RETENTION.waitingToPrint);
 
   // A physical printer has one active slot. Other paid jobs remain durable
   // in the database and become eligible when this job finishes.
@@ -18,6 +23,7 @@ export async function GET(req: NextRequest) {
     .select("id")
     .eq("shop_id", agent.shopId)
     .eq("status", "printing")
+    .gte("updated_at", freshSince)
     .limit(1)
     .maybeSingle();
   if (printingError) return Response.json({ error: "Queue unavailable" }, { status: 503 });
@@ -30,6 +36,7 @@ export async function GET(req: NextRequest) {
       )
       .eq("shop_id", agent.shopId)
       .in("status", ["dispatched", "released", "awaiting_release"])
+      .gte("updated_at", freshSince)
       // Preserve FIFO even when the vendor asks the agent to retry a job.
       .order("created_at", { ascending: true })
       .limit(1)

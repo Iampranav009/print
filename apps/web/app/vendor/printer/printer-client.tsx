@@ -35,7 +35,7 @@ export interface PrinterClientProps {
   initialData: {
     discovered_printers?: Array<{ name: string; driver?: string; is_default?: boolean }>;
     discovered_at?: string | null;
-    shop: { id: string; name: string; virtual_mode: boolean; cash_payments_enabled?: boolean; default_payment_method?: "online" | "cash" };
+    shop: { id: string; name: string; virtual_mode: boolean; cash_payments_enabled?: boolean; default_payment_method?: "online" | "cash"; online_payments_enabled?: boolean };
     soundSettings?: SoundSettings;
     printer: {
       id: string;
@@ -81,7 +81,6 @@ interface PricingFields {
   bw_page_paise: number;
   color_page_paise: number;
   duplex_factor: number;
-  a3_multiplier: number;
   min_charge_paise: number;
 }
 
@@ -95,16 +94,23 @@ function useDebounce<T>(value: T, delay: number): T {
   return debounced;
 }
 
-// Live example price preview for 5-page A4 B&W simplex job
-function pricePreview(pricing: PricingFields): string {
-  const pages = 5;
-  const raw = pages * pricing.bw_page_paise;
-  const total = Math.max(raw, pricing.min_charge_paise);
+function formatINR(paise: number): string {
   return new Intl.NumberFormat("en-IN", {
     style: "currency",
     currency: "INR",
     minimumFractionDigits: 2,
-  }).format(total / 100);
+  }).format(paise / 100);
+}
+
+// Live example price preview
+function pricePreview(pricing: PricingFields): { simplex: string; duplex: string } {
+  const pages = 5;
+  const simplexRaw = pages * pricing.bw_page_paise;
+  const simplex = formatINR(Math.max(simplexRaw, pricing.min_charge_paise));
+  // 5 pages duplex: 2 sheets (4 pages) at discount + 1 single-sided page
+  const duplexRaw = 4 * pricing.bw_page_paise * pricing.duplex_factor + pricing.bw_page_paise;
+  const duplex = formatINR(Math.max(duplexRaw, pricing.min_charge_paise));
+  return { simplex, duplex };
 }
 
 export function PrinterClient({ initialData }: PrinterClientProps) {
@@ -138,8 +144,8 @@ export function PrinterClient({ initialData }: PrinterClientProps) {
     data.soundSettings?.language ?? "en"
   );
   const [savingSound, setSavingSound] = useState(false);
+  const [onlineEnabled, setOnlineEnabled] = useState(data.shop?.online_payments_enabled ?? true);
   const [cashEnabled, setCashEnabled] = useState(data.shop?.cash_payments_enabled ?? false);
-  const [defaultPaymentMethod, setDefaultPaymentMethod] = useState<"online" | "cash">(data.shop?.default_payment_method ?? "online");
   const [savingPayment, setSavingPayment] = useState(false);
 
   // Pricing
@@ -147,7 +153,6 @@ export function PrinterClient({ initialData }: PrinterClientProps) {
     bw_page_paise: 200,
     color_page_paise: 1000,
     duplex_factor: 0.75,
-    a3_multiplier: 2.0,
     min_charge_paise: 300,
   });
   const [pricingLoading, setPricingLoading] = useState(true);
@@ -159,10 +164,11 @@ export function PrinterClient({ initialData }: PrinterClientProps) {
   useEffect(() => {
     fetch("/api/vendor/pricing")
       .then((r) => r.json())
-      .then((d: { pricing: PricingFields }) => {
-        const p = d.pricing ?? d; // unwrap nested .pricing key
-        setPricing(p);
-        savedPricingRef.current = p;
+      .then((d: { pricing: PricingFields & { a3_multiplier?: number } }) => {
+        const raw = d.pricing ?? d;
+        const { a3_multiplier: _ignored, ...p } = raw as typeof raw;
+        setPricing(p as PricingFields);
+        savedPricingRef.current = p as PricingFields;
       })
       .catch(() => {})
       .finally(() => setPricingLoading(false));
@@ -185,8 +191,8 @@ export function PrinterClient({ initialData }: PrinterClientProps) {
         setMode(json.status?.mode ?? (json.shop?.virtual_mode ? "test" : "real"));
         setColorEnabled(json.printer?.color_enabled ?? false);
         setDuplexEnabled(json.printer?.duplex_enabled ?? false);
+        setOnlineEnabled(json.shop?.online_payments_enabled ?? true);
         setCashEnabled(json.shop?.cash_payments_enabled ?? false);
-        setDefaultPaymentMethod(json.shop?.default_payment_method ?? "online");
       }
     } catch {
       // ignore
@@ -351,25 +357,24 @@ export function PrinterClient({ initialData }: PrinterClientProps) {
     }
   };
 
-  const savePaymentSettings = async (cash: boolean, preferred: "online" | "cash") => {
-    const previousCash = cashEnabled;
-    const previousDefault = defaultPaymentMethod;
-    const safeDefault = cash ? preferred : "online";
-    setCashEnabled(cash);
-    setDefaultPaymentMethod(safeDefault);
+  const savePaymentToggle = async (field: "online_payments_enabled" | "cash_payments_enabled", value: boolean) => {
+    const prevOnline = onlineEnabled;
+    const prevCash = cashEnabled;
+    if (field === "online_payments_enabled") setOnlineEnabled(value);
+    else setCashEnabled(value);
     setSavingPayment(true);
     try {
       const res = await fetch("/api/vendor/printer", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ cash_payments_enabled: cash, default_payment_method: safeDefault }),
+        body: JSON.stringify({ [field]: value }),
       });
       const json = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(json.error || "Could not save payment settings");
       showToast("Payment settings saved");
     } catch (err) {
-      setCashEnabled(previousCash);
-      setDefaultPaymentMethod(previousDefault);
+      setOnlineEnabled(prevOnline);
+      setCashEnabled(prevCash);
       showToast(err instanceof Error ? err.message : "Could not save payment settings");
     } finally {
       setSavingPayment(false);
@@ -393,12 +398,9 @@ export function PrinterClient({ initialData }: PrinterClientProps) {
   const handlePricingChange = (field: keyof PricingFields, rawValue: string) => {
     const value = parseFloat(rawValue);
     if (isNaN(value) || value < 0) return;
-    // duplex_factor and a3_multiplier are stored as decimals (e.g. 0.9, 2.0)
+    // duplex_factor is stored as a decimal (e.g. 0.75)
     // bw/color/min are stored as paise integers
-    const stored =
-      field === "duplex_factor" || field === "a3_multiplier"
-        ? value
-        : Math.round(value * 100);
+    const stored = field === "duplex_factor" ? value : Math.round(value * 100);
     setPricing((prev) => ({ ...prev, [field]: stored }));
     setPricingDirty(true);
   };
@@ -552,38 +554,61 @@ export function PrinterClient({ initialData }: PrinterClientProps) {
       )}
 
       {mode === "real" && (
-        <div className="bg-white rounded-2xl border border-zinc-100 p-6 shadow-sm space-y-5">
-          <div className="flex items-start justify-between gap-4">
-            <div>
-              <h2 className="text-lg font-semibold text-zinc-900">Customer payments</h2>
-              <p className="text-sm text-zinc-500 mt-1">Online payments remain automatic. Cash jobs wait for confirmation in the Windows HIMMER app.</p>
+        <div className="bg-white rounded-2xl border border-zinc-100 p-6 shadow-sm space-y-4">
+          <div>
+            <h2 className="text-lg font-semibold text-zinc-900">Customer payments</h2>
+            <p className="text-sm text-zinc-500 mt-1">Choose which payment methods customers can use at this shop.</p>
+          </div>
+
+          <div className="space-y-3">
+            {/* Online (Cashfree UPI) — toggleable */}
+            <div className="flex items-center justify-between py-3 px-4 rounded-xl bg-zinc-50 border border-zinc-100">
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-lg bg-indigo-50 flex items-center justify-center">
+                  <CreditCard className="w-4 h-4 text-indigo-600" />
+                </div>
+                <div>
+                  <p className="text-sm font-semibold text-zinc-900">Online (Cashfree UPI)</p>
+                  <p className="text-xs text-zinc-500">Payment confirmed automatically before job releases</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                role="switch"
+                aria-label="Accept online payments"
+                aria-checked={onlineEnabled}
+                disabled={savingPayment}
+                onClick={() => void savePaymentToggle("online_payments_enabled", !onlineEnabled)}
+                className={`relative shrink-0 w-12 h-7 rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600 disabled:opacity-60 ${onlineEnabled ? "bg-indigo-600" : "bg-zinc-300"}`}
+              >
+                <span className={`absolute left-0 top-1 w-5 h-5 rounded-full bg-white shadow-sm transition-transform ${onlineEnabled ? "translate-x-6" : "translate-x-1"}`} />
+              </button>
             </div>
-            <button
-              type="button"
-              role="switch"
-              aria-label="Accept cash payments"
-              aria-checked={cashEnabled}
-              disabled={savingPayment}
-              onClick={() => void savePaymentSettings(!cashEnabled, !cashEnabled ? defaultPaymentMethod : "online")}
-              className={`relative shrink-0 w-12 h-7 rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600 disabled:opacity-60 ${cashEnabled ? "bg-indigo-600" : "bg-zinc-300"}`}
-            >
-              <span className={`absolute left-0 top-1 w-5 h-5 rounded-full bg-white shadow-sm transition-transform ${cashEnabled ? "translate-x-6" : "translate-x-1"}`} />
-            </button>
+
+            {/* Cash — toggleable */}
+            <div className="flex items-center justify-between py-3 px-4 rounded-xl bg-zinc-50 border border-zinc-100">
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-lg bg-green-50 flex items-center justify-center">
+                  <Banknote className="w-4 h-4 text-green-600" />
+                </div>
+                <div>
+                  <p className="text-sm font-semibold text-zinc-900">Cash at counter</p>
+                  <p className="text-xs text-zinc-500">Job waits until shop confirms payment received</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                role="switch"
+                aria-label="Accept cash payments"
+                aria-checked={cashEnabled}
+                disabled={savingPayment}
+                onClick={() => void savePaymentToggle("cash_payments_enabled", !cashEnabled)}
+                className={`relative shrink-0 w-12 h-7 rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600 disabled:opacity-60 ${cashEnabled ? "bg-indigo-600" : "bg-zinc-300"}`}
+              >
+                <span className={`absolute left-0 top-1 w-5 h-5 rounded-full bg-white shadow-sm transition-transform ${cashEnabled ? "translate-x-6" : "translate-x-1"}`} />
+              </button>
+            </div>
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            {([{"value":"online","label":"Online payment","detail":"Cashfree confirmation","icon":CreditCard},{"value":"cash","label":"Cash at counter","detail":"Owner confirms receipt","icon":Banknote}] as const).map((option) => {
-              const Icon = option.icon;
-              const disabled = option.value === "cash" && !cashEnabled;
-              return (
-                <button key={option.value} type="button" disabled={disabled || savingPayment} onClick={() => void savePaymentSettings(cashEnabled, option.value)} className={`flex items-center gap-3 rounded-2xl border p-4 text-left transition-colors disabled:opacity-40 ${defaultPaymentMethod === option.value ? "border-indigo-500 bg-indigo-50" : "border-zinc-200 hover:bg-zinc-50"}`}>
-                  <span className="w-9 h-9 rounded-xl bg-white border border-zinc-100 flex items-center justify-center"><Icon className="w-4 h-4 text-indigo-600" /></span>
-                  <span><span className="block text-sm font-semibold text-zinc-900">{option.label}</span><span className="block text-xs text-zinc-500">{option.detail}</span></span>
-                  <span className={`ml-auto w-4 h-4 rounded-full border-4 ${defaultPaymentMethod === option.value ? "border-indigo-600" : "border-zinc-300"}`} />
-                </button>
-              );
-            })}
-          </div>
-          {cashEnabled && <p className="text-xs text-amber-700 bg-amber-50 border border-amber-100 rounded-xl px-3 py-2">Cash jobs do not print until the shop confirms that payment was received.</p>}
         </div>
       )}
 
@@ -737,7 +762,7 @@ export function PrinterClient({ initialData }: PrinterClientProps) {
 
           {pricingLoading ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {[...Array(5)].map((_, i) => (
+              {[...Array(4)].map((_, i) => (
                 <div key={i} className="h-14 rounded-xl bg-zinc-100 animate-pulse" />
               ))}
             </div>
@@ -780,38 +805,31 @@ export function PrinterClient({ initialData }: PrinterClientProps) {
                   </div>
                 </div>
 
-                {/* Duplex factor */}
+                {/* Duplex discount */}
                 <div className="space-y-1.5">
                   <label className="block text-xs font-semibold text-zinc-700">
-                    Duplex factor (multiplier)
+                    Double-sided discount (%)
                   </label>
-                  <input
-                    type="number"
-                    step="0.05"
-                    min="0.1"
-                    max="2"
-                    value={pricing.duplex_factor.toFixed(2)}
-                    onChange={(e) => handlePricingChange("duplex_factor", e.target.value)}
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-zinc-200 bg-white text-sm text-zinc-900 focus:outline-none focus:ring-2 focus:ring-indigo-600 font-mono text-xs"
-                  />
-                  <p className="text-[11px] text-zinc-400">0.75: two Rs.10 sides cost Rs.15 together. An unpaired last side stays Rs.10.</p>
-                </div>
-
-                {/* A3 multiplier */}
-                <div className="space-y-1.5">
-                  <label className="block text-xs font-semibold text-zinc-700">
-                    A3 multiplier
-                  </label>
-                  <input
-                    type="number"
-                    step="0.5"
-                    min="1"
-                    max="10"
-                    value={pricing.a3_multiplier.toFixed(2)}
-                    onChange={(e) => handlePricingChange("a3_multiplier", e.target.value)}
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-zinc-200 bg-white text-sm text-zinc-900 focus:outline-none focus:ring-2 focus:ring-indigo-600 font-mono text-xs"
-                  />
-                  <p className="text-[11px] text-zinc-400">e.g. 2.0 means A3 costs 2× the A4 rate</p>
+                  <div className="relative">
+                    <input
+                      type="number"
+                      step="1"
+                      min="0"
+                      max="90"
+                      value={Math.round((1 - pricing.duplex_factor) * 100)}
+                      onChange={(e) => {
+                        const pct = Math.min(90, Math.max(0, parseInt(e.target.value, 10) || 0));
+                        handlePricingChange("duplex_factor", String((100 - pct) / 100));
+                      }}
+                      className="w-full px-3.5 py-2.5 rounded-xl border border-zinc-200 bg-white text-sm text-zinc-900 focus:outline-none focus:ring-2 focus:ring-indigo-600 font-mono text-xs"
+                    />
+                  </div>
+                  <p className="text-[11px] text-zinc-400">
+                    Discount per page when printing double-sided. e.g. 25% = both sides of a sheet cost 25% less each.
+                    {pricing.bw_page_paise > 0 && (
+                      <> With ₹{(pricing.bw_page_paise / 100).toFixed(2)}/page B&amp;W, a duplex sheet costs ₹{(2 * pricing.bw_page_paise * pricing.duplex_factor / 100).toFixed(2)}.</>
+                    )}
+                  </p>
                 </div>
 
                 {/* Min charge */}
@@ -834,10 +852,14 @@ export function PrinterClient({ initialData }: PrinterClientProps) {
               </div>
 
               {/* Live price preview */}
-              <div className="flex items-center justify-between gap-4 px-4 py-3 rounded-xl bg-zinc-50 border border-zinc-100">
+              <div className="px-4 py-3 rounded-xl bg-zinc-50 border border-zinc-100 space-y-1">
                 <p className="text-xs text-zinc-500">
-                  Example: 5-page A4 B&amp;W simplex job →{" "}
-                  <span className="font-semibold text-zinc-800">{pricePreview(pricing)}</span>
+                  5-page B&amp;W single-sided →{" "}
+                  <span className="font-semibold text-zinc-800">{pricePreview(pricing).simplex}</span>
+                </p>
+                <p className="text-xs text-zinc-500">
+                  5-page B&amp;W double-sided →{" "}
+                  <span className="font-semibold text-zinc-800">{pricePreview(pricing).duplex}</span>
                 </p>
               </div>
 
@@ -936,6 +958,29 @@ export function PrinterClient({ initialData }: PrinterClientProps) {
                   <option value="en">English</option>
                   <option value="hi" disabled>Hindi (coming soon)</option>
                 </select>
+              </div>
+
+              {/* Test announcement button */}
+              <div className="flex items-center gap-3 pt-1">
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (!("speechSynthesis" in window)) return;
+                    const msg = soundLanguage === "hi"
+                      ? "नया प्रिंट जॉब मिला। कृपया अपने प्रिंट एकत्र करें।"
+                      : "New print job received. Customer, please collect your prints from the counter.";
+                    const utter = new window.SpeechSynthesisUtterance(msg);
+                    utter.volume = soundVolume / 100;
+                    utter.lang = soundLanguage === "hi" ? "hi-IN" : "en-IN";
+                    window.speechSynthesis.cancel();
+                    window.speechSynthesis.speak(utter);
+                  }}
+                  className="inline-flex items-center gap-2 px-4 py-2 rounded-xl border border-zinc-200 bg-white text-zinc-700 text-sm font-medium hover:bg-zinc-50 active:bg-zinc-100 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600"
+                >
+                  <Volume2 className="w-4 h-4 text-indigo-600" />
+                  Test announcement
+                </button>
+                <p className="text-xs text-zinc-400">Plays a sample through this browser — the agent uses its own speaker.</p>
               </div>
 
               <p className="text-xs text-zinc-400">

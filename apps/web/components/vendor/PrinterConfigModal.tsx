@@ -96,15 +96,14 @@ export function PrinterConfigModal({
       os_printer_name: string | null;
     };
 
-    if (!osPrinterName.trim()) {
-      setError("Select the installed printer on your shop computer first.");
-      return;
-    }
-
     if (activeTab === "wifi") {
       const trimmedIp = wifiIp.trim();
       if (!trimmedIp) {
-        setError("Please enter your printer's IP address.");
+        setError("Enter the printer's IP address (find it on the printer's Settings → Network screen).");
+        return;
+      }
+      if (!osPrinterName.trim()) {
+        setError("Select the printer installed on the shop computer — this is what HIMMER uses to send the job.");
         return;
       }
       payload = {
@@ -117,7 +116,7 @@ export function PrinterConfigModal({
     } else if (activeTab === "usb") {
       const trimmedName = osPrinterName.trim();
       if (!trimmedName) {
-        setError("Please enter the OS printer name as seen in your system settings.");
+        setError("Select or enter the OS printer name as it appears in Windows Printers & Scanners.");
         return;
       }
       payload = {
@@ -130,7 +129,11 @@ export function PrinterConfigModal({
     } else {
       const trimmedHost = networkHost.trim();
       if (!trimmedHost) {
-        setError("Please enter your printer's network IP address or hostname.");
+        setError("Enter the printer's static IP address or hostname on your network.");
+        return;
+      }
+      if (!osPrinterName.trim()) {
+        setError("Select the printer installed on the shop computer — this is what HIMMER uses to send the job.");
         return;
       }
       payload = {

@@ -2,6 +2,7 @@
 
 import React from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { ChevronLeft } from "lucide-react";
 
 interface NavBarProps {
@@ -47,14 +48,29 @@ export function NavBar({ title, back, backLabel = "Back", right }: NavBarProps) 
   );
 }
 
-export function LargeTitle({ title, subtitle, right }: { title: string; subtitle?: string; right?: React.ReactNode }) {
+/** Top bar for tab root screens: logo mark, screen title, trailing actions. */
+export function TabTopBar({ title, right }: { title: string; right?: React.ReactNode }) {
   return (
-    <header className="flex items-end justify-between gap-3 px-5 pb-3 pt-[max(1.25rem,env(safe-area-inset-top))]">
-      <div className="min-w-0">
-        {subtitle && <p className="text-[13px] font-medium text-secondary-label">{subtitle}</p>}
-        <h1 className="mt-0.5 text-[32px] font-bold leading-tight tracking-[-0.035em] text-label">{title}</h1>
+    <header className="glass-chrome sticky top-0 z-30 rounded-none border-x-0 border-t-0 border-b-black/[0.06] shadow-none pt-[env(safe-area-inset-top)]">
+      <div className="flex h-14 items-center gap-2.5 px-4">
+        <Image src="/himmer-symbol-nav.png" alt="" aria-hidden width={28} height={28} className="shrink-0" priority />
+        <h1 className="min-w-0 flex-1 truncate text-[20px] font-bold tracking-[-0.03em] text-label">{title}</h1>
+        {right && <div className="flex shrink-0 items-center gap-2">{right}</div>}
       </div>
-      {right}
     </header>
+  );
+}
+
+/** Round icon action for the top bar. */
+export function TopBarLink({ href, label, children }: { href: string; label: string; children: React.ReactNode }) {
+  return (
+    <Link
+      href={href}
+      aria-label={label}
+      style={{ touchAction: "manipulation" }}
+      className="flex h-10 w-10 items-center justify-center rounded-full bg-tint/10 text-tint transition-transform active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-tint"
+    >
+      {children}
+    </Link>
   );
 }

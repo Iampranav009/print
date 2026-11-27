@@ -31,11 +31,13 @@
           "accept": [
             "application/pdf",
             ".pdf",
-            "image/jpeg",
+            "image/*",
             ".jpg",
             ".jpeg",
-            "image/png",
-            ".png"
+            ".png",
+            ".webp",
+            ".heic",
+            ".heif"
           ]
         }
       ]

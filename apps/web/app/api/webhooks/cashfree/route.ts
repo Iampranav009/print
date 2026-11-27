@@ -2,6 +2,7 @@ import { getSupabase } from "@/lib/supabase";
 import { mapRefundStatus, verifyWebhookSignature } from "@/lib/cashfree";
 import { advanceVirtualJob, isVirtualShop } from "@/lib/virtual-print";
 import { broadcastToKiosk } from "@/lib/kiosk-broadcast";
+import { refundFailedJob } from "@/lib/refunds";
 import { NextRequest } from "next/server";
 
 export async function POST(req: NextRequest) {
@@ -93,15 +94,31 @@ export async function POST(req: NextRequest) {
       return Response.json({ error: "Payment record unavailable" }, { status: 503 });
     }
 
-    const { error: dispatchError } = await supabase
+    const { data: dispatched, error: dispatchError } = await supabase
       .from("print_jobs")
       .update({
         status: "dispatched",
         updated_at: new Date().toISOString(),
       })
       .eq("id", job.id)
-      .in("status", ["priced", "awaiting_payment", "payment_failed"]);
+      .in("status", ["priced", "awaiting_payment", "payment_failed"])
+      .select("id")
+      .maybeSingle();
     if (dispatchError) return Response.json({ error: "Dispatch failed" }, { status: 503 });
+    if (!dispatched) {
+      // Paid after the order expired: its document may already be deleted, so refund instead of printing.
+      if (job.status === "expired") {
+        const { data: failed } = await supabase
+          .from("print_jobs")
+          .update({ status: "print_failed", failure_reason: "Payment arrived after the order expired." })
+          .eq("id", job.id)
+          .eq("status", "expired")
+          .select("id, razorpay_order_id, price_paise")
+          .maybeSingle();
+        if (failed) await refundFailedJob(failed);
+      }
+      return Response.json({ ok: true });
+    }
 
     // Kiosk WebSocket: push a payment-success event immediately so the
     // kiosk display swaps to "Payment successful" without waiting for

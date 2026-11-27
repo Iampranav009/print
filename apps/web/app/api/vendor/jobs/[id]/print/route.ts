@@ -2,7 +2,7 @@ import { NextRequest } from "next/server";
 import { vendorShopId } from "@/lib/vendor-shop";
 import { getSupabase } from "@/lib/supabase";
 import { broadcastToKiosk } from "@/lib/kiosk-broadcast";
-import { createRefund } from "@/lib/cashfree";
+import { refundFailedJob } from "@/lib/refunds";
 
 const RETRYABLE = new Set(["dispatched", "awaiting_release", "released", "printing"]);
 const PRINTING_RETRY_AFTER_MS = 10 * 60 * 1000;
@@ -57,32 +57,7 @@ export async function POST(
     if (failError) return Response.json({ error: "Could not close the stalled job." }, { status: 503 });
     if (!failed) return Response.json({ error: "The job changed. Refresh the queue and try again." }, { status: 409 });
 
-    let refundStatus: string | null = null;
-    if (failed.razorpay_order_id) {
-      try {
-        const { data: payment } = await supabase
-          .from("payments")
-          .select("razorpay_payment_id")
-          .eq("razorpay_order_id", failed.razorpay_order_id)
-          .eq("status", "captured")
-          .maybeSingle();
-        if (payment?.razorpay_payment_id) {
-          const refund = await createRefund(failed.razorpay_order_id, failed.price_paise, id);
-          refundStatus = refund.status;
-          await supabase.from("payments").update({
-            refund_id: refund.id,
-            refund_status: refund.status,
-            ...(refund.status === "processed" ? { status: "refunded" } : {}),
-          }).eq("razorpay_order_id", failed.razorpay_order_id);
-          if (refund.status === "processed") {
-            await supabase.from("print_jobs").update({ status: "refunded" }).eq("id", id).eq("status", "print_failed");
-          }
-        }
-      } catch (refundError) {
-        console.error("Could not refund vendor-closed stalled job", { jobId: id, refundError });
-        await supabase.from("payments").update({ refund_status: "failed" }).eq("razorpay_order_id", failed.razorpay_order_id);
-      }
-    }
+    const refundStatus = await refundFailedJob(failed);
 
     await broadcastToKiosk(shopId, {
       type: "print:failed",

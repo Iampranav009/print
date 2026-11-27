@@ -9,7 +9,8 @@ export type JobStatus =
   | "printed"
   | "payment_failed"
   | "print_failed"
-  | "refunded";
+  | "refunded"
+  | "expired";
 
 export interface PrintOptions {
   copies: number;

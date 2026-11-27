@@ -1,8 +1,9 @@
 import { getSupabase } from "@/lib/supabase";
 import { resolveAgentToken } from "@/lib/agent-auth";
-import { createRefund } from "@/lib/cashfree";
+import { refundFailedJob } from "@/lib/refunds";
+import { deleteDocuments, scheduleCleanup } from "@/lib/retention";
 import { broadcastToKiosk } from "@/lib/kiosk-broadcast";
-import { NextRequest } from "next/server";
+import { NextRequest, after } from "next/server";
 import type { JobStatus } from "@printbuddy/shared";
 
 const VALID_TRANSITIONS: Partial<Record<JobStatus, JobStatus[]>> = {
@@ -82,50 +83,14 @@ export async function POST(
     await broadcastToKiosk(job.shop_id, { type: "print:failed", jobId: id, reason: failureReason, sentAt: new Date().toISOString() });
   }
 
-  if (newStatus === "print_failed" && job.razorpay_order_id) {
-    try {
-      const { data: payment } = await supabase
-        .from("payments")
-        .select("razorpay_payment_id")
-        .eq("razorpay_order_id", job.razorpay_order_id)
-        .eq("status", "captured")
-        .single();
-
-      if (payment?.razorpay_payment_id) {
-        const refund = await createRefund(
-          job.razorpay_order_id,
-          job.price_paise,
-          job.id
-        );
-
-        const { error: refundSaveError } = await supabase
-          .from("payments")
-          .update({
-            refund_id: refund.id,
-            refund_status: refund.status,
-          })
-          .eq("razorpay_order_id", job.razorpay_order_id);
-        if (refundSaveError) throw refundSaveError;
-
-        if (refund.status === "processed") {
-          await supabase.from("payments").update({ status: "refunded" }).eq("razorpay_order_id", job.razorpay_order_id);
-          await supabase.from("print_jobs").update({ status: "refunded" }).eq("id", id).eq("status", "print_failed");
-        }
-      } else {
-        console.error("[refund] Captured payment not found for failed job", { jobId: id });
-      }
-    } catch (error) {
-      console.error("[refund] Could not initiate refund", { jobId: id, error });
-      await supabase.from("payments").update({ refund_status: "failed" }).eq("razorpay_order_id", job.razorpay_order_id);
-    }
+  if (newStatus === "print_failed") {
+    await refundFailedJob(job);
   }
 
-  if (newStatus === "printed") {
-    supabase.storage
-      .from("documents")
-      .remove([job.file_path])
-      .catch(() => {});
+  if (newStatus === "printed" && job.file_path) {
+    after(() => deleteDocuments([job.file_path]));
   }
+  scheduleCleanup();
 
   return Response.json({ ok: true });
 }

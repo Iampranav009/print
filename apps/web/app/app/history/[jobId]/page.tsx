@@ -33,7 +33,8 @@ type JobStatus =
   | "awaiting_payment"
   | "paid"
   | "dispatched"
-  | "refunded";
+  | "refunded"
+  | "expired";
 
 interface Job {
   id: string;
@@ -63,6 +64,7 @@ const TERMINAL: JobStatus[] = [
   "payment_failed",
   "cancelled",
   "refunded",
+  "expired",
 ];
 const POLL_INTERVAL = 4000;
 const SLOW_THRESHOLD_MS = 3 * 60 * 1000;
@@ -156,6 +158,13 @@ function getStatusConfig(status: JobStatus, paymentMethod: "online" | "cash" = "
         headline: "Refund processed",
         sub: "Cashfree confirmed your refund. Your bank may take time to show the credit.",
         color: "green",
+      };
+    case "expired":
+      return {
+        icon: <Clock className="w-10 h-10 text-zinc-400" />,
+        headline: "Order expired",
+        sub: "This order wasn’t paid in time, so we deleted your file. Start a new print to try again.",
+        color: "zinc",
       };
     case "cancelled":
       return {

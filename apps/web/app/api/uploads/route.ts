@@ -4,6 +4,7 @@
 // `filePath`/`path` and `mime` so existing and current callers all work.
 
 import { getSupabase } from "@/lib/supabase";
+import { createClient as createServerSupabase } from "@/lib/supabase/server";
 import { NextRequest } from "next/server";
 import crypto from "crypto";
 
@@ -20,6 +21,10 @@ interface UploadBody {
 }
 
 export async function POST(req: NextRequest) {
+  const authed = await createServerSupabase();
+  const { data: { user } } = await authed.auth.getUser();
+  if (!user) return Response.json({ error: "Sign in to upload a document." }, { status: 401 });
+
   const body = (await req.json()) as UploadBody;
 
   // Accept both { mime, size } and { mimeType, fileSize } — Anti Gravity's

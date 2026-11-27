@@ -47,6 +47,7 @@ interface PrinterConfigBody {
   sound_volume?: number;
   cash_payments_enabled?: boolean;
   default_payment_method?: "online" | "cash";
+  online_payments_enabled?: boolean;
 }
 
 export async function GET(_req: NextRequest) {
@@ -59,7 +60,7 @@ export async function GET(_req: NextRequest) {
   const [{ data: shop, error: shopError }, { data: printer, error: printerError }, { data: agents, error: agentError }] = await Promise.all([
     supabase
       .from("shops")
-      .select("id, name, virtual_mode, discovered_printers, discovered_at, sound_enabled, sound_language, sound_volume, cash_payments_enabled, default_payment_method")
+      .select("id, name, virtual_mode, discovered_printers, discovered_at, sound_enabled, sound_language, sound_volume, cash_payments_enabled, default_payment_method, online_payments_enabled")
       .eq("id", shopId)
       .single(),
     supabase
@@ -115,6 +116,7 @@ export async function GET(_req: NextRequest) {
       virtual_mode: shop?.virtual_mode ?? false,
       cash_payments_enabled: shop?.cash_payments_enabled ?? false,
       default_payment_method: shop?.default_payment_method ?? "online",
+      online_payments_enabled: (shop as { online_payments_enabled?: boolean })?.online_payments_enabled ?? true,
     },
     soundSettings: {
       enabled: shop?.sound_enabled ?? false,
@@ -174,6 +176,7 @@ export async function PUT(req: NextRequest) {
     const vol = Math.round(body.sound_volume);
     if (vol >= 0 && vol <= 100) shopPatch.sound_volume = vol;
   }
+  if (body.online_payments_enabled !== undefined) shopPatch.online_payments_enabled = body.online_payments_enabled;
   if (body.cash_payments_enabled !== undefined) shopPatch.cash_payments_enabled = body.cash_payments_enabled;
   if (body.default_payment_method !== undefined) {
     if (!['online', 'cash'].includes(body.default_payment_method)) {
@@ -201,7 +204,7 @@ export async function PUT(req: NextRequest) {
 
   // Early return if only sound settings were updated (no printer row changes needed).
   if (body.mode === undefined && Object.keys(body).every(
-    (k) => ["sound_enabled", "sound_language", "sound_volume", "cash_payments_enabled", "default_payment_method"].includes(k)
+    (k) => ["sound_enabled", "sound_language", "sound_volume", "cash_payments_enabled", "default_payment_method", "online_payments_enabled"].includes(k)
   )) {
     return Response.json({ ok: true });
   }
@@ -307,6 +310,8 @@ export async function PUT(req: NextRequest) {
       bw_os_printer_name: body.bw_os_printer_name ?? body.os_printer_name ?? null,
       color_os_printer_name: body.color_os_printer_name ?? body.os_printer_name ?? null,
     };
+    if (body.color_enabled !== undefined) insertRow.color_enabled = body.color_enabled;
+    if (body.duplex_enabled !== undefined) insertRow.duplex_enabled = body.duplex_enabled;
     let result = await tryInsert(insertRow);
     if (result.error && isMissingColumnErr(result.error.message) && !routingChanged && body.os_printer_name === undefined) {
       result = await tryInsert({

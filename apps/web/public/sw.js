@@ -4,11 +4,10 @@ const SHARE_DB = "printbuddy-share-target";
 const SHARE_STORE = "pending";
 const SHARE_KEY = "latest";
 const MAX_SHARED_BYTES = 50 * 1024 * 1024;
-const ACCEPTED_SHARED_TYPES = new Set([
-  "application/pdf",
-  "image/jpeg",
-  "image/png",
-]);
+// PDFs and any image; HEIC from iPhones can arrive with an empty type, so check the name too.
+function isPrintableShare(file) {
+  return file.type === "application/pdf" || file.type.startsWith("image/") || /\.(pdf|heic|heif)$/i.test(file.name);
+}
 
 function openShareDb() {
   return new Promise((resolve, reject) => {
@@ -79,7 +78,7 @@ self.addEventListener("fetch", (e) => {
           const valid =
             files.length > 0 &&
             totalBytes <= MAX_SHARED_BYTES &&
-            files.every((file) => ACCEPTED_SHARED_TYPES.has(file.type));
+            files.every(isPrintableShare);
 
           if (!valid) {
             return Response.redirect(new URL("/app/print?shared_error=1", self.location.origin), 303);

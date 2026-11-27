@@ -1,6 +1,7 @@
 import { getSupabase } from "@/lib/supabase";
 import { NextRequest } from "next/server";
 import { fetchRefund } from "@/lib/cashfree";
+import { scheduleCleanup } from "@/lib/retention";
 
 export async function GET(
   _req: NextRequest,
@@ -8,6 +9,7 @@ export async function GET(
 ) {
   const { id } = await params;
   const supabase = getSupabase();
+  scheduleCleanup();
 
   const { data: job, error } = await supabase
     .from("print_jobs")
