@@ -4,6 +4,7 @@ import { Manrope } from "next/font/google";
 import { RegisterSW } from "@/app/components/register-sw";
 import { JsonLd } from "@/components/seo/JsonLd";
 import { orgSchema } from "@/components/seo/schemas";
+import { Analytics } from "@vercel/analytics/next";
 import "./globals.css";
 import "./marketing.css";
 
@@ -109,6 +110,7 @@ export default function RootLayout({
       <body className="min-h-full flex flex-col" suppressHydrationWarning>
         {children}
         <JsonLd schema={orgSchema()} />
+        <Analytics />
         <RegisterSW />
         <Script
           src="https://sdk.cashfree.com/js/v3/cashfree.js"
