@@ -21,7 +21,7 @@ export function LoadingSpinner({
   return (
     <div role="status" className="inline-flex items-center justify-center">
       <Loader2
-        className={`animate-spin text-zinc-400 ${sizeClasses[size]} ${className}`}
+        className={`animate-spin text-tint ${sizeClasses[size]} ${className}`}
         aria-hidden="true"
       />
       <span className="sr-only">{label}</span>

@@ -2,28 +2,12 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
-import { FileText, Clock, ChevronRight, Printer } from "lucide-react";
-import { StatusPill, type JobStatus } from "@/components/StatusPill";
+import { FileText, Clock } from "lucide-react";
+import { StatusPill } from "@/components/StatusPill";
+import { EmptyState } from "@/components/EmptyState";
+import { LargeTitle } from "@/components/mobile/NavBar";
 import { formatRelativeTime } from "@/lib/date-utils";
-
-export interface Job {
-  id: string;
-  shop_id: string;
-  shop_name: string;
-  user_id: string;
-  status: JobStatus;
-  price_paise: number;
-  pages: number;
-  copies: number;
-  color: boolean;
-  paper: string;
-  duplex: boolean;
-  orientation: "portrait" | "landscape";
-  release_code: string | null;
-  file_name: string;
-  created_at: string;
-  updated_at: string;
-}
+import type { Job } from "@/lib/jobs";
 
 function formatPaise(p: number) {
   return `₹${(p / 100).toFixed(2)}`;
@@ -33,73 +17,57 @@ export function HistoryClient({ initialJobs }: { initialJobs: Job[] }) {
   const [jobs] = useState<Job[]>(initialJobs);
 
   return (
-    <div className="min-h-full bg-white pb-24">
-      {/* Header */}
-      <div className="px-4 pt-4 pb-2">
-        <h1 className="text-xl font-bold text-gray-900">History</h1>
-        <p className="text-xs text-gray-500 mt-0.5">Every print job on this account</p>
+    <div className="min-h-full pb-32">
+      <LargeTitle title="History" subtitle="Every print job on this account" />
+
+      <div className="px-4">
+        {jobs.length === 0 ? (
+          <EmptyState
+            icon={<Clock className="h-6 w-6" aria-hidden />}
+            title="No prints yet"
+            subtitle="Your history will appear here after your first print."
+            actionText="Start a print"
+            actionHref="/app/scan"
+          />
+        ) : (
+          <>
+            <p className="mb-2 px-1 text-[13px] font-semibold text-secondary-label">
+              {jobs.length} print{jobs.length !== 1 ? "s" : ""}
+            </p>
+            <ul className="space-y-2.5">
+              {jobs.map((job) => (
+                <li key={job.id}>
+                  <Link
+                    href={`/app/history/${job.id}`}
+                    style={{ touchAction: "manipulation" }}
+                    className="glass-card flex items-center gap-3 rounded-[20px] p-3.5 transition-transform duration-200 ease-spring active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-tint"
+                  >
+                    <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[14px] bg-tint/10 text-tint">
+                      <FileText className="h-5 w-5" aria-hidden />
+                    </span>
+
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate text-[15px] font-semibold text-label">
+                        {job.file_name || `Print #${job.id.slice(0, 6)}`}
+                      </span>
+                      <span className="mt-0.5 flex items-center gap-1 text-[13px] text-secondary-label">
+                        <span className="truncate">{job.shop_name}</span>
+                        <span aria-hidden>·</span>
+                        <span className="whitespace-nowrap">{formatRelativeTime(job.created_at)}</span>
+                      </span>
+                    </span>
+
+                    <span className="flex shrink-0 flex-col items-end gap-1.5">
+                      <StatusPill status={job.status} />
+                      <span className="text-[15px] font-bold tabular-nums text-label">{formatPaise(job.price_paise)}</span>
+                    </span>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </>
+        )}
       </div>
-
-      {jobs.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-20 px-6">
-          <div className="w-16 h-16 rounded-2xl bg-yellow-100 flex items-center justify-center mb-4">
-            <Clock className="w-8 h-8 text-yellow-500" />
-          </div>
-          <h3 className="text-base font-bold text-gray-900 text-center">No prints yet</h3>
-          <p className="text-sm text-gray-500 text-center mt-1 max-w-xs">
-            Your history will appear here after your first print
-          </p>
-          <Link
-            href="/app/scan"
-            style={{ touchAction: "manipulation" }}
-            className="mt-6 min-h-[48px] px-6 bg-green-500 hover:bg-green-600 active:bg-green-700 text-white font-semibold text-sm rounded-2xl flex items-center gap-2 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-green-500"
-          >
-            <Printer className="w-4 h-4" />
-            Start a print
-          </Link>
-        </div>
-      ) : (
-        <div className="px-4 space-y-2.5">
-          <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">
-            Past Prints ({jobs.length})
-          </p>
-          {jobs.map((job) => (
-            <Link
-              key={job.id}
-              href={`/app/history/${job.id}`}
-              style={{ touchAction: "manipulation" }}
-              className="flex items-center gap-3 bg-white hover:bg-gray-50 active:bg-gray-100 rounded-2xl p-4 border border-gray-100 shadow-sm transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-green-500"
-            >
-              {/* File icon */}
-              <div className="w-11 h-11 rounded-xl bg-yellow-100 flex items-center justify-center flex-shrink-0">
-                <FileText className="w-5 h-5 text-yellow-600" />
-              </div>
-
-              {/* Middle */}
-              <div className="flex-1 min-w-0">
-                <h3 className="text-sm font-semibold text-gray-900 truncate">
-                  {job.file_name || `Print #${job.id.slice(0, 6)}`}
-                </h3>
-                <div className="flex items-center gap-1 text-xs text-gray-500 mt-0.5">
-                  <span className="truncate">{job.shop_name}</span>
-                  <span>·</span>
-                  <span className="whitespace-nowrap">{formatRelativeTime(job.created_at)}</span>
-                </div>
-              </div>
-
-              {/* Right */}
-              <div className="flex flex-col items-end gap-1.5 flex-shrink-0">
-                <StatusPill status={job.status} />
-                <span className="text-sm font-bold tabular-nums text-gray-900">
-                  {formatPaise(job.price_paise)}
-                </span>
-              </div>
-
-              <ChevronRight className="w-4 h-4 text-gray-300 flex-shrink-0" />
-            </Link>
-          ))}
-        </div>
-      )}
     </div>
   );
 }

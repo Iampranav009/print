@@ -336,7 +336,7 @@ export function QRScanner() {
           type="button"
           onClick={() => window.location.reload()}
           style={{ touchAction: "manipulation" }}
-          className="min-h-[48px] px-6 py-3 rounded-xl bg-indigo-600 text-white font-medium text-sm hover:bg-indigo-700 active:bg-indigo-800 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
+          className="min-h-12 px-7 rounded-full bg-tint text-white font-semibold text-[15px] transition-transform active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
         >
           Try Again
         </button>
@@ -364,22 +364,22 @@ export function QRScanner() {
       {/* Scrim Overlay */}
       <div className="absolute inset-0 pointer-events-none flex flex-col items-center justify-between p-6 z-10">
         {/* Top instructions */}
-        <div className="pt-8 text-center">
-          <p className="text-sm font-medium text-white/90 bg-black/40 px-4 py-2 rounded-full backdrop-blur-sm inline-block shadow-sm">
+        <div className="pt-[max(2rem,env(safe-area-inset-top))] text-center">
+          <p className="inline-block rounded-full border border-white/15 bg-black/40 px-4 py-2 text-[14px] font-medium text-white backdrop-blur-xl">
             Scan the QR code on the printer&apos;s screen
           </p>
         </div>
 
         {/* Viewfinder Window with 4 L-shaped corner brackets */}
-        <div className="relative w-[260px] h-[260px] rounded-2xl flex items-center justify-center shadow-[0_0_0_9999px_rgba(0,0,0,0.55)]">
+        <div className="relative w-[260px] h-[260px] rounded-[32px] flex items-center justify-center shadow-[0_0_0_9999px_rgba(0,0,0,0.5)]">
           {/* Top-Left Bracket */}
-          <div className="absolute top-0 left-0 w-8 h-8 border-t-4 border-l-4 border-white rounded-tl-xl" />
+          <div className="absolute top-0 left-0 w-10 h-10 border-t-[5px] border-l-[5px] border-white rounded-tl-[32px]" />
           {/* Top-Right Bracket */}
-          <div className="absolute top-0 right-0 w-8 h-8 border-t-4 border-r-4 border-white rounded-tr-xl" />
+          <div className="absolute top-0 right-0 w-10 h-10 border-t-[5px] border-r-[5px] border-white rounded-tr-[32px]" />
           {/* Bottom-Left Bracket */}
-          <div className="absolute bottom-0 left-0 w-8 h-8 border-b-4 border-l-4 border-white rounded-bl-xl" />
+          <div className="absolute bottom-0 left-0 w-10 h-10 border-b-[5px] border-l-[5px] border-white rounded-bl-[32px]" />
           {/* Bottom-Right Bracket */}
-          <div className="absolute bottom-0 right-0 w-8 h-8 border-b-4 border-r-4 border-white rounded-br-xl" />
+          <div className="absolute bottom-0 right-0 w-10 h-10 border-b-[5px] border-r-[5px] border-white rounded-br-[32px]" />
         </div>
 
         {/* Bottom spacer */}
@@ -390,7 +390,7 @@ export function QRScanner() {
       {invalidToast && (
         <div
           role="alert"
-          className="absolute top-20 z-30 flex items-center gap-2 bg-red-600 text-white text-sm py-2.5 px-4 rounded-xl shadow-lg"
+          className="absolute top-[max(5.5rem,calc(env(safe-area-inset-top)+4rem))] z-30 flex items-center gap-2 rounded-full border border-white/20 bg-red-600/85 px-4 py-2.5 text-[14px] font-medium text-white shadow-lg backdrop-blur-xl"
         >
           <AlertCircle className="w-4 h-4 flex-shrink-0" />
           <span>{invalidMessage}</span>
@@ -408,14 +408,14 @@ export function QRScanner() {
       />
 
       {/* Bottom Controls */}
-      <div className="absolute bottom-6 inset-x-0 z-20 flex items-center justify-center gap-4 px-6">
+      <div className="absolute bottom-0 inset-x-0 z-20 flex items-center justify-center gap-3 px-6 pb-[max(1.5rem,env(safe-area-inset-bottom))]">
         {/* Upload QR image button */}
         <button
           type="button"
           onClick={() => fileInputRef.current?.click()}
           style={{ touchAction: "manipulation" }}
           aria-label="Upload a saved QR code image"
-          className="min-h-[48px] px-5 py-2.5 rounded-full bg-black/60 backdrop-blur-md text-white font-medium text-sm hover:bg-black/80 active:bg-black/90 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white flex items-center gap-2"
+          className="min-h-12 px-5 rounded-full border border-white/15 bg-black/40 backdrop-blur-xl text-white font-semibold text-[15px] transition-transform active:scale-[0.96] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white flex items-center gap-2"
         >
           <ImageUp className="w-4 h-4" aria-hidden />
           Upload QR
@@ -428,10 +428,10 @@ export function QRScanner() {
             onClick={toggleTorch}
             aria-label={torchOn ? "Turn flashlight off" : "Turn flashlight on"}
             style={{ touchAction: "manipulation" }}
-            className={`w-12 h-12 rounded-full flex items-center justify-center backdrop-blur-md transition-colors ${
+            className={`w-12 h-12 rounded-full flex items-center justify-center backdrop-blur-xl transition-all active:scale-[0.94] ${
               torchOn
                 ? "bg-white text-zinc-900 shadow-md"
-                : "bg-black/50 text-white hover:bg-black/70 active:bg-black/80"
+                : "border border-white/15 bg-black/40 text-white"
             }`}
           >
             {torchOn ? (
@@ -460,7 +460,7 @@ export function QRScanner() {
             }
           }}
           style={{ touchAction: "manipulation" }}
-          className="min-h-[48px] px-6 py-2.5 rounded-full bg-black/60 backdrop-blur-md text-white font-medium text-sm hover:bg-black/80 active:bg-black/90 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
+          className="min-h-12 px-6 rounded-full border border-white/15 bg-black/40 backdrop-blur-xl text-white font-semibold text-[15px] transition-transform active:scale-[0.96] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
         >
           Cancel
         </button>
@@ -468,36 +468,42 @@ export function QRScanner() {
 
       {/* Camera Permission Pop-up Modal */}
       {showPermissionPrompt && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200 select-auto">
-          <div className="w-full max-w-sm bg-white dark:bg-zinc-900 rounded-3xl p-6 text-center shadow-2xl border border-zinc-100 dark:border-zinc-800 space-y-5">
+        <div className="hm-fade-in fixed inset-0 z-50 flex items-end justify-center bg-black/60 select-auto">
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="camera-permission-title"
+            className="glass-sheet hm-sheet-in w-full max-w-md rounded-t-[28px] border-b-0 px-6 pt-2.5 pb-[max(1.5rem,env(safe-area-inset-bottom))] text-center space-y-5"
+          >
+            <span className="mx-auto block h-[5px] w-9 rounded-full bg-black/15" aria-hidden />
             {/* Camera Icon Badge */}
-            <div className="w-16 h-16 rounded-2xl bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 flex items-center justify-center mx-auto shadow-inner">
+            <div className="w-16 h-16 rounded-[20px] bg-tint/10 text-tint flex items-center justify-center mx-auto">
               <Camera className="w-8 h-8" />
             </div>
 
             <div className="space-y-2">
-              <h2 className="text-xl font-bold text-zinc-900 dark:text-white tracking-tight">
+              <h2 id="camera-permission-title" className="text-[22px] font-bold text-label tracking-[-0.03em]">
                 Camera Access Needed
               </h2>
-              <p className="text-sm text-zinc-500 dark:text-zinc-400 leading-relaxed">
+              <p className="text-[15px] text-secondary-label leading-relaxed">
                 HIMMER needs access to your camera to scan the QR code on the print kiosk.
               </p>
             </div>
 
             {/* Privacy note */}
-            <div className="flex items-center justify-center gap-2 text-xs text-zinc-500 dark:text-zinc-400 bg-zinc-50 dark:bg-zinc-800/60 py-2.5 px-3 rounded-xl border border-zinc-100 dark:border-zinc-800">
-              <ShieldCheck className="w-4 h-4 text-emerald-500 flex-shrink-0" />
+            <div className="flex items-center justify-center gap-2 text-[13px] text-secondary-label bg-tint/[0.06] py-2.5 px-3 rounded-[14px]">
+              <ShieldCheck className="w-4 h-4 text-tint flex-shrink-0" />
               <span>Only used for QR scanning. No photos or videos are stored.</span>
             </div>
 
             {/* Actions */}
-            <div className="space-y-2 pt-2">
+            <div className="space-y-2 pt-1">
               <button
                 type="button"
                 onClick={handleRequestPermission}
                 disabled={isRequestingPermission}
                 style={{ touchAction: "manipulation" }}
-                className="w-full min-h-[48px] rounded-xl bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white font-medium text-sm transition-colors flex items-center justify-center gap-2 shadow-sm disabled:opacity-50"
+                className="w-full min-h-[52px] rounded-full bg-tint text-white font-semibold text-[16px] transition-transform active:scale-[0.98] flex items-center justify-center gap-2 shadow-[0_8px_24px_rgba(12,131,31,0.30)] disabled:opacity-50"
               >
                 {isRequestingPermission ? (
                   <>
@@ -530,7 +536,7 @@ export function QRScanner() {
                 }}
                 disabled={isRequestingPermission}
                 style={{ touchAction: "manipulation" }}
-                className="w-full min-h-[44px] rounded-xl text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 font-medium text-sm transition-colors"
+                className="w-full min-h-11 rounded-full text-tint font-semibold text-[16px] transition-colors active:bg-black/[0.04]"
               >
                 Not Now
               </button>

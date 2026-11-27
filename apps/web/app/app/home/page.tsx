@@ -1,65 +1,133 @@
-"use client";
-
 import React from "react";
 import Link from "next/link";
-import { ChevronRight, MapPin, Printer, ShieldCheck, Sparkles } from "lucide-react";
+import { ChevronRight, FileText, MapPin, Printer, ShieldCheck, Sparkles, Clock } from "lucide-react";
+import { createClient } from "@/lib/supabase/server";
+import { fetchUserJobs } from "@/lib/jobs";
+import { formatRelativeTime } from "@/lib/date-utils";
+import { StatusPill } from "@/components/StatusPill";
+import { EmptyState } from "@/components/EmptyState";
+import { LargeTitle } from "@/components/mobile/NavBar";
+import { ListGroup, ListRow } from "@/components/mobile/List";
 
-export default function HomePage() {
+function greeting() {
+  const h = Number(new Intl.DateTimeFormat("en-IN", { hour: "numeric", hour12: false, timeZone: "Asia/Kolkata" }).format(new Date()));
+  if (h < 12) return "Good morning";
+  if (h < 17) return "Good afternoon";
+  return "Good evening";
+}
+
+export default async function HomePage() {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  const name: string =
+    user?.user_metadata?.full_name || user?.user_metadata?.name || user?.email?.split("@")[0] || "";
+  const firstName = name.trim().split(/\s+/)[0];
+  const jobs = user ? await fetchUserJobs(user.id, 3) : [];
+
   return (
-    <div className="min-h-full bg-canvas pb-28">
-      <header className="px-5 pb-4 pt-[max(1.25rem,env(safe-area-inset-top))]">
-        <div className="flex items-center justify-between">
-          <div>
-            <p className="text-[13px] font-medium text-secondary-label">Your everyday print, simplified</p>
-            <h1 className="mt-0.5 text-[28px] font-bold tracking-[-0.035em] text-label">HIMMER</h1>
-            <p className="mt-0.5 text-[12px] font-medium text-secondary-label">Printing, made effortless.</p>
-          </div>
-          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-brand-soft ring-1 ring-brand/10">
-            <span className="text-sm font-bold text-brand">H</span>
-          </div>
-        </div>
-      </header>
+    <div className="min-h-full pb-32">
+      <LargeTitle
+        subtitle={firstName ? `${greeting()}, ${firstName}` : greeting()}
+        title="HIMMER"
+        right={
+          <Link
+            href="/app/profile"
+            aria-label="Your profile"
+            className="glass-card mb-1 flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-[15px] font-bold text-tint active:scale-95"
+          >
+            {(firstName[0] ?? "H").toUpperCase()}
+          </Link>
+        }
+      />
 
-      <main className="space-y-5 px-4">
-        <Link href="/app/scan" style={{ touchAction: "manipulation" }} aria-label="Scan a printer QR code to start" className="group block overflow-hidden rounded-[1.75rem] bg-brand text-white shadow-[0_14px_40px_rgba(12,131,31,0.18)] transition-transform active:scale-[0.99]">
-          <div className="relative min-h-[260px] overflow-hidden p-7">
-            <div className="absolute -right-20 -top-24 h-64 w-64 rounded-full bg-white/10" />
-            <div className="absolute -bottom-24 right-10 h-52 w-52 rounded-full bg-black/10" />
-            <div className="relative z-10 flex h-full min-h-[206px] flex-col justify-between">
-              <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-white/16 ring-1 ring-white/20 backdrop-blur-sm">
-                <Printer className="h-7 w-7" aria-hidden="true" />
-              </div>
-              <div>
-                <p className="mb-2 text-[13px] font-semibold uppercase tracking-[0.12em] text-white/70">Ready in minutes</p>
-                <h2 className="max-w-xs text-[32px] font-bold leading-[1.05] tracking-[-0.04em]">Scan. Pay. Print.</h2>
-                <p className="mt-3 max-w-[17rem] text-[15px] leading-6 text-white/78">Connect to a nearby printer and get your pages without waiting at the counter.</p>
-                <span className="mt-6 inline-flex min-h-12 items-center gap-2 rounded-full bg-white px-5 text-sm font-semibold text-brand shadow-sm transition-transform group-active:scale-[0.98]">
-                  Start printing
-                  <ChevronRight className="h-4 w-4" aria-hidden="true" />
-                </span>
-              </div>
+      <main className="space-y-6 px-4">
+        {/* Hero */}
+        <Link
+          href="/app/scan"
+          style={{ touchAction: "manipulation" }}
+          aria-label="Scan a printer QR code to start"
+          className="group relative block overflow-hidden rounded-[28px] bg-gradient-to-br from-tint to-tint-bright p-6 text-white shadow-[0_18px_48px_rgba(12,131,31,0.30)] transition-transform duration-300 ease-spring active:scale-[0.98]"
+        >
+          <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-white/15 via-transparent to-transparent" />
+          <div className="pointer-events-none absolute -right-16 -top-20 h-56 w-56 rounded-full bg-white/10" />
+          <div className="pointer-events-none absolute -bottom-24 right-6 h-52 w-52 rounded-full bg-black/[0.07]" />
+
+          <div className="relative flex min-h-[220px] flex-col justify-between">
+            <span className="flex h-14 w-14 items-center justify-center rounded-2xl border border-white/30 bg-white/20 backdrop-blur-md">
+              <Printer className="h-7 w-7" aria-hidden />
+            </span>
+            <div>
+              <p className="mb-1.5 text-[12px] font-semibold uppercase tracking-[0.14em] text-white/75">Ready in minutes</p>
+              <h2 className="text-[32px] font-bold leading-[1.05] tracking-[-0.04em]">Scan. Pay. Print.</h2>
+              <p className="mt-2 max-w-[17rem] text-[15px] leading-6 text-white/85">
+                Scan the shop QR, upload your file and collect your pages.
+              </p>
+              <span className="mt-5 inline-flex min-h-11 items-center gap-1.5 rounded-full bg-white px-5 text-[15px] font-semibold text-tint shadow-sm">
+                Start printing
+                <ChevronRight className="h-4 w-4" aria-hidden />
+              </span>
             </div>
           </div>
         </Link>
 
-        <section aria-labelledby="quick-actions-title">
-          <h2 id="quick-actions-title" className="mb-2.5 px-1 text-[13px] font-semibold text-secondary-label">Quick actions</h2>
-          <div className="overflow-hidden rounded-2xl bg-white ring-1 ring-black/[0.055]">
-            <Link href="/app/nearby" className="flex min-h-[64px] items-center gap-3 px-4 transition-colors active:bg-zinc-50">
-              <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-brand-soft text-brand"><MapPin className="h-[18px] w-[18px]" aria-hidden="true" /></span>
-              <span className="flex-1"><span className="block text-[15px] font-semibold text-label">Find a printer</span><span className="block text-[12px] text-secondary-label">See available HIMMER shops nearby</span></span>
-              <ChevronRight className="h-4 w-4 text-zinc-300" aria-hidden="true" />
-            </Link>
-            <div className="ml-16 h-px bg-black/[0.06]" />
-            <div className="flex min-h-[64px] items-center gap-3 px-4">
-              <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-zinc-100 text-zinc-500"><Sparkles className="h-[18px] w-[18px]" aria-hidden="true" /></span>
-              <span className="flex-1"><span className="block text-[15px] font-semibold text-label">Doorstep delivery</span><span className="block text-[12px] text-secondary-label">Coming soon</span></span>
-              <span className="rounded-full bg-zinc-100 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide text-zinc-500">Soon</span>
-            </div>
-          </div>
-        </section>
+        {/* Recent prints */}
+        {jobs.length > 0 ? (
+          <ListGroup
+            title="Recent prints"
+            action={
+              <Link href="/app/history" className="text-[13px] font-semibold text-tint">
+                See all
+              </Link>
+            }
+          >
+            {jobs.map((job) => (
+              <ListRow
+                key={job.id}
+                href={`/app/history/${job.id}`}
+                icon={<FileText className="h-[18px] w-[18px]" aria-hidden />}
+                title={job.file_name}
+                subtitle={`${job.shop_name} · ${formatRelativeTime(job.created_at)}`}
+                trailing={<StatusPill status={job.status} />}
+              />
+            ))}
+          </ListGroup>
+        ) : (
+          <section>
+            <h2 className="mb-2 px-1 text-[13px] font-semibold text-secondary-label">Recent prints</h2>
+            <EmptyState
+              icon={<Clock className="h-6 w-6" aria-hidden />}
+              title="No prints yet"
+              subtitle="Your print jobs will show up here."
+            />
+          </section>
+        )}
 
-        <div className="flex items-center justify-center gap-2 pb-2 text-xs text-secondary-label"><ShieldCheck className="h-4 w-4 text-brand" aria-hidden="true" />Files are removed after printing</div>
+        {/* Quick actions */}
+        <ListGroup title="Quick actions">
+          <ListRow
+            href="/app/nearby"
+            icon={<MapPin className="h-[18px] w-[18px]" aria-hidden />}
+            title="Find a printer"
+            subtitle="HIMMER shops near you"
+          />
+          <ListRow
+            icon={<Sparkles className="h-[18px] w-[18px]" aria-hidden />}
+            iconClassName="bg-zinc-500/10 text-zinc-500"
+            title="Doorstep delivery"
+            subtitle="Coming soon"
+            trailing={
+              <span className="rounded-full bg-zinc-500/10 px-2.5 py-1 text-[11px] font-semibold text-zinc-500">Soon</span>
+            }
+          />
+        </ListGroup>
+
+        <p className="flex items-center justify-center gap-1.5 text-[12px] text-secondary-label">
+          <ShieldCheck className="h-4 w-4 text-tint" aria-hidden />
+          Files are removed after printing
+        </p>
       </main>
     </div>
   );

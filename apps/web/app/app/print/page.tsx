@@ -1,6 +1,6 @@
 "use client";
 
-import React, { Suspense, useState, useEffect, useRef, useCallback } from "react";
+import React, { Suspense, useState, useEffect, useRef, useCallback, useId } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import type { PrinterCapabilities, PriceBreakdown } from "@printbuddy/shared";
 import { DEFAULT_CAPABILITIES } from "@printbuddy/shared";
@@ -19,8 +19,12 @@ import {
   type KioskEvent,
 } from "@/lib/kiosk-events";
 import { clearPendingShare, getPendingShare } from "@/lib/pending-share";
+import { NavBar } from "@/components/mobile/NavBar";
+import { Sheet } from "@/components/mobile/Sheet";
+import { Segmented } from "@/components/mobile/Segmented";
+import { Pill } from "@/components/Pill";
+import { Toggle } from "@/components/Toggle";
 import {
-  ArrowLeft,
   Plus,
   Minus,
   FileText,
@@ -32,6 +36,10 @@ import {
   QrCode,
   Banknote,
   CreditCard,
+  Contrast,
+  Palette,
+  RectangleVertical,
+  RectangleHorizontal,
 } from "lucide-react";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -152,69 +160,54 @@ function UploadProgressSheet({
   // one PDF before upload, so upload progress applies to the whole batch).
   const filesDone = progress >= 100 ? totalFiles : 0;
   return (
-    <div className="fixed inset-0 z-50 flex flex-col">
-      {/* Backdrop */}
-      <div className="flex-1 bg-black/40" onClick={onClose} />
-      {/* Sheet */}
-      <div className="bg-white rounded-t-3xl px-6 pt-6 pb-10 shadow-2xl">
-        <button
-          type="button"
-          onClick={onClose}
-          className="absolute top-5 right-5 w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center"
-          style={{ touchAction: "manipulation" }}
-          aria-label="Close"
-        >
-          <X className="w-4 h-4 text-gray-600" />
-        </button>
-
-        {success ? (
-          <div className="flex flex-col items-center text-center py-4">
-            <div className="w-20 h-20 rounded-full bg-green-100 flex items-center justify-center mb-4">
-              <Check className="w-10 h-10 text-green-500" strokeWidth={3} />
-            </div>
-            <h3 className="text-lg font-bold text-gray-900">Document Successfully Uploaded</h3>
-            <p className="text-xs text-green-600 mt-2">We delete your uploaded files once job is done</p>
+    <Sheet open onClose={onClose}>
+      {success ? (
+        <div className="flex flex-col items-center text-center pt-4 pb-2">
+          <div className="w-20 h-20 rounded-full bg-tint flex items-center justify-center mb-4 shadow-[0_10px_30px_rgba(12,131,31,0.35)]">
+            <Check className="w-10 h-10 text-white" strokeWidth={3} />
           </div>
-        ) : (
-          <div className="flex flex-col items-center text-center py-2">
-            {/* Shared upload icon so mobile + kiosk render identically */}
-            <div className="mb-4">
-              <DocumentUploadIcon size="sm" />
-            </div>
-            <h3 className="text-lg font-bold text-gray-900">
-              Uploading {totalFiles === 1 ? "Document" : "Documents"}
-            </h3>
-            <p className="text-xs text-gray-500 mt-1 tabular-nums">
-              {filesDone}/{totalFiles} file{totalFiles !== 1 ? "s" : ""}
-            </p>
-
-            {/* Progress bar */}
-            <div className="w-full mt-5 mb-2">
-              <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
-                <div
-                  className="h-full bg-green-600 rounded-full transition-all duration-300"
-                  style={{ width: `${progress}%` }}
-                />
-              </div>
-            </div>
-            <p className="text-sm font-semibold text-gray-700 self-end">{progress}%</p>
-
-            <p className="text-xs text-green-600 mt-3 font-medium">
-              We delete your uploaded files once delivered
-            </p>
-
-            <button
-              type="button"
-              onClick={onClose}
-              style={{ touchAction: "manipulation" }}
-              className="mt-5 text-sm font-semibold text-gray-700"
-            >
-              Cancel uploading
-            </button>
+          <h3 className="text-[20px] font-bold tracking-[-0.02em] text-label">Document uploaded</h3>
+          <p className="text-[13px] text-secondary-label mt-1.5">We delete your uploaded files once the job is done</p>
+        </div>
+      ) : (
+        <div className="flex flex-col items-center text-center pt-2">
+          {/* Shared upload icon so mobile + kiosk render identically */}
+          <div className="mb-4">
+            <DocumentUploadIcon size="sm" />
           </div>
-        )}
-      </div>
-    </div>
+          <h3 className="text-[20px] font-bold tracking-[-0.02em] text-label">
+            Uploading {totalFiles === 1 ? "document" : "documents"}
+          </h3>
+          <p className="text-[13px] text-secondary-label mt-1 tabular-nums">
+            {filesDone}/{totalFiles} file{totalFiles !== 1 ? "s" : ""}
+          </p>
+
+          {/* Progress bar */}
+          <div className="w-full mt-5 mb-2">
+            <div className="h-1.5 bg-zinc-500/15 rounded-full overflow-hidden">
+              <div
+                className="h-full bg-tint rounded-full transition-all duration-300"
+                style={{ width: `${progress}%` }}
+              />
+            </div>
+          </div>
+          <p className="text-[13px] font-semibold text-label self-end tabular-nums">{progress}%</p>
+
+          <p className="text-[13px] text-tint mt-3 font-medium">
+            We delete your uploaded files once delivered
+          </p>
+
+          <button
+            type="button"
+            onClick={onClose}
+            style={{ touchAction: "manipulation" }}
+            className="mt-4 min-h-11 px-5 rounded-full text-[15px] font-semibold text-tint active:bg-black/[0.04]"
+          >
+            Cancel uploading
+          </button>
+        </div>
+      )}
+    </Sheet>
   );
 }
 
@@ -241,32 +234,19 @@ function OptionPair<T extends string>({
 }) {
   return (
     <div>
-      <p className="text-sm font-bold text-gray-900 mb-2">{label}</p>
-      <div className="grid grid-cols-2 gap-2.5">
-        {options.map((opt) => {
-          const active = value === opt.value;
-          const isOptDisabled = disabled || !!opt.disabled;
-          return (
-            <button
-              key={opt.value}
-              type="button"
-              onClick={() => !isOptDisabled && onChange(opt.value)}
-              disabled={isOptDisabled}
-              style={{ touchAction: "manipulation" }}
-              title={opt.disabledReason}
-              className={`flex items-center gap-2.5 px-3 py-3 rounded-xl border-2 text-sm font-semibold transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-green-600 ${
-                active
-                  ? "border-green-700 bg-white text-gray-900"
-                  : "border-gray-200 bg-gray-50 text-gray-700 hover:border-gray-300"
-              } ${isOptDisabled ? "opacity-40 cursor-not-allowed" : "cursor-pointer"}`}
-              aria-pressed={active}
-            >
-              <span className="text-base leading-none">{opt.icon}</span>
-              <span>{opt.label}</span>
-            </button>
-          );
-        })}
-      </div>
+      <p className="text-[15px] font-semibold text-label mb-2">{label}</p>
+      <Segmented
+        ariaLabel={label}
+        value={value}
+        onChange={onChange}
+        options={options.map((opt) => ({
+          value: opt.value,
+          label: opt.label,
+          icon: opt.icon,
+          disabled: disabled || !!opt.disabled,
+          title: opt.disabledReason,
+        }))}
+      />
     </div>
   );
 }
@@ -290,29 +270,18 @@ function ChipStrip<T extends string | number>({
 }) {
   return (
     <div>
-      <p className="text-sm font-bold text-gray-900 mb-2">{label}</p>
+      <p className="text-[15px] font-semibold text-label mb-2">{label}</p>
       <div className="flex flex-wrap gap-2">
-        {options.map((opt) => {
-          const active = opt === value;
-          const label = format ? format(opt) : String(opt);
-          return (
-            <button
-              key={String(opt)}
-              type="button"
-              onClick={() => !disabled && onChange(opt)}
-              disabled={disabled}
-              style={{ touchAction: "manipulation" }}
-              className={`px-3.5 py-1.5 rounded-full text-sm font-semibold border-2 transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-green-600 ${
-                active
-                  ? "border-green-700 bg-green-50 text-green-800"
-                  : "border-gray-200 bg-gray-50 text-gray-600 hover:border-gray-300"
-              } ${disabled ? "opacity-40 cursor-not-allowed" : "cursor-pointer"}`}
-              aria-pressed={active}
-            >
-              {label}
-            </button>
-          );
-        })}
+        {options.map((opt) => (
+          <Pill
+            key={String(opt)}
+            active={opt === value}
+            onClick={() => !disabled && onChange(opt)}
+            disabled={disabled}
+          >
+            {format ? format(opt) : String(opt)}
+          </Pill>
+        ))}
       </div>
     </div>
   );
@@ -333,29 +302,19 @@ function ToggleOption({
   onChange: (v: boolean) => void;
   disabled?: boolean;
 }) {
+  const id = useId();
   return (
-    <div className="flex items-center justify-between">
-      <div>
-        <p className="text-sm font-bold text-gray-900">{label}</p>
-        {subtitle && <p className="text-xs text-gray-400 mt-0.5">{subtitle}</p>}
+    <div className="flex items-center justify-between gap-4">
+      <div id={id}>
+        <p className="text-[15px] font-semibold text-label">{label}</p>
+        {subtitle && <p className="text-[13px] text-secondary-label mt-0.5">{subtitle}</p>}
       </div>
-      <button
-        type="button"
-        onClick={() => !disabled && onChange(!value)}
+      <Toggle
+        checked={value}
+        onChange={() => !disabled && onChange(!value)}
         disabled={disabled}
-        style={{ touchAction: "manipulation" }}
-        className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-green-500 ${
-          value ? "bg-green-500" : "bg-gray-200"
-        } ${disabled ? "opacity-40 cursor-not-allowed" : ""}`}
-        role="switch"
-        aria-checked={value}
-      >
-        <span
-          className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${
-            value ? "translate-x-6" : "translate-x-1"
-          }`}
-        />
-      </button>
+        aria-labelledby={id}
+      />
     </div>
   );
 }
@@ -861,75 +820,65 @@ function PrintContent() {
   // ── Render ─────────────────────────────────────────────────────────────────
 
   if (isDesktop === null) {
-    return <div className="min-h-full flex items-center justify-center"><Loader2 className="w-6 h-6 text-green-500 animate-spin" /></div>;
+    return <div className="min-h-full flex items-center justify-center"><Loader2 className="w-6 h-6 text-tint animate-spin" /></div>;
   }
   if (isDesktop) {
     return <DesktopGate />;
   }
 
-  return (
-    <div className="min-h-full bg-white flex flex-col">
-      {/* Header */}
-      <div className="flex items-center justify-between px-4 py-3 bg-white border-b border-gray-100">
-        <button
-          type="button"
-          onClick={() => router.back()}
-          style={{ touchAction: "manipulation" }}
-          aria-label="Go back"
-          className="w-9 h-9 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-green-500"
-        >
-          <ArrowLeft className="w-4 h-4 text-gray-700" />
-        </button>
+  const errorBanner = "mx-4 mt-3 flex items-start gap-2 rounded-[18px] bg-red-500/10 p-3.5 text-[13px] text-red-700";
 
-        <div className="flex items-center gap-2">
-          {shopData && (
-            <span className="text-xs font-semibold text-gray-500">{shopData.shop.name}</span>
-          )}
+  return (
+    <div className="min-h-full flex flex-col">
+      <NavBar
+        title={shopData?.shop.name ?? "Print"}
+        back={() => router.back()}
+        right={
           <button
             type="button"
             onClick={() => fileInputRef.current?.click()}
             style={{ touchAction: "manipulation" }}
-            className="flex items-center gap-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold text-sm rounded-full px-3 py-1.5 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-green-500"
+            className="-mr-1 flex min-h-9 items-center gap-1 rounded-full bg-tint/10 px-3 text-[15px] font-semibold text-tint transition-transform active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-tint"
           >
-            <Plus className="w-3.5 h-3.5" />
+            <Plus className="w-4 h-4" strokeWidth={2.5} />
             Add
           </button>
-        </div>
-      </div>
+        }
+      />
 
       {/* Shop Error */}
       {shopError && (
-        <div className="mx-4 mt-3 flex items-start gap-2 bg-red-50 border border-red-100 rounded-xl p-3 text-xs text-red-700">
+        <div className={errorBanner}>
           <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />
           <span>{shopError}</span>
         </div>
       )}
 
       {(sharedEntryError || sharedImportError) && (
-        <div className="mx-4 mt-3 flex items-start gap-2 bg-red-50 border border-red-100 rounded-xl p-3 text-xs text-red-700">
+        <div className={errorBanner}>
           <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />
           <span>{sharedImportError ?? "The shared file could not be received. Please open it and choose Share with HIMMER again."}</span>
         </div>
       )}
 
       {/* Scrollable body */}
-      <div className={`flex-1 overflow-y-auto ${shopData?.shop.cash_payments_enabled ? "pb-52" : "pb-36"}`}>
+      <div className={`flex-1 overflow-y-auto ${shopData?.shop.cash_payments_enabled ? "pb-64" : "pb-48"}`}>
         {/* Upload zone / File preview */}
         <div className="px-4 pt-4">
           {!shopId && pendingSharedFiles.length > 0 ? (
-            <div className="w-full rounded-2xl border border-green-200 bg-green-50/70 p-5 shadow-sm">
+            <div className="glass-card w-full rounded-[28px] p-5">
               <div className="flex items-start gap-3">
-                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-green-100 text-green-700">
+                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[14px] bg-tint/10 text-tint">
                   <FileText className="h-5 w-5" />
                 </div>
                 <div className="min-w-0 flex-1">
-                  <p className="text-sm font-bold text-gray-900">
+                  <p className="text-[15px] font-semibold text-label">
                     {pendingSharedFiles.length === 1 ? "Document ready" : `${pendingSharedFiles.length} documents ready`}
                   </p>
-                  <p className="mt-1 truncate text-xs text-gray-600">
+                  <p className="mt-1 truncate text-[13px] text-secondary-label">
                     {pendingSharedFiles.map((file) => file.name).join(", ")}
                   </p>
-                  <p className="mt-2 text-xs font-medium text-green-700">
+                  <p className="mt-2 text-[13px] font-medium text-tint">
                     Scan a HIMMER kiosk to upload, price and print securely.
                   </p>
                 </div>
@@ -937,13 +886,13 @@ function PrintContent() {
             </div>
           ) : !shopId ? (
             /* Locked — must scan QR first */
-            <div className="w-full flex flex-col items-center justify-center gap-3 border-2 border-dashed border-gray-200 rounded-2xl bg-gray-50 p-10 text-center">
-              <div className="w-14 h-14 rounded-2xl bg-green-50 flex items-center justify-center">
-                <QrCode className="w-7 h-7 text-green-600" />
+            <div className="w-full flex flex-col items-center justify-center gap-3 rounded-[28px] border-2 border-dashed border-tint/20 bg-white/55 p-10 text-center">
+              <div className="w-14 h-14 rounded-[18px] bg-tint/10 flex items-center justify-center">
+                <QrCode className="w-7 h-7 text-tint" />
               </div>
               <div>
-                <p className="text-sm font-semibold text-gray-900">Scan a kiosk QR code first</p>
-                <p className="text-xs text-gray-500 mt-1">The QR code sets the print pricing before you upload</p>
+                <p className="text-[15px] font-semibold text-label">Scan a kiosk QR code first</p>
+                <p className="text-[13px] text-secondary-label mt-1">The QR code sets the print pricing before you upload</p>
               </div>
             </div>
           ) : !hasFile ? (
@@ -952,19 +901,19 @@ function PrintContent() {
               type="button"
               onClick={() => fileInputRef.current?.click()}
               style={{ touchAction: "manipulation" }}
-              className="w-full flex flex-col items-center justify-center gap-3 border-2 border-dashed border-gray-200 rounded-2xl bg-gray-50 hover:bg-gray-100 active:bg-gray-100 transition-colors p-10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-green-500"
+              className="w-full flex flex-col items-center justify-center gap-3 rounded-[28px] border-2 border-dashed border-tint/25 bg-white/60 p-10 transition-transform duration-200 ease-spring active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-tint"
             >
-              <div className="w-14 h-14 rounded-2xl bg-green-100 flex items-center justify-center">
-                <Upload className="w-7 h-7 text-green-500" />
+              <div className="w-14 h-14 rounded-[18px] bg-tint flex items-center justify-center shadow-[0_8px_20px_rgba(12,131,31,0.30)]">
+                <Upload className="w-7 h-7 text-white" />
               </div>
               <div className="text-center">
-                <p className="text-sm font-semibold text-gray-900">Upload Document</p>
-                <p className="text-xs text-gray-500 mt-1">Pick one or more · PDF, JPG, PNG · up to 50 MB total</p>
+                <p className="text-[17px] font-semibold text-label">Upload document</p>
+                <p className="text-[13px] text-secondary-label mt-1">Pick one or more · PDF, JPG, PNG · up to 50 MB total</p>
               </div>
             </button>
           ) : (
             /* Document Preview with page-by-page swipe */
-            <div className="relative bg-white border border-gray-200 rounded-2xl overflow-hidden shadow-sm p-3">
+            <div className="glass-card relative rounded-[28px] overflow-hidden p-3">
               {/* Dismiss */}
               <button
                 type="button"
@@ -976,10 +925,10 @@ function PrintContent() {
                   setPriceState("idle");
                 }}
                 style={{ touchAction: "manipulation" }}
-                className="absolute top-2.5 right-2.5 z-20 w-7 h-7 rounded-full bg-gray-200 flex items-center justify-center hover:bg-gray-300 transition-colors"
+                className="absolute top-3 right-3 z-20 w-8 h-8 rounded-full bg-black/45 backdrop-blur-md flex items-center justify-center active:scale-95"
                 aria-label="Remove file"
               >
-                <X className="w-3.5 h-3.5 text-gray-600" />
+                <X className="w-4 h-4 text-white" strokeWidth={2.5} />
               </button>
 
               <DocumentPreview
@@ -993,7 +942,7 @@ function PrintContent() {
               />
 
               {rawFiles.length > 1 && (
-                <p className="text-[11px] text-gray-500 mt-2 text-center">
+                <p className="text-[12px] text-secondary-label mt-2 text-center">
                   {rawFiles.length} files combined into one print job
                 </p>
               )}
@@ -1001,7 +950,7 @@ function PrintContent() {
           )}
 
           {uploadError && (
-            <div className="mt-2 flex items-center gap-2 text-xs text-red-600">
+            <div className="mt-2 flex items-center gap-2 px-1 text-[13px] text-red-600">
               <AlertCircle className="w-3.5 h-3.5" />
               <span>{uploadError}</span>
             </div>
@@ -1010,58 +959,55 @@ function PrintContent() {
 
         {/* Print Options */}
         {config && (
-          <div className="mx-4 mt-4 bg-white border border-gray-200 rounded-2xl p-4 space-y-5 shadow-sm">
+          <>
+          <section className="glass-card mx-4 mt-4 rounded-[28px] p-4 space-y-4">
             {/* Copies row */}
-            <div className="flex items-start justify-between">
+            <div className="flex items-center justify-between gap-4">
               <div>
-                <p className="text-sm font-bold text-gray-900">Number of copies</p>
+                <p className="text-[15px] font-semibold text-label">Copies</p>
                 {fileState && (
-                  <p className="text-xs text-gray-500 mt-0.5">File 1 ({fileState.totalPages} page{fileState.totalPages !== 1 ? "s" : ""})</p>
+                  <p className="text-[13px] text-secondary-label mt-0.5">File 1 · {fileState.totalPages} page{fileState.totalPages !== 1 ? "s" : ""}</p>
                 )}
               </div>
-              <div className="flex items-center gap-0 bg-gradient-to-r from-green-500 to-green-700 rounded-xl overflow-hidden">
+              <div className="flex items-center rounded-full bg-zinc-500/[0.12] p-[3px]">
                 <button
                   type="button"
                   onClick={() => setConfig((c) => c ? { ...c, copies: Math.max(1, c.copies - 1) } : c)}
                   style={{ touchAction: "manipulation" }}
                   aria-label="Decrease copies"
-                  className="w-10 h-10 flex items-center justify-center text-white hover:bg-white/10 active:bg-white/20 transition-colors focus-visible:outline-none"
+                  className="w-10 h-9 rounded-full flex items-center justify-center text-tint active:bg-white transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-tint"
                 >
-                  <Minus className="w-4 h-4" />
+                  <Minus className="w-4 h-4" strokeWidth={2.5} />
                 </button>
-                <span className="w-8 text-center text-white font-bold text-base">{config.copies}</span>
+                <span className="w-9 text-center text-[17px] font-bold tabular-nums text-label" aria-live="polite">{config.copies}</span>
                 <button
                   type="button"
                   onClick={() => setConfig((c) => c ? { ...c, copies: Math.min(99, c.copies + 1) } : c)}
                   style={{ touchAction: "manipulation" }}
                   aria-label="Increase copies"
-                  className="w-10 h-10 flex items-center justify-center text-white hover:bg-white/10 active:bg-white/20 transition-colors focus-visible:outline-none"
+                  className="w-10 h-9 rounded-full flex items-center justify-center text-tint active:bg-white transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-tint"
                 >
-                  <Plus className="w-4 h-4" />
+                  <Plus className="w-4 h-4" strokeWidth={2.5} />
                 </button>
               </div>
             </div>
 
+            <div className="h-px bg-black/[0.06]" />
+
             {/* Pages row */}
-            <div className="flex items-center justify-between">
-              <p className="text-sm font-bold text-gray-900">Pages</p>
-              <div className="flex bg-gray-100 rounded-full p-1">
-                {(["All", "Custom"] as const).map((pg) => {
-                  const isActive = pg === "Custom" ? config.useCustomRange : !config.useCustomRange;
-                  return (
-                    <button
-                      key={pg}
-                      type="button"
-                      onClick={() => setConfig((c) => c ? { ...c, useCustomRange: pg === "Custom" } : c)}
-                      style={{ touchAction: "manipulation" }}
-                      className={`px-4 py-1.5 rounded-full text-sm font-semibold transition-colors focus-visible:outline-none ${
-                        isActive ? "bg-green-600 text-white shadow-sm" : "text-gray-500 hover:text-gray-700"
-                      }`}
-                    >
-                      {pg}
-                    </button>
-                  );
-                })}
+            <div className="flex items-center justify-between gap-4">
+              <p className="text-[15px] font-semibold text-label">Pages</p>
+              <div className="w-44">
+                <Segmented
+                  size="sm"
+                  ariaLabel="Pages"
+                  value={config.useCustomRange ? "custom" : "all"}
+                  onChange={(v) => setConfig((c) => c ? { ...c, useCustomRange: v === "custom" } : c)}
+                  options={[
+                    { value: "all", label: "All" },
+                    { value: "custom", label: "Custom" },
+                  ]}
+                />
               </div>
             </div>
 
@@ -1072,21 +1018,23 @@ function PrintContent() {
                 placeholder="e.g. 1-3, 5, 7-9"
                 value={config.pageRange}
                 onChange={(e) => setConfig((c) => c ? { ...c, pageRange: e.target.value } : c)}
-                className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-green-600"
+                className="w-full min-h-11 rounded-[14px] border border-black/[0.06] bg-white/90 px-4 text-[16px] text-label placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-tint"
               />
             )}
+          </section>
 
+          <section className="glass-card mx-4 mt-3 rounded-[28px] p-4 space-y-5">
             {/* Color choice */}
             <OptionPair
-              label="Choose print color"
+              label="Colour"
               value={config.color ? "color" : "bw"}
               onChange={(v) => setConfig((c) => c ? { ...c, color: v === "color" } : c)}
               options={[
-                { value: "bw", label: "B & W", icon: "⚫" },
+                { value: "bw", label: "B & W", icon: <Contrast className="w-4 h-4" /> },
                 {
                   value: "color",
-                  label: "Coloured",
-                  icon: "🎨",
+                  label: "Colour",
+                  icon: <Palette className="w-4 h-4" />,
                   disabled: caps ? !caps.color : false,
                   disabledReason: caps && !caps.color ? "This printer only supports Black & White" : undefined,
                 },
@@ -1095,12 +1043,12 @@ function PrintContent() {
 
             {/* Orientation */}
             <OptionPair
-              label="Choose print orientation"
+              label="Orientation"
               value={config.orientation}
               onChange={(v) => setConfig((c) => c ? { ...c, orientation: v } : c)}
               options={[
-                { value: "portrait", label: "Portrait", icon: "📄" },
-                { value: "landscape", label: "Landscape", icon: "🖼️" },
+                { value: "portrait", label: "Portrait", icon: <RectangleVertical className="w-4 h-4" /> },
+                { value: "landscape", label: "Landscape", icon: <RectangleHorizontal className="w-4 h-4" /> },
               ]}
             />
 
@@ -1173,60 +1121,51 @@ function PrintContent() {
                 onChange={(v) => setConfig((c) => c ? { ...c, collate: v } : c)}
               />
             )}
-          </div>
+          </section>
+          </>
         )}
 
         {/* Pay Error */}
         {payError && (
-          <div className="mx-4 mt-3 flex items-start gap-2 bg-red-50 border border-red-100 rounded-xl p-3 text-xs text-red-700">
+          <div className={errorBanner}>
             <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />
             <span>{payError}</span>
           </div>
         )}
       </div>
 
-      {/* Fixed Bottom Bar */}
+      {/* Floating Pay Bar */}
       <div
-        className="fixed inset-x-0 bottom-0 z-30 bg-white border-t border-gray-100 px-4 pt-3"
-        style={{
-          paddingBottom: "max(16px, env(safe-area-inset-bottom))",
-        }}
+        className="fixed inset-x-0 bottom-0 z-30 px-3"
+        style={{ paddingBottom: "max(12px, env(safe-area-inset-bottom))" }}
       >
+        <div className="glass-sheet mx-auto max-w-2xl rounded-[28px] p-4">
         {shopId && shopData?.shop.cash_payments_enabled && (
-          <div className="grid grid-cols-2 gap-2 mb-3" role="radiogroup" aria-label="Payment method">
-            <button
-              type="button"
-              role="radio"
-              aria-checked={paymentMethod === "online"}
-              onClick={() => setPaymentMethod("online")}
-              className={`min-h-10 rounded-xl border px-3 text-xs font-semibold flex items-center justify-center gap-2 transition-colors ${paymentMethod === "online" ? "border-green-600 bg-green-50 text-green-700" : "border-gray-200 text-gray-600"}`}
-            >
-              <CreditCard className="w-4 h-4" /> Online
-            </button>
-            <button
-              type="button"
-              role="radio"
-              aria-checked={paymentMethod === "cash"}
-              onClick={() => setPaymentMethod("cash")}
-              className={`min-h-10 rounded-xl border px-3 text-xs font-semibold flex items-center justify-center gap-2 transition-colors ${paymentMethod === "cash" ? "border-emerald-500 bg-emerald-50 text-emerald-700" : "border-gray-200 text-gray-600"}`}
-            >
-              <Banknote className="w-4 h-4" /> Cash at counter
-            </button>
+          <div className="mb-3">
+            <Segmented
+              ariaLabel="Payment method"
+              value={paymentMethod}
+              onChange={setPaymentMethod}
+              options={[
+                { value: "online", label: "Online", icon: <CreditCard className="w-4 h-4" /> },
+                { value: "cash", label: "Cash at counter", icon: <Banknote className="w-4 h-4" /> },
+              ]}
+            />
           </div>
         )}
         {/* Price */}
-        <div className="flex items-baseline justify-between mb-3">
+        <div className="flex items-center justify-between mb-3 px-1">
           <div>
-            <p className="text-sm font-bold text-gray-900">Print cost</p>
-            <p className="text-[10px] text-gray-400">Price is confirmed before payment</p>
+            <p className="text-[15px] font-semibold text-label">Total</p>
+            <p className="text-[12px] text-secondary-label">Price is confirmed before payment</p>
           </div>
-          <div className="text-right">
+          <div className="text-right" aria-live="polite">
             {priceState === "ready" && rawPriceResult ? (
-              <p className="text-xl font-bold text-green-700">{formatPaise(rawPriceResult.pricePaise)}</p>
+              <p className="text-[26px] font-bold tracking-[-0.03em] tabular-nums text-label">{formatPaise(rawPriceResult.pricePaise)}</p>
             ) : priceState === "fetching" ? (
-              <Loader2 className="w-5 h-5 text-gray-400 animate-spin" />
+              <Loader2 className="w-5 h-5 text-tint animate-spin" />
             ) : (
-              <p className="text-xl font-bold text-gray-300">—</p>
+              <p className="text-[26px] font-bold text-zinc-300">—</p>
             )}
           </div>
         </div>
@@ -1238,7 +1177,7 @@ function PrintContent() {
               type="button"
               onClick={() => router.push(isSharedEntry ? "/app/scan?shared=1" : "/app/scan")}
               style={{ touchAction: "manipulation" }}
-              className="w-full min-h-[52px] rounded-2xl bg-green-600 hover:bg-green-700 active:bg-green-800 text-white font-semibold text-base flex items-center justify-center gap-2 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-green-600 shadow-sm"
+              className="w-full min-h-[52px] rounded-full bg-tint text-white font-semibold text-[16px] flex items-center justify-center gap-2 shadow-[0_8px_24px_rgba(12,131,31,0.30)] transition-transform active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-tint focus-visible:ring-offset-2"
             >
               <QrCode className="w-5 h-5" />
               {isSharedEntry ? "Scan Now" : "Scan Kiosk"}
@@ -1249,12 +1188,13 @@ function PrintContent() {
               onClick={handlePay}
               disabled={!hasFile || priceState !== "ready" || paying}
               style={{ touchAction: "manipulation" }}
-              className="w-full min-h-[52px] rounded-2xl bg-green-500 hover:bg-green-600 active:bg-green-700 text-white font-semibold text-base flex items-center justify-center gap-2 transition-colors disabled:opacity-40 disabled:cursor-not-allowed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-green-500 shadow-sm"
+              className="w-full min-h-[52px] rounded-full bg-tint text-white font-semibold text-[16px] flex items-center justify-center gap-2 shadow-[0_8px_24px_rgba(12,131,31,0.30)] transition-transform active:scale-[0.98] disabled:opacity-40 disabled:shadow-none disabled:cursor-not-allowed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-tint focus-visible:ring-offset-2"
             >
               {paying ? <Loader2 className="w-5 h-5 animate-spin" /> : null}
               {paying ? "Processing…" : paymentMethod === "cash" ? "Request cash payment" : "Pay online & print"}
             </button>
           )}
+        </div>
         </div>
       </div>
 
@@ -1289,7 +1229,7 @@ function PrintContent() {
 
 export default function PrintPage() {
   return (
-    <Suspense fallback={<div className="min-h-full flex items-center justify-center"><Loader2 className="w-6 h-6 text-green-500 animate-spin" /></div>}>
+    <Suspense fallback={<div className="min-h-full flex items-center justify-center"><Loader2 className="w-6 h-6 text-tint animate-spin" /></div>}>
       <PrintContent />
     </Suspense>
   );

@@ -11,8 +11,9 @@ import {
   WifiOff,
   RefreshCw,
   AlertCircle,
-  ChevronLeft,
 } from "lucide-react";
+import { NavBar } from "@/components/mobile/NavBar";
+import { EmptyState } from "@/components/EmptyState";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -104,7 +105,7 @@ function getStatusConfig(status: JobStatus, paymentMethod: "online" | "cash" = "
       };
     case "downloading":
       return {
-        icon: <Loader2 className="w-10 h-10 text-green-600 animate-spin" />,
+        icon: <Loader2 className="w-10 h-10 text-tint animate-spin" />,
         headline: "Preparing your file…",
         sub: "Rasterizing and sending document to printer.",
         color: "blue",
@@ -112,14 +113,14 @@ function getStatusConfig(status: JobStatus, paymentMethod: "online" | "cash" = "
     case "dispatched":
     case "awaiting_release":
       return {
-        icon: <Clock className="w-10 h-10 text-indigo-600" />,
+        icon: <Clock className="w-10 h-10 text-tint" />,
         headline: "Your print is in line",
         sub: `${paymentMethod === "cash" ? "Cash received" : "Payment confirmed"}. We’ll update you when printing begins.`,
         color: "blue",
       };
     case "printing":
       return {
-        icon: <Printer className="w-10 h-10 text-green-600 animate-pulse" />,
+        icon: <Printer className="w-10 h-10 text-tint animate-pulse" />,
         headline: "Printing now…",
         sub: "Your document is printing automatically. Collect it from the printer tray once done.",
         color: "blue",
@@ -129,9 +130,7 @@ function getStatusConfig(status: JobStatus, paymentMethod: "online" | "cash" = "
     case "done":
       return {
         icon: (
-          <div className="w-20 h-20 rounded-full bg-green-100 flex items-center justify-center">
-            <CheckCircle2 className="w-11 h-11 text-green-500" />
-          </div>
+          <CheckCircle2 className="w-11 h-11 text-white" />
         ),
         headline: "Printed! Collect from tray",
         sub: "Your document has printed. Thank you for using HIMMER!",
@@ -153,7 +152,7 @@ function getStatusConfig(status: JobStatus, paymentMethod: "online" | "cash" = "
       };
     case "refunded":
       return {
-        icon: <CheckCircle2 className="w-10 h-10 text-green-600" />,
+        icon: <CheckCircle2 className="w-10 h-10 text-tint" />,
         headline: "Refund processed",
         sub: "Cashfree confirmed your refund. Your bank may take time to show the credit.",
         color: "green",
@@ -248,30 +247,29 @@ export default function JobDetailPage({
 
   if (!jobId || (!job && !fetchError)) {
     return (
-      <main className="flex flex-1 items-center justify-center p-12 min-h-[calc(100dvh-130px)]">
-        <Loader2 className="w-8 h-8 animate-spin text-green-500" />
-      </main>
+      <div className="min-h-full">
+        <NavBar title="Order" back="/app/history" backLabel="History" />
+        <main className="flex items-center justify-center p-12 min-h-[60dvh]">
+          <Loader2 className="w-8 h-8 animate-spin text-tint" />
+        </main>
+      </div>
     );
   }
 
   if (fetchError) {
     return (
-      <main className="flex flex-1 flex-col items-center justify-center p-8 text-center min-h-[calc(100dvh-130px)] gap-4">
-        <div className="w-14 h-14 rounded-full bg-gray-100 flex items-center justify-center">
-          <AlertCircle className="w-7 h-7 text-gray-400" />
-        </div>
-        <div>
-          <h1 className="text-xl font-semibold text-gray-900">Order not found</h1>
-          <p className="text-sm text-gray-500 mt-1">{fetchError}</p>
-        </div>
-        <Link
-          href="/app/history"
-          style={{ touchAction: "manipulation" }}
-          className="min-h-[48px] px-6 py-2.5 rounded-2xl bg-gray-100 hover:bg-gray-200 text-gray-800 font-medium text-sm transition-colors mt-2 flex items-center"
-        >
-          Back to History
-        </Link>
-      </main>
+      <div className="min-h-full">
+        <NavBar title="Order" back="/app/history" backLabel="History" />
+        <main className="px-4 pt-10">
+          <EmptyState
+            icon={<AlertCircle className="w-6 h-6" />}
+            title="Order not found"
+            subtitle={fetchError}
+            actionText="Back to History"
+            actionHref="/app/history"
+          />
+        </main>
+      </div>
     );
   }
 
@@ -283,25 +281,15 @@ export default function JobDetailPage({
     job!.status === "done";
 
   return (
-    <div className="min-h-full bg-white pb-24">
-      {/* Header */}
-      <div className="flex items-center px-4 py-3 border-b border-gray-100">
-        <Link
-          href="/app/history"
-          style={{ touchAction: "manipulation" }}
-          className="inline-flex items-center gap-1 text-sm font-medium text-gray-500 hover:text-gray-800 transition-colors py-1.5 px-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-green-500 rounded-lg"
-        >
-          <ChevronLeft className="w-4 h-4" />
-          <span>Back</span>
-        </Link>
-      </div>
+    <div className="min-h-full pb-32">
+      <NavBar title="Order" back="/app/history" backLabel="History" />
 
       <div className="max-w-lg mx-auto px-4 pt-4 space-y-4">
         {/* Offline Alert */}
         {isOffline && (
           <div
             role="alert"
-            className="flex items-center gap-2 bg-yellow-500 text-white text-xs py-2.5 px-4 rounded-xl shadow-sm"
+            className="glass-chrome flex items-center gap-2 rounded-full border-amber-200/70 bg-amber-50/85 px-4 py-2.5 text-[13px] font-medium text-amber-900"
           >
             <WifiOff className="w-4 h-4 flex-shrink-0" />
             <span>You&apos;re offline — retrying when connection restores</span>
@@ -309,30 +297,32 @@ export default function JobDetailPage({
         )}
 
         {/* Hero Status Card */}
-        <div
-          className={`rounded-2xl p-7 text-center border shadow-sm ${
-            isPrinted
-              ? "bg-green-50 border-green-200"
-              : "bg-white border-gray-100"
-          }`}
-        >
-          <div className="flex justify-center mb-5">{cfg.icon}</div>
-          <h1 className="text-2xl font-bold text-gray-900 tracking-tight leading-tight">
+        <div className="glass-card rounded-[28px] px-6 py-8 text-center">
+          <div className="flex justify-center mb-5">
+            <span
+              className={`flex h-20 w-20 items-center justify-center rounded-full ${
+                isPrinted ? "bg-tint shadow-[0_10px_30px_rgba(12,131,31,0.35)]" : "bg-white/80 ring-1 ring-black/[0.05]"
+              }`}
+            >
+              {cfg.icon}
+            </span>
+          </div>
+          <h1 className="text-[24px] font-bold text-label tracking-[-0.03em] leading-tight">
             {cfg.headline}
           </h1>
           {cfg.sub && (
-            <p className="text-sm text-gray-500 mt-2 leading-relaxed max-w-xs mx-auto">
+            <p className="text-[15px] text-secondary-label mt-2 leading-relaxed max-w-xs mx-auto">
               {cfg.sub}
             </p>
           )}
           {["dispatched", "awaiting_release"].includes(job!.status) && job!.queueAhead > 0 && (
-            <div className="mt-5 rounded-2xl bg-indigo-50 px-4 py-3 text-sm text-indigo-900" role="status" aria-live="polite">
+            <div className="mt-5 rounded-2xl bg-tint/10 px-4 py-3 text-[14px] text-label" role="status" aria-live="polite">
               <p className="font-semibold">{job!.queueAhead} {job!.queueAhead === 1 ? "print" : "prints"} ahead of yours</p>
               <p className="mt-1">Estimated wait: about {job!.estimatedWaitMinutes} {job!.estimatedWaitMinutes === 1 ? "minute" : "minutes"}.</p>
             </div>
           )}
           {job!.status === "print_failed" && (
-            <div className="mt-5 rounded-2xl bg-amber-50 px-4 py-3 text-sm text-amber-900" role="status" aria-live="polite">
+            <div className="mt-5 rounded-2xl bg-amber-500/10 px-4 py-3 text-[14px] text-amber-900" role="status" aria-live="polite">
               {job!.refundStatus === "pending" ? "Refund requested with Cashfree. We’re checking its progress." :
                 job!.refundStatus === "failed" ? "The refund could not be processed automatically. Please contact the shop for help." :
                 "We’re checking the refund request. This screen will update automatically."}
@@ -345,15 +335,15 @@ export default function JobDetailPage({
         {isSlow && !isTerminal && (
           <div
             role="status"
-            className="flex items-center gap-3 bg-yellow-50 text-yellow-900 rounded-2xl p-4 text-xs border border-yellow-200/80"
+            className="flex items-center gap-3 rounded-[20px] bg-amber-500/10 p-4 text-[13px] text-amber-900"
           >
-            <Clock className="w-4 h-4 flex-shrink-0 text-yellow-700" />
+            <Clock className="w-4 h-4 flex-shrink-0 text-amber-700" />
             <span>Taking longer than expected. Your printout will be ready shortly.</span>
           </div>
         )}
 
         {/* Order details Card */}
-        <div className="bg-white border border-gray-100 rounded-2xl overflow-hidden shadow-sm">
+        <div className="glass-card divide-y divide-black/[0.06] overflow-hidden rounded-[20px]">
           <DetailRow
             label="Pages"
             value={`${job!.pages} × ${job!.copies} cop${job!.copies !== 1 ? "ies" : "y"}`}
@@ -373,14 +363,14 @@ export default function JobDetailPage({
           <Link
             href={`/app/print?shop=${job!.shop_id}`}
             style={{ touchAction: "manipulation" }}
-            className="block w-full min-h-[52px] bg-green-500 hover:bg-green-600 active:bg-green-700 text-white font-semibold rounded-2xl text-sm text-center leading-[52px] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-green-500 shadow-sm"
+            className="flex w-full min-h-[52px] items-center justify-center rounded-full bg-tint text-[16px] font-semibold text-white shadow-[0_8px_24px_rgba(12,131,31,0.30)] transition-transform active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-tint focus-visible:ring-offset-2"
           >
             Try Again
           </Link>
         )}
 
         {job!.status === "print_failed" && (
-          <div className="text-center text-xs text-gray-500 py-2">
+          <div className="text-center text-[13px] text-secondary-label py-2">
             Need help? Please speak to the shop while we check your refund.
           </div>
         )}
@@ -390,9 +380,9 @@ export default function JobDetailPage({
           <div
             role="status"
             aria-live="polite"
-            className="flex items-center justify-center gap-1.5 text-xs text-gray-400 py-1"
+            className="flex items-center justify-center gap-1.5 text-[12px] text-zinc-500 py-1"
           >
-            <RefreshCw className="w-3 h-3 animate-spin text-gray-400" />
+            <RefreshCw className="w-3 h-3 animate-spin" />
             <span>Auto-refreshing status…</span>
           </div>
         )}
@@ -411,11 +401,11 @@ function DetailRow({
   bold?: boolean;
 }) {
   return (
-    <div className="flex items-center justify-between px-4 py-3.5 gap-4 border-b border-gray-100 last:border-0">
-      <span className="text-xs text-gray-500 flex-shrink-0">{label}</span>
+    <div className="flex min-h-[48px] items-center justify-between gap-4 px-4 py-3">
+      <span className="text-[15px] text-secondary-label flex-shrink-0">{label}</span>
       <span
-        className={`text-xs text-right ${
-          bold ? "font-bold text-gray-900" : "text-gray-700 font-medium"
+        className={`text-[15px] text-right ${
+          bold ? "font-bold text-label" : "font-medium text-label"
         }`}
       >
         {value}
